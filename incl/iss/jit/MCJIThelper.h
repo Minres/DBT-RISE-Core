@@ -37,6 +37,8 @@
 
 #include <iss/arch/traits.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include "llvm/ExecutionEngine/GenericValue.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Error.h>
 #include <iostream>
@@ -98,12 +100,33 @@ struct MCJIT_helper {
      * @param mod the module to be compiled
      * @param name the name of the toplevel entry function
      */
-    void *getPointerToFunction(std::unique_ptr<llvm::Module> mod, const std::string &name);
+    void *getPointerToFunction(std::unique_ptr<llvm::Module> mod, const std::string &name){
+        // Look for the function in our modules
+        llvm::Function *func = mod->getFunction(name);
+        return getPointerToFunction(std::move(mod), name);
+    }
+    /**
+     * compile the function named <name> of module mod
+     * @param mod the module to be compiled
+     * @param func the toplevel entry function
+     */
+    void *getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function* const func);
+    /**
+     * Execute the specified function with the specified arguments, and return the result.
+     * @param mod the module to be compiled
+     * @param name the toplevel entry function
+     * @return the result
+     */
+    llvm::GenericValue executeFunction(std::unique_ptr<llvm::Module> mod, const std::string &name);
 
 protected:
-    llvm::ExecutionEngine *compileModule(std::unique_ptr<llvm::Module> mod);
+    llvm::ExecutionEngine* createExecutionEngine(std::unique_ptr<llvm::Module> mod);
+    llvm::ExecutionEngine* compileModule(std::unique_ptr<llvm::Module> mod);
 
     void add_functions_2_module(llvm::Module* mod);
+
+
+    std::unique_ptr<llvm::legacy::FunctionPassManager> createFpm(const std::unique_ptr<llvm::Module>& mod);
 
 private:
     llvm::LLVMContext& context;
@@ -129,8 +152,12 @@ struct MCJIT_arch_helper: public MCJIT_helper {
      * @param f the toplevel entry function of the module
      * @return the function pointer
      */
-    fPtr_t getPointerToFunction(std::unique_ptr<llvm::Module> m, const llvm::Function* f){
-        return (fPtr_t)MCJIT_helper::getPointerToFunction(std::move(m), f->getName());
+    fPtr_t getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function* const func){
+        return (fPtr_t)MCJIT_helper::getPointerToFunction(std::move(mod), func);
+    }
+
+    typename arch::traits<ARCH>::addr_t executeFunction(std::unique_ptr<llvm::Module> mod, const llvm::Function* func){
+        return MCJIT_helper::executeFunction(std::move(mod), func->getName()).IntVal.getZExtValue();
     }
 };
 
