@@ -11,7 +11,7 @@ set(LIB_SOURCES
 )
 
 # Define two variables in order not to repeat ourselves.
-set(LIBRARY_NAME iss)
+set(LIBRARY_NAME dbt-core)
 
 # Define the library
 add_library(${LIBRARY_NAME} SHARED ${LIB_SOURCES})
