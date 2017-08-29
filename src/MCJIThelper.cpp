@@ -113,7 +113,7 @@ std::unique_ptr<legacy::FunctionPassManager> iss::vm::MCJIT_helper::createFpm(co
     // merges loads and stores in diamonds. Loads are hoisted into the header, while stores sink into the footer.
     fpm->add(createMergedLoadStoreMotionPass());
     // Remove redundant instructions.
-    fpm->add(createInstructionSimplifierPass());
+//>    fpm->add(createInstructionSimplifierPass());
     // Combine loads into bigger loads.
     fpm->add(createLoadCombinePass());
     fpm->doInitialization();
@@ -123,7 +123,7 @@ std::unique_ptr<legacy::FunctionPassManager> iss::vm::MCJIT_helper::createFpm(co
 llvm::ExecutionEngine* iss::vm::MCJIT_helper::createExecutionEngine(std::unique_ptr<llvm::Module> mod) {
     std::string ErrStr;
     EngineBuilder EEB(std::move(mod));
-    EEB.setUseOrcMCJITReplacement(true);
+//    EEB.setUseOrcMCJITReplacement(true);
     ExecutionEngine *EE = EEB
                 .setErrorStr(&ErrStr)
                 .setMCJITMemoryManager(std::make_unique<SectionMemoryManager>())
@@ -137,41 +137,38 @@ llvm::ExecutionEngine* iss::vm::MCJIT_helper::createExecutionEngine(std::unique_
 ExecutionEngine *MCJIT_helper::compileModule(std::unique_ptr<llvm::Module> mod) {
     assert(engineMap.find(mod->getModuleIdentifier()) == engineMap.end());
     if(dumpEnabled){
-        std::error_code EC;
+        std::error_code ec;
         std::string name(((std::string)mod->getName())+".il");
-        llvm::raw_fd_ostream OS(llvm::StringRef(name), EC, llvm::sys::fs::F_None);
+        llvm::raw_fd_ostream os(llvm::StringRef(name), ec, llvm::sys::fs::F_None);
         // llvm::WriteBitcodeToFile(mod, OS);
         // mod->dump();
-        mod->print(OS, nullptr, false, true);
-        OS.flush();
+        mod->print(os, nullptr, false, true);
+        os.flush();
     }
 
     const std::string moduleID = mod->getModuleIdentifier();
-    ExecutionEngine* EE = createExecutionEngine(std::move(mod));
-    EE->finalizeObject();
+    ExecutionEngine* ee = createExecutionEngine(std::move(mod));
+    ee->finalizeObject();
     // Store this engine
-    engineMap[moduleID] = EE;
-    return EE;
+    engineMap[moduleID] = ee;
+    return ee;
 }
 
 void *MCJIT_helper::getPointerToFunction(std::unique_ptr<Module> mod, llvm::Function* const func) {
     // Create a new pass manager attached to it.
-    std::unique_ptr<legacy::FunctionPassManager> fpm = createFpm(mod);
-    fpm->run(*func);
+    //createFpm(mod)->run(*func);
     if (func && !func->empty()) {
-        ExecutionEngine *EE = compileModule(std::move(mod));
-        return EE->getPointerToFunction(func);
+        return compileModule(std::move(mod))->getPointerToFunction(func);
     }
     return NULL;
 }
 
 GenericValue MCJIT_helper::executeFunction(std::unique_ptr<llvm::Module> mod, const std::string &name){
     // Look for the functions in our modules, compiling only as necessary
-    Function *F = mod->getFunction(name);
-    if (!F || F->empty()) throw std::runtime_error("could not find function");
-    ExecutionEngine* EE = createExecutionEngine(std::move(mod));
+    Function *func = mod->getFunction(name);
+    if (!func || func->empty()) throw std::runtime_error("could not find function");
     std::vector<GenericValue> args(0);
-    return EE->runFunction(F, args);
+    return createExecutionEngine(std::move(mod))->runFunction(func, args);
 }
 
 #define INT_TYPE(L) IntegerType::get(mod->getContext(), L)
