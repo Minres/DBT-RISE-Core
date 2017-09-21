@@ -40,6 +40,7 @@
 #include "iss/debugger/server_base.h"
 
 using namespace iss::debugger;
+using namespace logging;
 
 template<typename T>
 static T to(unsigned char* data, size_t num_bytes){

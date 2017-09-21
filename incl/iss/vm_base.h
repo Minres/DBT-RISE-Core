@@ -44,7 +44,7 @@
 #include "util/range_lut.h"
 #include "jit/MCJIThelper.h"
 
-#include <easylogging++.h>
+#include <util/logging.h>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
@@ -94,7 +94,9 @@ public:
     template <typename T>
     inline T get_reg(unsigned r){
         std::vector<uint8_t> res(sizeof(T),0);
-        core.get_reg(r, res);
+        uint8_t* reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offset(r);
+        auto size = arch::traits<ARCH>::reg_bit_width(r)/8;
+        std::copy(reg_base, reg_base+size, res.data());
         return *reinterpret_cast<T*>(&res[0]);
     }
 
@@ -103,7 +105,7 @@ public:
         if(this->debugging_enabled()) sync_exec=PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
-        LOG(INFO)<<"Start at 0x"<<std::hex<<pc.val<<std::dec;
+        LOG(logging::INFO)<<"Start at 0x"<<std::hex<<pc.val<<std::dec;
         try {
             vm::continuation_e cont=CONT;
             llvm::Function* func;
@@ -114,7 +116,7 @@ public:
                     auto it = func_map.find(pc_p.val);
                     if(it==func_map.end()){
 #ifndef NDEBUG
-                        LOG(DEBUG)<<"Compiling and executing code for 0x"<<std::hex<<pc<<std::dec;
+                        LOG(logging::DEBUG)<<"Compiling and executing code for 0x"<<std::hex<<pc<<std::dec;
 #endif
                         mod = jitHelper.createModule();
                         std::tie(cont, func) = disass(pc);
@@ -125,7 +127,7 @@ public:
                             func_map[pc_p.val]=f;
                     } else{
 #ifndef NDEBUG
-                        LOG(DEBUG)<<"Executing code for 0x"<<std::hex<<pc<<std::dec;
+                        LOG(logging::DEBUG)<<"Executing code for 0x"<<std::hex<<pc<<std::dec;
 #endif
                         f = it->second;
                     }
@@ -134,20 +136,20 @@ public:
                     pc.val=core.enter_trap(ta.id, ta.addr);
                 }
 #ifndef NDEBUG
-                LOG(DEBUG)<<"continuing  @0x"<<std::hex<<pc<<std::dec;
+                LOG(logging::DEBUG)<<"continuing  @0x"<<std::hex<<pc<<std::dec;
 #endif
             }
         } catch(simulation_stopped& e){
-            LOG(INFO)<<"ISS execution stopped with status 0x"<<std::hex<<e.state<<std::dec;
+            LOG(logging::INFO)<<"ISS execution stopped with status 0x"<<std::hex<<e.state<<std::dec;
             if(e.state!=1) error=e.state;
         } catch(decoding_error& e){
-            LOG(ERROR)<<"ISS execution aborted at address 0x"<<std::hex<<e.addr<<std::dec;
+            LOG(logging::ERROR)<<"ISS execution aborted at address 0x"<<std::hex<<e.addr<<std::dec;
             error=-1;
         }
         auto end = std::chrono::high_resolution_clock::now(); //end measurement here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        LOG(INFO)<<"Executed "<<core.get_icount()<<" instructions in "<<func_map.size()<<" code blocks during "<<
+        LOG(logging::INFO)<<"Executed "<<core.get_icount()<<" instructions in "<<func_map.size()<<" code blocks during "<<
                 millis<<"ms resulting in "<<(core.get_icount()*0.001/millis) <<"MIPS";
         return error;
     }
@@ -176,6 +178,7 @@ protected:
         virt_addr_t cur_pc=pc;
         processing_pc_entry addr(*this, pc, this->core.v2p(pc));
         unsigned int num_inst = 0;
+        loaded_regs.clear();
         func = this->open_block_func();
         leave_blk = llvm::BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
@@ -497,7 +500,8 @@ protected:
     Loki::AssocVector<uint64_t, func_ptr > func_map;
 
     std::stack<std::pair<virt_addr_t, phys_addr_t> > processing_pc;
-    std::pair<llvm::Value*, llvm::Value*> regs[arch::traits<ARCH>::NUM_REGS]; //latest_reg, is_dirty
+    //std::pair<llvm::Value*, llvm::Value*> regs[arch::traits<ARCH>::NUM_REGS]; //latest_reg, is_dirty
+    std::vector<llvm::Value*> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base* tgt_adapter;
 };
 

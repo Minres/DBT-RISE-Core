@@ -84,7 +84,7 @@ protected:
 	void respond(const std::string msg){
 	    last_msg=msg;
 	    //std::this_thread::sleep_for(std::chrono::milliseconds(2));
-	    CLOG(TRACE, "connection")<<"Processed message, responding with '"<<last_msg<<"'";
+	    CLOG(logging::TRACE, "connection")<<"Processed message, responding with '"<<last_msg<<"'";
 	    conn_shptr->write_data(&last_msg);
 	    conn_shptr->async_read();
 	}

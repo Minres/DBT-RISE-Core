@@ -56,7 +56,7 @@ typedef boost::archive::binary_iarchive iarchive_type;
 #include <string>
 #include <sstream>
 #include <vector>
-#include <easylogging++.h>
+#include <util/logging.h>
 
 
 /// The connection class provides serialization primitives on top of a socket.

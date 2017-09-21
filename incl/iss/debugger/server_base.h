@@ -35,7 +35,7 @@
 #ifndef _SERVER_BASE_H_
 #define _SERVER_BASE_H_
 
-#include <easylogging++.h>
+#include <util/logging.h>
 
 #include <vector>
 #include <list>

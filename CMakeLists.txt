@@ -43,7 +43,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # This sets the include directory for the reference project. This is the -I flag in gcc.
 include_directories(
     ${PROJECT_SOURCE_DIR}/incl
-    ${PROJECT_SOURCE_DIR}/../external/easyloggingpp/src
+    ${PROJECT_SOURCE_DIR}/../sc-components/incl
     ${LLVM_INCLUDE_DIRS}
 )
 

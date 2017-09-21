@@ -34,7 +34,7 @@
 
 #include <iss/vm_base.h>
 #include <iss/iss.h>
-#include <easylogging++.h>
+#include <util/logging.h>
 
 using namespace std;
 
