@@ -1,21 +1,21 @@
 /*******************************************************************************
  * Copyright (C) 2017, MINRES Technologies GmbH
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the copyright holder nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,7 +27,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * Contributors:
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
@@ -38,12 +38,11 @@
 #include <iss/vm_if.h>
 #include <util/thread_syncronizer.h>
 
-#include <string>
-#include <vector>
-#include <deque>
 #include <atomic>
+#include <deque>
+#include <string>
 #include <type_traits>
-
+#include <vector>
 
 namespace iss {
 
@@ -55,24 +54,24 @@ struct target_adapter_if;
 /**
  * the debug server interface
  */
-struct server_if{
+struct server_if {
     friend class iss::debugger_if;
     /**
      * debugger access type
      */
-    enum access_type {Read, Write};
+    enum access_type { Read, Write };
     /**
      * type of breakpoints
      */
-    enum bp_type {OnExec=0, OnRead=1, OnWrite=2, OnRW=3};
+    enum bp_type { OnExec = 0, OnRead = 1, OnWrite = 2, OnRW = 3 };
     /**
      * address type
      */
-    enum addr_type {Phys, Virt, Log};
+    enum addr_type { Phys, Virt, Log };
     /**
      * execution mode of debuggee
      */
-    enum mode_e {MODE_RUN, MODE_BREAK, MODE_STOP};
+    enum mode_e { MODE_RUN, MODE_BREAK, MODE_STOP };
 
     /**
      * destructor
@@ -92,7 +91,7 @@ struct server_if{
      * check if a core is executing
      * @return true if the core runs
      */
-    virtual bool is_running(){ return mode.load()!=MODE_STOP;}
+    virtual bool is_running() { return mode.load() != MODE_STOP; }
     /**
      * wait until request_stop() is processed and the specified core stops
      */
@@ -102,7 +101,7 @@ struct server_if{
      * @param coreId the core to single step
      * @param steps number of steps to execute
      */
-    virtual void step(unsigned coreId, unsigned steps=1) = 0;
+    virtual void step(unsigned coreId, unsigned steps = 1) = 0;
     /**
      * shut down the simulation and server
      */
@@ -114,26 +113,26 @@ struct server_if{
      */
     virtual status reset(int coreId) = 0;
 
-    enum exec_states { initialized=0, running=1, stopped=2, stepping=3};
+    enum exec_states { initialized = 0, running = 1, stopped = 2, stepping = 3 };
     /**
      * get the target adapter for the core being debugged
      * @return
      */
-    virtual target_adapter_if* get_target() = 0;
+    virtual target_adapter_if *get_target() = 0;
     /**
      * check if the simulation can continue
-     * @param bp_handle the handle of breakpoint condition being met, 0 means no hit
+     * @param bp_handle the handle of breakpoint condition being met, 0 means no
+     * hit
      */
-    inline
-    void check_continue(unsigned bp_handle) {
-        if(bp_handle){
+    inline void check_continue(unsigned bp_handle) {
+        if (bp_handle) {
             mode.store(MODE_STOP, std::memory_order_release);
-            last_bp=bp_handle;
+            last_bp = bp_handle;
         }
-        while(mode.load(std::memory_order_acquire)==MODE_STOP){
+        while (mode.load(std::memory_order_acquire) == MODE_STOP) {
             syncronizer.executeNext();
         }
-        if(--cycles==0) mode=MODE_STOP;
+        if (--cycles == 0) mode = MODE_STOP;
     }
     /**
      * execute the specified function synchronized in the simulation thread
@@ -141,8 +140,8 @@ struct server_if{
      * @param args arguments of the function
      * @return result value of function (if any)
      */
-    template<class F, class... Args>
-    typename std::result_of<F(Args...)>::type execute_syncronized(F&& f, Args&&... args) {
+    template <class F, class... Args>
+    typename std::result_of<F(Args...)>::type execute_syncronized(F &&f, Args &&... args) {
         return syncronizer.enqueue_and_wait(f, args...);
     }
 
@@ -153,7 +152,7 @@ protected:
     unsigned last_bp;
 };
 
-}  // namespace debugger
-}  // namspace iss
+} // namespace debugger
+} // namspace iss
 
 #endif /* _SERVER_IF_H_ */

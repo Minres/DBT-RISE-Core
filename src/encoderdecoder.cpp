@@ -1,21 +1,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Copyright (C) 2017, MINRES Technologies GmbH
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice,
 //    this list of conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice,
 //    this list of conditions and the following disclaimer in the documentation
 //    and/or other materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors
 //    may be used to endorse or promote products derived from this software
 //    without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,30 +27,30 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // Contributors:
 //       eyck@minres.com - initial API and implementation
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "iss/debugger/encoderdecoder.h"
 
-#include <util/logging.h>
-#include <string>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
+#include <string>
+#include <util/logging.h>
 
 using namespace iss::debugger;
 
 enum {
     // breakpoint types
-    BPTYPE_MIN   =0,
-    BPTYPE_MAX   =4,
+    BPTYPE_MIN = 0,
+    BPTYPE_MAX = 4,
     //_query mask bits
-    MASKBIT_THREADID    =1,
-    MASKBIT_EXISTS      =2,
-    MASKBIT_DISPLAY     =4,
-    MASKBIT_THREADNAME  =8,
-    MASKBIT_MOREDISPLAY =16
+    MASKBIT_THREADID = 1,
+    MASKBIT_EXISTS = 2,
+    MASKBIT_DISPLAY = 4,
+    MASKBIT_THREADNAME = 8,
+    MASKBIT_MOREDISPLAY = 16
 };
 
 /* Convert stream of chars into data */
@@ -63,13 +63,12 @@ std::vector<uint8_t> encoder_decoder::dec_data(const char *in) {
     for (count = 0; *in; count++, in += 2) {
         if (*(in + 1) == '\0') {
             /* Odd number of nibbles. Discard the last one */
-            LOG(WARNING)<<__FUNCTION__<<": odd number of nibbles";
-            if (count == 0)
-                out.clear();
+            LOG(WARNING) << __FUNCTION__ << ": odd number of nibbles";
+            if (count == 0) out.clear();
             return out;
         }
 
-        if (!dec_byte(in, &bytex)){ // parse error
+        if (!dec_byte(in, &bytex)) { // parse error
             out.clear();
             return out;
         }
@@ -82,19 +81,17 @@ std::vector<uint8_t> encoder_decoder::dec_data(const char *in) {
 }
 
 int encoder_decoder::dec_reg(const char *in, unsigned int *reg_no) {
-    if (!dec_uint32(&in, reg_no, '\0'))
-        return false;
+    if (!dec_uint32(&in, reg_no, '\0')) return false;
 
     return true;
 }
 
 /* Decode reg_no=XXXXXX */
-std::vector<uint8_t>  encoder_decoder::dec_reg_assignment(const char *in, unsigned int *reg_no) {
+std::vector<uint8_t> encoder_decoder::dec_reg_assignment(const char *in, unsigned int *reg_no) {
     assert(in != nullptr);
     assert(reg_no != nullptr);
 
-    if (!dec_uint32(&in, reg_no, '='))
-        return std::vector<uint8_t>();
+    if (!dec_uint32(&in, reg_no, '=')) return std::vector<uint8_t>();
 
     return dec_data(in);
 }
@@ -104,8 +101,7 @@ int encoder_decoder::dec_mem(const char *in, uint64_t *addr, size_t *len) {
     assert(in != nullptr);
     assert(addr != nullptr);
     assert(len != 0);
-    if (!dec_uint64(&in, addr, ','))
-        return false;
+    if (!dec_uint64(&in, addr, ',')) return false;
 
     *len = 0;
     return dec_uint32(&in, (unsigned *)len, '\0');
@@ -123,12 +119,10 @@ int encoder_decoder::dec_process_query(const char *in, unsigned int *mask, rp_th
     assert(mask != nullptr);
     assert(ref != nullptr);
 
-    if (!dec_4bytes(in, &tmp_mask))
-        return false;
+    if (!dec_4bytes(in, &tmp_mask)) return false;
     in += 8;
 
-    if (!dec_8bytes(in, &tmp_val))
-        return false;
+    if (!dec_8bytes(in, &tmp_val)) return false;
 
     *mask = tmp_mask;
     ref->val = tmp_val;
@@ -151,16 +145,13 @@ int encoder_decoder::dec_list_query(const char *in, int *first, size_t *max, rp_
     assert(max != nullptr);
     assert(arg != nullptr);
 
-    if (!dec_nibble(in, &first_flag))
-        return false;
+    if (!dec_nibble(in, &first_flag)) return false;
     in++;
 
-    if (!dec_byte(in, (unsigned*)&tmp_max))
-        return false;
+    if (!dec_byte(in, (unsigned *)&tmp_max)) return false;
     in += 2;
 
-    if (!dec_8bytes(in, &tmp_val))
-        return false;
+    if (!dec_8bytes(in, &tmp_val)) return false;
 
     *first = (first_flag) ? true : false;
     *max = tmp_max;
@@ -180,38 +171,33 @@ int encoder_decoder::dec_break(const char *in, int *type, uint64_t *addr, unsign
     assert(len != nullptr);
 
     in++;
-    if (!dec_nibble(in, &val))
-        return false;
+    if (!dec_nibble(in, &val)) return false;
     in++;
 
-    if (val < BPTYPE_MIN || val > BPTYPE_MAX)
-        return false;
+    if (val < BPTYPE_MIN || val > BPTYPE_MAX) return false;
 
-    if (*in++ != ',')
-        return false;
+    if (*in++ != ',') return false;
 
     *type = val;
 
-    if (!dec_uint64(&in, addr, ','))
-        return false;
+    if (!dec_uint64(&in, addr, ',')) return false;
 
-    if (!dec_uint32(&in, len, '\0'))
-        return false;
+    if (!dec_uint32(&in, len, '\0')) return false;
 
     return true;
 }
 
 /* If a byte of avail is 0 then the corresponding data byte is
  encoded as 'xx', otherwise it is encoded in normal way */
-std::string encoder_decoder::enc_regs(const std::vector<uint8_t>& data, const std::vector<uint8_t>& avail) {
+std::string encoder_decoder::enc_regs(const std::vector<uint8_t> &data, const std::vector<uint8_t> &avail) {
     assert(data.size() > 0);
 
     std::stringstream ss;
     for (size_t i = 0; i < data.size(); i++) {
         if (avail[i]) {
-            ss<<enc_byte(data[i], true)<<enc_byte(data[i], false);
+            ss << enc_byte(data[i], true) << enc_byte(data[i], false);
         } else {
-            ss<< "xx";
+            ss << "xx";
         }
     }
     return ss.str();
@@ -223,17 +209,15 @@ std::string encoder_decoder::enc_data(const unsigned char *data, size_t data_len
     assert(data_len > 0);
 
     std::stringstream ss;
-    for (size_t i = 0; i < data_len; i++, data++)
-        ss<<enc_byte(*data, true)<<enc_byte(*data, false);
+    for (size_t i = 0; i < data_len; i++, data++) ss << enc_byte(*data, true) << enc_byte(*data, false);
     return ss.str();
 }
 
-std::string encoder_decoder::enc_data(const std::vector<uint8_t>& data) {
+std::string encoder_decoder::enc_data(const std::vector<uint8_t> &data) {
     assert(data.size() > 0);
 
     std::stringstream ss;
-    for (size_t i = 0; i < data.size(); i++)
-        ss<<enc_byte(data[i], true)<<enc_byte(data[i], false);
+    for (size_t i = 0; i < data.size(); i++) ss << enc_byte(data[i], true) << enc_byte(data[i], false);
     return ss.str();
 }
 /* Encode string into an array of characters */
@@ -261,7 +245,7 @@ int encoder_decoder::enc_string(const char *s, char *out, size_t out_size) {
     return i;
 }
 
-void encoder_decoder::encode_str(std::stringstream& ss, const char* const str) {
+void encoder_decoder::encode_str(std::stringstream &ss, const char *const str) {
     /* and Encode value */
     std::ios init(NULL);
     init.copyfmt(ss);
@@ -278,7 +262,8 @@ void encoder_decoder::encode_str(std::stringstream& ss, const char* const str) {
  T   represents tag
  L   represents length
  V   represents value */
-std::string encoder_decoder::enc_process_query_response(unsigned int mask, const rp_thread_ref *ref, const rp_thread_info *info) {
+std::string encoder_decoder::enc_process_query_response(unsigned int mask, const rp_thread_ref *ref,
+                                                        const rp_thread_info *info) {
     size_t len;
     unsigned int tag;
     int i;
@@ -288,28 +273,27 @@ std::string encoder_decoder::enc_process_query_response(unsigned int mask, const
     std::stringstream ss;
 
     /* Encode header */
-    ss<< "qQ";
+    ss << "qQ";
     /* Encode mask */
-    ss<<std::setw(8)<<std::setfill('0')<<std::hex<<mask;
+    ss << std::setw(8) << std::setfill('0') << std::hex << mask;
 
     /* Encode reference thread */
-    ss<<std::setw(16)<<std::setfill('0')<<std::hex<<ref->val;
+    ss << std::setw(16) << std::setfill('0') << std::hex << ref->val;
 
     for (i = 0, tag = 0; i < 32; i++, tag <<= 1) {
-        if ((mask & tag) == 0)
-            continue;
+        if ((mask & tag) == 0) continue;
         /* Encode tag */
-        ss<<std::setw(8)<<std::setfill('0')<<std::hex<<tag;
+        ss << std::setw(8) << std::setfill('0') << std::hex << tag;
         switch (tag) {
         case MASKBIT_THREADID:
             /* Encode length - it is 16 */
             /* and Encode value */
-            ss<<"10"<<std::setw(16)<<std::setfill('0')<<std::hex<<info->thread_id.val;
+            ss << "10" << std::setw(16) << std::setfill('0') << std::hex << info->thread_id.val;
             break;
         case MASKBIT_EXISTS:
             /* Encode Length */
             /* and Encode value */
-            ss<<"01"<<(info->exists) ? '1' : '0';
+            ss << "01" << (info->exists) ? '1' : '0';
             break;
         case MASKBIT_DISPLAY:
             /* Encode length */
@@ -343,22 +327,23 @@ std::string encoder_decoder::enc_process_query_response(unsigned int mask, const
  D   represents done
  A   represents arg thread reference
  F   represents found thread reference(s) */
-std::string encoder_decoder::enc_list_query_response(size_t count, int done, const rp_thread_ref& arg, const std::vector<rp_thread_ref> found) {
+std::string encoder_decoder::enc_list_query_response(size_t count, int done, const rp_thread_ref &arg,
+                                                     const std::vector<rp_thread_ref> found) {
     assert(count <= 255);
 
     std::string enc_buf;
     std::stringstream ss;
 
     /* Encode header, count, done and arg */
-    ss<<"qM";
+    ss << "qM";
     enc_byte(count, enc_buf);
-    ss<<enc_buf[0]<<enc_buf[1];
-    ss<<(done) ? '1' : '0';
-    ss<<std::setw(16)<<std::setfill('0')<<std::hex<<arg.val;
+    ss << enc_buf[0] << enc_buf[1];
+    ss << (done) ? '1' : '0';
+    ss << std::setw(16) << std::setfill('0') << std::hex << arg.val;
 
     /* Encode found */
     for (int i = 0; i < count; i++) {
-        ss<<std::setw(16)<<std::setfill('0')<<std::hex<<found[i].val;
+        ss << std::setw(16) << std::setfill('0') << std::hex << found[i].val;
     }
     return ss.str();
 }
@@ -367,12 +352,9 @@ std::string encoder_decoder::enc_list_query_response(size_t count, int done, con
 int encoder_decoder::dec_nibble(const char *in, unsigned int *nibble) {
     int nib = -1;
 
-    if (*in >= '0' && *in <= '9')
-        nib = *in - '0';
-    if (*in >= 'A' && *in <= 'F')
-        nib = *in - 'A' + 10;
-    if (*in >= 'a' && *in <= 'f')
-        nib = *in - 'a' + 10;
+    if (*in >= '0' && *in <= '9') nib = *in - '0';
+    if (*in >= 'A' && *in <= 'F') nib = *in - 'A' + 10;
+    if (*in >= 'a' && *in <= 'f') nib = *in - 'a' + 10;
 
     if (nib >= 0) {
         *nibble = nib;
@@ -387,11 +369,9 @@ int encoder_decoder::dec_byte(const char *in, unsigned int *byte_ptr) {
     unsigned int ls_nibble;
     unsigned int ms_nibble;
 
-    if (!dec_nibble(in, &ms_nibble))
-        return false;
+    if (!dec_nibble(in, &ms_nibble)) return false;
 
-    if (!dec_nibble(in + 1, &ls_nibble))
-        return false;
+    if (!dec_nibble(in + 1, &ls_nibble)) return false;
 
     *byte_ptr = (ms_nibble << 4) + ls_nibble;
     return true;
@@ -405,8 +385,7 @@ int encoder_decoder::dec_4bytes(const char *in, uint32_t *val) {
     int count;
 
     for (tmp = 0, count = 0; count < 8; count++, in++) {
-        if (!dec_nibble(in, &nibble))
-            break;
+        if (!dec_nibble(in, &nibble)) break;
         tmp = (tmp << 4) + nibble;
     }
     *val = tmp;
@@ -421,8 +400,7 @@ int encoder_decoder::dec_8bytes(const char *in, uint64_t *val) {
     int count;
 
     for (tmp = 0, count = 0; count < 16; count++, in++) {
-        if (!dec_nibble(in, &nibble))
-            break;
+        if (!dec_nibble(in, &nibble)) break;
         tmp = (tmp << 4) + nibble;
     }
     *val = tmp;
@@ -444,8 +422,7 @@ int encoder_decoder::dec_uint32(char const **in, uint32_t *val, char break_char)
     }
 
     for (tmp = 0, count = 0; **in && count < 8; count++, (*in)++) {
-        if (!dec_nibble(*in, &nibble))
-            break;
+        if (!dec_nibble(*in, &nibble)) break;
         tmp = (tmp << 4) + nibble;
     }
 
@@ -453,8 +430,7 @@ int encoder_decoder::dec_uint32(char const **in, uint32_t *val, char break_char)
         /* Wrong terminating character */
         return false;
     }
-    if (**in)
-        (*in)++;
+    if (**in) (*in)++;
     *val = tmp;
     return true;
 }
@@ -474,8 +450,7 @@ int encoder_decoder::dec_uint64(char const **in, uint64_t *val, char break_char)
     }
 
     for (tmp = 0, count = 0; **in && count < 16; count++, (*in)++) {
-        if (!dec_nibble(*in, &nibble))
-            break;
+        if (!dec_nibble(*in, &nibble)) break;
         tmp = (tmp << 4) + nibble;
     }
 
@@ -483,17 +458,15 @@ int encoder_decoder::dec_uint64(char const **in, uint64_t *val, char break_char)
         /* Wrong terminating character */
         return false;
     }
-    if (**in)
-        (*in)++;
+    if (**in) (*in)++;
     *val = tmp;
     return true;
 }
 
 /* Encode byte */
-void encoder_decoder::enc_byte(unsigned char val, std::string& out, size_t offset) {
+void encoder_decoder::enc_byte(unsigned char val, std::string &out, size_t offset) {
     const char hex[] = "0123456789abcdef";
-    out.reserve(offset+2);
-    out[offset]     = hex[(val >> 4) & 0xf];
+    out.reserve(offset + 2);
+    out[offset] = hex[(val >> 4) & 0xf];
     out[offset + 1] = hex[val & 0xf];
 }
-

@@ -1,21 +1,21 @@
 /*******************************************************************************
  * Copyright (C) 2017, MINRES Technologies GmbH
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of the copyright holder nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,7 +27,7 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * Contributors:
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
@@ -36,8 +36,8 @@
 #define _TARGET_ADAPTER_IF_H_
 
 #include <iss/vm_types.h>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace iss {
 namespace debugger {
@@ -51,17 +51,16 @@ typedef void (*data_func)(const char *string);
 /* Function to do logging */
 typedef void (*log_func)(int level, const char *string, ...);
 
-struct rp_thread_ref
-{
+struct rp_thread_ref {
     uint64_t val;
-} ;
+};
 
 struct rp_thread_info {
     rp_thread_ref thread_id;
-    int           exists;
-    char          display[256];
-    char          thread_name[32];
-    char          more_display[256];
+    int exists;
+    char display[256];
+    char thread_name[32];
+    char more_display[256];
 };
 
 struct target_adapter_if {
@@ -76,10 +75,10 @@ struct target_adapter_if {
         const char *help;
     };
 
-    virtual ~target_adapter_if(){}
+    virtual ~target_adapter_if() {}
 
     /* return table of remote commands */
-    virtual const std::vector<custom_command>& custom_commands() = 0;
+    virtual const std::vector<custom_command> &custom_commands() = 0;
 
     /*======================   Help/Debug  =======================*/
 
@@ -91,14 +90,14 @@ struct target_adapter_if {
     /* Start target stub and provide run time parameters
      in time tested manner, does not assume actually
      connecting to target.  */
-    virtual iss::status open(int argc, char * const agrv[], const char *prog_name, log_func log_fn) = 0;
+    virtual iss::status open(int argc, char *const agrv[], const char *prog_name, log_func log_fn) = 0;
 
     /* Close target stub: if target is still connected disconnect and
      leave it running */
     virtual void close(void) = 0;
 
     /* Actually connect to a target and return status string; */
-    virtual iss::status connect(std::string& status_string, bool& can_restart) = 0;
+    virtual iss::status connect(std::string &status_string, bool &can_restart) = 0;
 
     /* Disconnect from a target a leave it running */
     virtual iss::status disconnect(void) = 0;
@@ -135,13 +134,13 @@ struct target_adapter_if {
     /*============== Thread Control ===============================*/
 
     /* Set generic thread */
-    virtual iss::status set_gen_thread(rp_thread_ref& thread) = 0;
+    virtual iss::status set_gen_thread(rp_thread_ref &thread) = 0;
 
     /* Set control thread */
-    virtual iss::status set_ctrl_thread(rp_thread_ref& thread) = 0;
+    virtual iss::status set_ctrl_thread(rp_thread_ref &thread) = 0;
 
     /* Get thread status */
-    virtual iss::status is_thread_alive(rp_thread_ref& thread, bool& alive) = 0;
+    virtual iss::status is_thread_alive(rp_thread_ref &thread, bool &alive) = 0;
 
     /*============= Register Access ================================*/
 
@@ -149,35 +148,37 @@ struct target_adapter_if {
      target byte order. If  register is not available
      corresponding bytes in avail_buf are 0, otherwise
      avail buf is 1 */
-    virtual iss::status read_registers(std::vector<uint8_t>& data_buf, std::vector<uint8_t>& avail_buf) = 0;
+    virtual iss::status read_registers(std::vector<uint8_t> &data_buf, std::vector<uint8_t> &avail_buf) = 0;
 
     /* Write all registers. buf is 4-byte aligned and it is in target
      byte order */
-    virtual iss::status write_registers(const std::vector<uint8_t>& buf) = 0;
+    virtual iss::status write_registers(const std::vector<uint8_t> &buf) = 0;
 
     /* Read one register. buf is 4-byte aligned and it is in
      target byte order. If  register is not available
      corresponding bytes in avail_buf are 0, otherwise
      avail buf is 1 */
-    virtual iss::status read_single_register(unsigned int reg_no, std::vector<uint8_t>& buf, std::vector<uint8_t>& avail_buf) = 0;
+    virtual iss::status read_single_register(unsigned int reg_no, std::vector<uint8_t> &buf,
+                                             std::vector<uint8_t> &avail_buf) = 0;
 
     /* Write one register. buf is 4-byte aligned and it is in target byte
      order */
-    virtual iss::status write_single_register(unsigned int reg_no, const std::vector<uint8_t>& buf) = 0;
+    virtual iss::status write_single_register(unsigned int reg_no, const std::vector<uint8_t> &buf) = 0;
 
     /*=================== Memory Access =====================*/
 
     /* Read memory, buf is 4-bytes aligned and it is in target
      byte order */
-    virtual iss::status read_mem(uint64_t addr, std::vector<uint8_t>& buf) = 0;
+    virtual iss::status read_mem(uint64_t addr, std::vector<uint8_t> &buf) = 0;
 
     /* Write memory, buf is 4-bytes aligned and it is in target
      byte order */
-    virtual iss::status write_mem(uint64_t addr, const std::vector<uint8_t>& buf) = 0;
+    virtual iss::status write_mem(uint64_t addr, const std::vector<uint8_t> &buf) = 0;
 
     /*================ Resume/Wait  ============================*/
 
-    /* Resume from current address, if not supported it has to be figured out by wait */
+    /* Resume from current address, if not supported it has to be figured out by
+     * wait */
     virtual iss::status resume_from_current(bool step, int sig) = 0;
 
     /* Resume from specified address, if not supported it
@@ -201,8 +202,8 @@ struct target_adapter_if {
 
      status_string is unchanged unless return value is OK and
      implemented is non 0 */
-    virtual iss::status wait_non_blocking(std::string& status_string, out_func out, bool& running){
-    	return iss::NotSupported;
+    virtual iss::status wait_non_blocking(std::string &status_string, out_func out, bool &running) {
+        return iss::NotSupported;
     }
 
     /* Wait for event, fill (null-terminated) status_string upon successful
@@ -216,29 +217,30 @@ struct target_adapter_if {
 
      status_string is unchanged unless return value is OK and
      implemented is non 0 */
-    virtual iss::status wait_blocking(std::string& status_string, out_func out) = 0;
+    virtual iss::status wait_blocking(std::string &status_string, out_func out) = 0;
 
     /*============= Queries ===============================*/
 
     /* Bits of mask determine set of information about thread
      to be retrieved, results are put into info.  */
-    virtual iss::status process_query(unsigned int& mask, const rp_thread_ref& arg, rp_thread_info& info) = 0;
+    virtual iss::status process_query(unsigned int &mask, const rp_thread_ref &arg, rp_thread_info &info) = 0;
 
     /* List threads. If first is non-zero then start from the first thread,
      otherwise start from arg, result points to array of threads to be
      filled out, result size is number of elements in the result,
      num points to the actual number of threads found, done is
      set if all threads are processed.  */
-    virtual iss::status thread_list_query(int first, const rp_thread_ref& arg, std::vector<rp_thread_ref>& result, size_t max_num, size_t& num, bool& done) = 0;
+    virtual iss::status thread_list_query(int first, const rp_thread_ref &arg, std::vector<rp_thread_ref> &result,
+                                          size_t max_num, size_t &num, bool &done) = 0;
 
     /* Query current thread id */
-    virtual iss::status current_thread_query(rp_thread_ref& thread) = 0;
+    virtual iss::status current_thread_query(rp_thread_ref &thread) = 0;
 
     /* Query offset of major sections in memory */
-    virtual iss::status offsets_query(uint64_t& text, uint64_t& data, uint64_t& bss) = 0;
+    virtual iss::status offsets_query(uint64_t &text, uint64_t &data, uint64_t &bss) = 0;
 
     /* Query crc32 of memory area */
-    virtual iss::status crc_query(uint64_t addr, size_t len, uint32_t& val) = 0;
+    virtual iss::status crc_query(uint64_t addr, size_t len, uint32_t &val) = 0;
 
     /* Raw query, see gdb-XXXX/gdb/remote.c. we got buffer
      call this function. It is a responsibility of the target
@@ -246,13 +248,14 @@ struct target_adapter_if {
 
      It is planned to have more more specific queries in
      the nearest future.  */
-    virtual iss::status raw_query(std::string in_buf, std::string& out_buf) = 0;
+    virtual iss::status raw_query(std::string in_buf, std::string &out_buf) = 0;
 
     /*============ Breakpoints ===========================*/
     /**
      * add a breakpoint
      *
-     * @param type      the type of the breakpoint: 0 -  sw exec, 1 - hw exec, 2 - write watchpoint, 3 - access watchpoint
+     * @param type      the type of the breakpoint: 0 -  sw exec, 1 - hw exec, 2 -
+     * write watchpoint, 3 - access watchpoint
      * @param addr      address of the breakpoint
      * @param length    length of the range to check
      * @return iss:Ok if successful, iss::Err otherwise
@@ -261,7 +264,8 @@ struct target_adapter_if {
     /**
      * remove a breakpoint
      *
-     * @param type      the type of the breakpoint: 0 -  sw exec, 1 - hw exec, 2 - write watchpoint, 3 - access watchpoint
+     * @param type      the type of the breakpoint: 0 -  sw exec, 1 - hw exec, 2 -
+     * write watchpoint, 3 - access watchpoint
      * @param addr      address of the breakpoint
      * @param length    length of the range to check
      * @return iss:Ok if successful, iss::Err otherwise
@@ -269,16 +273,16 @@ struct target_adapter_if {
     virtual iss::status remove_break(int type, uint64_t addr, unsigned int length) = 0;
 
     /* Query thread info */
-    virtual iss::status threadinfo_query(int first, std::string& out_buf) = 0;
+    virtual iss::status threadinfo_query(int first, std::string &out_buf) = 0;
 
     /* Query thread extra info */
-    virtual iss::status threadextrainfo_query(const rp_thread_ref& thread, std::string& out_buf) = 0;
+    virtual iss::status threadextrainfo_query(const rp_thread_ref &thread, std::string &out_buf) = 0;
 
     /* Query packet size */
-    virtual iss::status packetsize_query(std::string& out_buf) = 0;
+    virtual iss::status packetsize_query(std::string &out_buf) = 0;
 };
 
-}  // namespace debugger
-}  // namspace iss
+} // namespace debugger
+} // namspace iss
 
 #endif /* _TARGET_ADAPTER_H_ */

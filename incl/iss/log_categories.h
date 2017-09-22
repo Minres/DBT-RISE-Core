@@ -10,8 +10,8 @@
 
 #include <util/logging.h>
 namespace logging {
-    struct connection {};
-    struct disass {};
+struct connection {};
+struct disass {};
 }
 
 #endif /* DBT_CORE_INCL_ISS_LOG_CATEGORIES_H_ */
