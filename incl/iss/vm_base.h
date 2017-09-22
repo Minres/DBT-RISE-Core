@@ -106,7 +106,7 @@ public:
         try {
             vm::continuation_e cont = CONT;
             llvm::Function *func;
-            func_ptr f;
+            func_ptr f=nullptr;
             while (cycles < 0 || ((int64_t)core.get_icount()) < cycles) {
                 try {
                     const phys_addr_t pc_p = core.v2p(pc);

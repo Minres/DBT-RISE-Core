@@ -74,7 +74,7 @@ inline std::vector<std::string> split(const std::string &s, char seperator) {
 }
 
 struct gdb_resp_msg {
-    gdb_resp_msg() = default
+    gdb_resp_msg() = default;
     void add(uint8_t m) {
         if (m == '#' || m == '$' || m == '}') {
             buffer.push_back('}');
