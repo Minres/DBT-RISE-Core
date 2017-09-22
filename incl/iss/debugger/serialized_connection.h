@@ -40,13 +40,13 @@
 #ifdef USE_TEXT
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
-typedef boost::archive::text_oarchive oarchive_type;
+using oarchive_type = boost::archive::text_oarchive ;
 typedef boost::archive::text_iarchive iarchive_type;
 #else
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
-typedef boost::archive::binary_oarchive oarchive_type;
-typedef boost::archive::binary_iarchive iarchive_type;
+using oarchive_type = boost::archive::binary_oarchive ;
+using iarchive_type = boost::archive::binary_iarchive ;
 #endif
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -68,7 +68,7 @@ typedef boost::archive::binary_iarchive iarchive_type;
 template <typename TREQ, typename TRESP>
 class connection : public boost::enable_shared_from_this<connection<TREQ, TRESP>> {
 public:
-    typedef boost::shared_ptr<connection<TREQ, TRESP>> ptr;
+    using ptr = boost::shared_ptr<connection<TREQ, TRESP>>;
 
     struct async_listener : public boost::enable_shared_from_this<async_listener> {
         virtual void send_completed(const boost::system::error_code &error) = 0;

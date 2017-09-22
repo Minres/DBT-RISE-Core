@@ -74,7 +74,7 @@ inline std::vector<std::string> split(const std::string &s, char seperator) {
 }
 
 struct gdb_resp_msg {
-    gdb_resp_msg() : check_sum(0), body(false) {}
+    gdb_resp_msg() = default
     void add(uint8_t m) {
         if (m == '#' || m == '$' || m == '}') {
             buffer.push_back('}');
@@ -114,8 +114,8 @@ struct gdb_resp_msg {
 
 protected:
     std::vector<uint8_t> buffer;
-    uint8_t check_sum;
-    bool body;
+    uint8_t check_sum = 0;
+    bool body = false;
 };
 
 int gdb_session::start() {
@@ -136,7 +136,7 @@ void gdb_session::send_completed(const boost::system::error_code &e) {
 }
 
 bool is_all_hex(char *input) { // destroys input
-    return (strtok(input, "0123456789ABCDEFabcdef") == NULL);
+    return (strtok(input, "0123456789ABCDEFabcdef") == nullptr);
 }
 
 bool gdb_session::message_completed(std::vector<char> &buffer) {

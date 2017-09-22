@@ -36,7 +36,7 @@
 
 #include <iss/log_categories.h>
 #include <numeric>
-#include <stdarg.h>
+#include <cstdarg>
 #include <stdexcept>
 
 using namespace iss::debugger;
@@ -150,7 +150,7 @@ std::string cmd_handler::read_single_register(const std::string in_buf) {
         break;
     default:
         /* This should not happen */
-        assert(0);
+        assert(false);
         break;
     }
     return "";
@@ -189,7 +189,7 @@ std::string cmd_handler::read_memory(const std::string in_buf) {
         return "E00";
     default:
         /* This should not happen */
-        assert(0);
+        assert(false);
         break;
     }
     return "";
@@ -481,7 +481,7 @@ std::string cmd_handler::query(const std::string in_buf) {
             return to_string(ret);
             break;
         default:
-            assert(0);
+            assert(false);
             break;
         }
         return "";
@@ -498,7 +498,7 @@ std::string cmd_handler::query(const std::string in_buf) {
             return to_string(ret);
         default:
             /* This should not happen */
-            assert(0);
+            assert(false);
         }
         return "";
     }
@@ -514,7 +514,7 @@ std::string cmd_handler::query(const std::string in_buf) {
             return to_string(ret);
         default:
             /* This should not happen */
-            assert(0);
+            assert(false);
         }
         return "";
     }
@@ -547,7 +547,7 @@ std::string cmd_handler::query(const std::string in_buf) {
             return to_string(ret);
         default:
             /* This should not happen */
-            assert(0);
+            assert(false);
         }
         return "";
     }

@@ -121,7 +121,7 @@ struct cmd_handler {
         case iss::NotSupported:
             return "";
         default:
-            assert(0);
+            assert(false);
             return nullptr;
         }
     }
@@ -134,7 +134,7 @@ struct cmd_handler {
         case iss::NotSupported:
             return "";
         default:
-            assert(0);
+            assert(false);
             return nullptr;
         }
     }

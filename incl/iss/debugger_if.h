@@ -46,7 +46,7 @@ struct debugger_if {
     /**
      * destructor
      */
-    virtual ~debugger_if(){};
+    virtual ~debugger_if() = default;
     /**
      * check if debugging is enabled
      * @return

@@ -58,7 +58,7 @@ public:
     gdb_session(server_if *server_, boost::asio::io_service &io_service)
         : server(server_), conn_shptr(new connection<std::string, std::string>(io_service)), handler(*server) {}
 
-    virtual ~gdb_session() {}
+    virtual ~gdb_session() = default;
 
     tcp::socket &socket() { return conn_shptr->socket(); }
 

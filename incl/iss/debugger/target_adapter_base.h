@@ -61,17 +61,17 @@ struct target_adapter_base : public target_adapter_if {
 
     iss::status open(int argc, char *const agrv[], const char *prog_name, log_func log_fn) override;
 
-    void close(void) override;
+    void close() override;
 
     iss::status connect(std::string &status_string, bool &can_restart) override;
 
-    iss::status disconnect(void) override;
+    iss::status disconnect() override;
 
-    void kill(void) override;
+    void kill() override;
 
-    iss::status restart(void) override;
+    iss::status restart() override;
 
-    void stop(void) override;
+    void stop() override;
 
     iss::status resume_from_current(bool step, int sig) override;
 

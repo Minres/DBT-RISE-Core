@@ -43,13 +43,13 @@ namespace iss {
 namespace debugger {
 
 /* Function to do console output from wait methods */
-typedef void (*out_func)(const char *string);
+using out_func = void(*)(const char *string);
 
 /* Function to transefer data received as qRcmd response */
-typedef void (*data_func)(const char *string);
+using data_func = void (*)(const char *string);
 
 /* Function to do logging */
-typedef void (*log_func)(int level, const char *string, ...);
+using log_func = void (*)(int level, const char *string, ...);
 
 struct rp_thread_ref {
     uint64_t val;
@@ -75,7 +75,7 @@ struct target_adapter_if {
         const char *help;
     };
 
-    virtual ~target_adapter_if() {}
+    virtual ~target_adapter_if() = default;
 
     /* return table of remote commands */
     virtual const std::vector<custom_command> &custom_commands() = 0;
@@ -94,13 +94,13 @@ struct target_adapter_if {
 
     /* Close target stub: if target is still connected disconnect and
      leave it running */
-    virtual void close(void) = 0;
+    virtual void close() = 0;
 
     /* Actually connect to a target and return status string; */
     virtual iss::status connect(std::string &status_string, bool &can_restart) = 0;
 
     /* Disconnect from a target a leave it running */
-    virtual iss::status disconnect(void) = 0;
+    virtual iss::status disconnect() = 0;
 
     /*=================== Start/Stop =========================*/
 
@@ -121,15 +121,15 @@ struct target_adapter_if {
     /* Kill target: disconnect from a target and leave it waiting
      for a command. It is expected that either close or wait or
      connect will follow after kill to get last status_string */
-    virtual void kill(void) = 0;
+    virtual void kill() = 0;
 
     /* Restart target and return status string */
-    virtual iss::status restart(void) = 0;
+    virtual iss::status restart() = 0;
 
     /* Stop target. E.g. send ^C or BREAK to target - note
      it has to be followed either by wait or connect in order to
      to get last status_string */
-    virtual void stop(void) = 0;
+    virtual void stop() = 0;
 
     /*============== Thread Control ===============================*/
 

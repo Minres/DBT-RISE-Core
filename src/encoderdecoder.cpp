@@ -312,7 +312,7 @@ std::string encoder_decoder::enc_process_query_response(unsigned int mask, const
             break;
         default:
             /* Unexpected tag value */
-            assert(0);
+            assert(false);
             return 0;
         }
     }

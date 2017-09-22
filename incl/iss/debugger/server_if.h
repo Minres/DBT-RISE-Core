@@ -76,7 +76,7 @@ struct server_if {
     /**
      * destructor
      */
-    virtual ~server_if(){};
+    virtual ~server_if() = default;
     /**
      * run the specified core, numeric_limits<unsigned>::max() indicates all cores
      * @param coreId the core to let run

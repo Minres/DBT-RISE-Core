@@ -53,8 +53,6 @@ struct server_base : public server_if {
 
     server_base(debugger_if *adapter);
 
-    ~server_base();
-
     unsigned int get_reg_width(int index) const;
 
     void run(unsigned coreId) override;
@@ -65,7 +63,7 @@ struct server_base : public server_if {
 
     void step(unsigned coreId, unsigned steps = 1) override;
 
-    iss::status reset(int coreId);
+    iss::status reset(int coreId) override;
 
     target_adapter_if *get_target() override { return vm->accquire_target_adapter(this); }
 

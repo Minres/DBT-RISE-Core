@@ -51,8 +51,6 @@ template <typename T> static T to(unsigned char *data, size_t num_bytes) {
 
 server_base::server_base(iss::debugger_if *vm) : vm(vm), tgt(nullptr) {}
 
-server_base::~server_base() {}
-
 int server_base::dummy_func() { return 42; }
 // called from debugger
 void server_base::step(unsigned coreId, unsigned steps) {

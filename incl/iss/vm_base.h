@@ -72,14 +72,14 @@ enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
 public:
-    typedef typename arch::traits<ARCH>::reg_e reg_e;
-    typedef typename arch::traits<ARCH>::sreg_flag_e sr_flag_e;
-    typedef typename arch::traits<ARCH>::virt_addr_t virt_addr_t;
-    typedef typename arch::traits<ARCH>::phys_addr_t phys_addr_t;
-    typedef typename arch::traits<ARCH>::addr_t addr_t;
-    typedef typename arch::traits<ARCH>::code_word_t code_word_t;
-    typedef typename arch::traits<ARCH>::mem_type_e mem_type_e;
-    typedef typename arch::traits<ARCH>::addr_t (*func_ptr)();
+    using reg_e = typename arch::traits<ARCH>::reg_e ;
+    using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e ;
+    using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t ;
+    using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t ;
+    using addr_t= typename arch::traits<ARCH>::addr_t ;
+    using code_word_t= typename arch::traits<ARCH>::code_word_t ;
+    using mem_type_e = typename arch::traits<ARCH>::mem_type_e ;
+    using func_ptr = typename arch::traits<ARCH>::addr_t (*)();
 
     using dbg_if = iss::debugger_if;
 
@@ -153,11 +153,11 @@ public:
         return error;
     }
 
-    void reset() { core.reset(); }
+    void reset() override  { core.reset(); }
 
     void reset(uint64_t address) { core.reset(address); }
 
-    void pre_instr_sync() {
+    void pre_instr_sync() override {
         core.notify_phase(iss::arch_if::ISTART);
         if (debugging_enabled()) {
             uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
@@ -165,7 +165,7 @@ public:
         }
     }
 
-    virtual void post_instr_sync() { core.notify_phase(iss::arch_if::IEND); }
+    virtual void post_instr_sync() override { core.notify_phase(iss::arch_if::IEND); }
 
 protected:
     std::tuple<continuation_e, llvm::Function *> disass(virt_addr_t &pc) {
@@ -236,7 +236,7 @@ protected:
                                              llvm::PointerType::get(get_type(8), 0));
     }
 
-    ~vm_base() { delete tgt_adapter; }
+    ~vm_base() override { delete tgt_adapter; }
 
     inline llvm::Type *get_type(unsigned width) const {
         assert(width > 0);

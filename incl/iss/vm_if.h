@@ -81,10 +81,6 @@ struct vm_if {
      * @param enable the flag to enable disassembling
      */
     void setDisassEnabled(bool enable) { disass_enabled = enable; }
-    /**
-     * destructor
-     */
-    virtual ~vm_if() {}
 
 protected:
     bool disass_enabled;

@@ -42,17 +42,17 @@ iss::status target_adapter_base::open(int argc, char *const agrv[], const char *
     return iss::Ok;
 }
 
-void target_adapter_base::close(void) { bp_lut.clear(); }
+void target_adapter_base::close() { bp_lut.clear(); }
 
 iss::status target_adapter_base::connect(std::string &status_string, bool &can_restart) { return iss::Ok; }
 
-iss::status target_adapter_base::disconnect(void) { return iss::Ok; }
+iss::status target_adapter_base::disconnect() { return iss::Ok; }
 
-void target_adapter_base::kill(void) {}
+void target_adapter_base::kill() {}
 
-iss::status target_adapter_base::restart(void) { return iss::Ok; }
+iss::status target_adapter_base::restart() { return iss::Ok; }
 
-void target_adapter_base::stop(void) {
+void target_adapter_base::stop() {
     srv->request_stop(0);
     srv->wait_for_stop();
 }

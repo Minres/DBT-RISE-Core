@@ -34,8 +34,8 @@
 #ifndef _ENCODERDECODER_H_
 #define _ENCODERDECODER_H_
 #include <iostream>
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 

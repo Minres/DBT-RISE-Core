@@ -73,10 +73,6 @@ struct MCJIT_helper {
      */
     MCJIT_helper(llvm::LLVMContext &context, bool dump = false);
     /**
-     * destructor
-     */
-    ~MCJIT_helper();
-    /**
      * generate a unique name from a character array using internal static counter
      * @param root
      * @return the generated name
@@ -135,7 +131,7 @@ private:
  * template wrapper to get get rid of casting in code
  */
 template <typename ARCH> struct MCJIT_arch_helper : public MCJIT_helper {
-    typedef typename arch::traits<ARCH>::addr_t (*fPtr_t)();
+    using  fPtr_t = typename arch::traits<ARCH>::addr_t (*)();
     /**
      * constructor
      * @param context the LLVM context

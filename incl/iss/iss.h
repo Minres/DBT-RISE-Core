@@ -37,7 +37,7 @@
 
 #include <iss/vm_if.h>
 #include <memory>
-#include <stdint.h>
+#include <cstdint>
 
 namespace iss {
 

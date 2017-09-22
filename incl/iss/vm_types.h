@@ -63,12 +63,12 @@ enum address_type { LOGICAL = 0x10, VIRTUAL = 0x20, PHYSICAL = 0x30, ADDRESS_TYP
 
 struct addr_t {
     const unsigned type;
-    unsigned space;
+    unsigned space=0;
     uint64_t val;
 
     unsigned getAccessType() const { return type & ACCESS_TYPE; };
 
-    constexpr addr_t() : type(READ | PHYSICAL), space(0), val(0) {}
+    constexpr addr_t() : type(READ | PHYSICAL), val(0) {}
     constexpr addr_t(access_type acc_t, address_type addr_t, unsigned s, uint64_t addr)
         : type(acc_t | addr_t), space(s), val(addr) {}
     constexpr addr_t(unsigned t, unsigned s, uint64_t addr) : type(t), space(s), val(addr) {}
@@ -126,7 +126,7 @@ inline std::ostream &operator<<(std::ostream &os, const addr_t &op) {
 }
 
 template <address_type TYPE> struct typed_addr_t : public addr_t {
-    constexpr typed_addr_t() : addr_t(READ, TYPE, 0) {}
+    constexpr typed_addr_t() : addr_t(READ, TYPE, 0) = default;
     constexpr typed_addr_t(access_type t, uint64_t v) : addr_t(t, TYPE, 0, v) {}
     constexpr typed_addr_t(unsigned t, unsigned s, uint64_t v) : addr_t((t & ACCESS_TYPE) | TYPE, s, v) {}
     constexpr typed_addr_t(const addr_t &o) : addr_t(o.getAccessType() | TYPE, o.space, o.val) {}
@@ -135,7 +135,7 @@ template <address_type TYPE> struct typed_addr_t : public addr_t {
 
 namespace iss {
 template <typename T, int ARCH> class PrimitiveTypeHolder {
-    typedef PrimitiveTypeHolder<T, ARCH> this_type;
+    using  this_type = PrimitiveTypeHolder<T, ARCH> ;
 
 public:
     explicit PrimitiveTypeHolder(T v) : v(v) {}

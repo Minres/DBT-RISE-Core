@@ -149,10 +149,6 @@ struct arch_if {
      */
     virtual void wait_until(uint64_t flags) {}
     /**
-     * destructor
-     */
-    virtual ~arch_if() {}
-    /**
      * retrieve information to augment the disassembly
      * @return string containing the core status in text form
      */
