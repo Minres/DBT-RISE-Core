@@ -34,7 +34,7 @@
 
 #include <iss/debugger/cmdhandler.h>
 
-#include <util/logging.h>
+#include <iss/log_categories.h>
 #include <stdarg.h>
 #include <numeric>
 #include <stdexcept>
@@ -42,7 +42,7 @@
 using namespace iss::debugger;
 
 void rp_console_output(const char *buf){
-    CLOG(logging::INFO, "connection")<<buf;
+    CLOG(INFO, connection)<<buf;
 }
 
 void rp_data_output(const char *buf){
@@ -56,7 +56,7 @@ void cmd_handler::attach() {
 }
 
 std::string cmd_handler::search_memory(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     uint64_t addr;
     uint32_t pattern;
     uint32_t mask;
@@ -81,7 +81,7 @@ std::string cmd_handler::search_memory(const std::string in_buf) {
 }
 
 std::string  cmd_handler::threads(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
 
     rp_thread_ref ref;
     const char *in;
@@ -104,13 +104,13 @@ std::string  cmd_handler::threads(const std::string in_buf) {
             return "E00";
         return to_string(t->set_gen_thread(ref));
     default:
-        CLOG(logging::ERROR, "connection")<<__FUNCTION__<<": Bad H command";
+        CLOG(ERROR, connection)<<__FUNCTION__<<": Bad H command";
         return "";
     }
 }
 
 std::string cmd_handler::read_registers(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int ret;
     size_t len;
     std::vector<uint8_t> data_buf(MAX_DATABYTES);
@@ -124,7 +124,7 @@ std::string cmd_handler::read_registers(const std::string in_buf) {
 }
 
 std::string  cmd_handler::write_registers(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     size_t len;
 
     /* Write all registers. Format: 'GXXXXXXXXXX' */
@@ -136,7 +136,7 @@ std::string  cmd_handler::write_registers(const std::string in_buf) {
 }
 
 std::string cmd_handler::read_single_register(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     unsigned int reg_no;
 //    uint64_t avail=std::numeric_limits<uint64_t>::max();
 
@@ -164,7 +164,7 @@ std::string cmd_handler::read_single_register(const std::string in_buf) {
 }
 
 std::string cmd_handler::write_single_register(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     unsigned int reg_no;
     /* Write a single register. Format: 'PNN=XXXXX' */
     std::vector<uint8_t> data = encdec.dec_reg_assignment(&in_buf[1], &reg_no);
@@ -175,7 +175,7 @@ std::string cmd_handler::write_single_register(const std::string in_buf) {
 }
 
 std::string cmd_handler::read_memory(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int ret;
     size_t len;
     uint64_t addr;
@@ -206,7 +206,7 @@ std::string cmd_handler::read_memory(const std::string in_buf) {
 }
 
 std::string cmd_handler::write_memory(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     size_t cp;
     /* Write memory format: 'mAA..A,LL..LL:XX..XX' */
     if ((cp = in_buf.find_first_of(':', 1)) < in_buf.npos)
@@ -226,7 +226,7 @@ std::string cmd_handler::write_memory(const std::string in_buf) {
 }
 
 std::string cmd_handler::running(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     bool step;
     std::string status_string;
     uint32_t sig;
@@ -299,7 +299,7 @@ std::string cmd_handler::running(const std::string in_buf) {
 }
 
 int cmd_handler::kill(const std::string in_buf, std::string& out_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int ret;
 
     s.shutdown();
@@ -309,16 +309,16 @@ int cmd_handler::kill(const std::string in_buf, std::string& out_buf) {
         //
         //        if (!can_restart) {
         //            /* If the current target cannot restart, we have little choice but to exit right now. */
-        //            CLOG(logging::INFO, "connection")<<__FUNCTION__<<": session killed. Exiting";
+        //            CLOG(INFO, connection)<<__FUNCTION__<<": session killed. Exiting";
         //            dbg_sock_cleanup();
         //            exit(0);
         //        }
 
-        CLOG(logging::INFO, "connection")<<__FUNCTION__<<": session killed. Will wait for a new connection";
+        CLOG(INFO, connection)<<__FUNCTION__<<": session killed. Will wait for a new connection";
         return 0;
     }
 
-    CLOG(logging::INFO, "connection")<<__FUNCTION__<<": remote proxy restarting";
+    CLOG(INFO, connection)<<__FUNCTION__<<": remote proxy restarting";
 
     /* Let us do our best while starting system */
     if (!can_restart) {
@@ -332,7 +332,7 @@ int cmd_handler::kill(const std::string in_buf, std::string& out_buf) {
 
     if (ret != iss::Ok) {
         /* There is no point in continuing */
-        CLOG(logging::ERROR, "connection")<<__FUNCTION__<<": unable to restart target";
+        CLOG(ERROR, connection)<<__FUNCTION__<<": unable to restart target";
         out_buf="E00";
         //        rp_putpkt(out_buf);
         //        dbg_sock_close();
@@ -342,14 +342,14 @@ int cmd_handler::kill(const std::string in_buf, std::string& out_buf) {
         //            exit(1);
         //        }
 
-        CLOG(logging::INFO, "connection")<<__FUNCTION__<<": will wait for a new connection";
+        CLOG(INFO, connection)<<__FUNCTION__<<": will wait for a new connection";
         return 0;
     }
     return 1;
 }
 
 std::string cmd_handler::thread_alive(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int ret;
     bool alive;
     rp_thread_ref ref;
@@ -374,7 +374,7 @@ std::string cmd_handler::thread_alive(const std::string in_buf) {
 }
 
 int cmd_handler::restart_target(const std::string in_buf, std::string& out_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int ret;
 
     /* Restarting the target is only supported in the extended protocol. */
@@ -386,16 +386,16 @@ int cmd_handler::restart_target(const std::string in_buf, std::string& out_buf) 
     /* Let us do our best to restart the system */
     if ((ret = s.reset(CORE_ID)) != iss::Ok) {
         /* There is no point to continuing */
-        CLOG(logging::ERROR, "connection")<<__FUNCTION__<<": unable to restart target";
+        CLOG(ERROR, connection)<<__FUNCTION__<<": unable to restart target";
         out_buf="E00";
-        CLOG(logging::INFO, "connection")<<__FUNCTION__<<": will wait for a new connection";
+        CLOG(INFO, connection)<<__FUNCTION__<<": will wait for a new connection";
         return -1;
     }
     return 1;
 }
 
 std::string cmd_handler::detach(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int ret;
 
     s.shutdown();
@@ -404,21 +404,21 @@ std::string cmd_handler::detach(const std::string in_buf) {
     //    rp_putpkt(out_buf);
     //    dbg_sock_close();
 
-    CLOG(logging::INFO, "connection")<<__FUNCTION__<<": debugger detaching";
+    CLOG(INFO, connection)<<__FUNCTION__<<": debugger detaching";
 
     if (!can_restart) {
         /* If the current target cannot restart, we have little choice but
          to exit right now. */
-        CLOG(logging::INFO, "connection")<<__FUNCTION__<<": target is not restartable. Exiting";
+        CLOG(INFO, connection)<<__FUNCTION__<<": target is not restartable. Exiting";
         exit(0);
     }
 
-    CLOG(logging::INFO, "connection")<<__FUNCTION__<<": will wait for a new connection";
+    CLOG(INFO, connection)<<__FUNCTION__<<": will wait for a new connection";
     return "";
 }
 
 std::string cmd_handler::query(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int ret;
     rp_thread_ref ref;
     rp_thread_info info;
@@ -427,7 +427,7 @@ std::string cmd_handler::query(const std::string in_buf) {
     uint64_t addr;
 
     if (in_buf.size() == 1) {
-        CLOG(logging::ERROR, "connection")<<__FUNCTION__<<": bad 'q' command received";
+        CLOG(ERROR, connection)<<__FUNCTION__<<": bad 'q' command received";
         return "";
     }
     if (strncmp(in_buf.c_str() + 1, "Attached", 8) == 0) {
@@ -652,7 +652,7 @@ std::string cmd_handler::set(const std::string in_buf) {
 }
 
 std::string cmd_handler::breakpoint(const std::string in_buf) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     uint64_t addr;
     unsigned int len;
     int type;
@@ -680,7 +680,7 @@ void cmd_handler::interrupt_target() {
 
 /* Help function, generate help text from command table */
 int cmd_handler::rcmd_help(int argc, char *argv[], out_func of, data_func df) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     char buf[1000 + 1];
     char buf2[1000 + 1];
     int i = 0;
@@ -711,7 +711,7 @@ int cmd_handler::rcmd_help(int argc, char *argv[], out_func of, data_func df) {
 
 /* Set function, set debug level */
 int cmd_handler::rcmd_set(int argc, char *argv[], out_func of, data_func df) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     char buf[1000 + 1];
     char buf2[1000 + 1];
 
@@ -737,19 +737,19 @@ int cmd_handler::rcmd_set(int argc, char *argv[], out_func of, data_func df) {
     }
 
     if (strcmp("0", argv[2]) == 0)
-        logging::Logger::reporting_level()= logging::NONE;
+        LOGGER(DEFAULT)::reporting_level()= logging::NONE;
     else if (strcmp("1", argv[2]) == 0)
-        logging::Logger::reporting_level()= logging::FATAL;
+        LOGGER(DEFAULT)::reporting_level()= logging::FATAL;
     else if (strcmp("2", argv[2]) == 0)
-        logging::Logger::reporting_level()= logging::ERROR;
+        LOGGER(DEFAULT)::reporting_level()= logging::ERROR;
     else if (strcmp("3", argv[2]) == 0)
-        logging::Logger::reporting_level()= logging::WARNING;
+        LOGGER(DEFAULT)::reporting_level()= logging::WARNING;
     else if (strcmp("4", argv[2]) == 0)
-        logging::Logger::reporting_level()= logging::INFO;
+        LOGGER(DEFAULT)::reporting_level()= logging::INFO;
     else if (strcmp("5", argv[2]) == 0)
-        logging::Logger::reporting_level()= logging::DEBUG;
+        LOGGER(DEFAULT)::reporting_level()= logging::DEBUG;
     else if (strcmp("6", argv[2]) == 0)
-        logging::Logger::reporting_level()= logging::TRACE;
+        LOGGER(DEFAULT)::reporting_level()= logging::TRACE;
     else {
         sprintf(buf2, "Invalid debug level: \"%s\"\n", argv[2]);
         encdec.enc_string(buf2, buf, 1000);
@@ -762,7 +762,7 @@ int cmd_handler::rcmd_set(int argc, char *argv[], out_func of, data_func df) {
 
 /* Target method */
 int cmd_handler::rcmd(const char * const in_buf, out_func of, data_func df) {
-    CLOG(logging::TRACE, "connection")<<"executing "<<__FUNCTION__;
+    CLOG(TRACE, connection)<<"executing "<<__FUNCTION__;
     int count = 0;
     int i;
     char *args[MAXARGS];
@@ -771,8 +771,8 @@ int cmd_handler::rcmd(const char * const in_buf, out_func of, data_func df) {
     char buf[1000 + 1];
     char *s;
 
-    CLOG(logging::DEBUG, "connection")<<__FUNCTION__<<": handle_rcmd()";
-    CLOG(logging::DEBUG, "connection")<<"command '"<<in_buf<<"'";
+    CLOG(DEBUG, connection)<<__FUNCTION__<<": handle_rcmd()";
+    CLOG(DEBUG, connection)<<"command '"<<in_buf<<"'";
 
     if (strlen(in_buf)) {
         /* There is something to process */
@@ -791,7 +791,7 @@ int cmd_handler::rcmd(const char * const in_buf, out_func of, data_func df) {
             ptr += 2;
         }
         *s = '\0';
-        CLOG(logging::DEBUG, "connection")<<"command '"<<buf<<"'";
+        CLOG(DEBUG, connection)<<"command '"<<buf<<"'";
 
         /* Split string into separate arguments */
         ptr = buf;
@@ -808,7 +808,7 @@ int cmd_handler::rcmd(const char * const in_buf, out_func of, data_func df) {
             ptr++;
         }
         /* Search the command table, and execute the function if found */
-        CLOG(logging::DEBUG, "connection")<<"executing target dependant command '"<<args[0]<<"'";
+        CLOG(DEBUG, connection)<<"executing target dependant command '"<<args[0]<<"'";
 
         /* Search the target command table first, such that we allow target to override the general command.  */
             for (i = 0; i<t->custom_commands().size(); i++) {

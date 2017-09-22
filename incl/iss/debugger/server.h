@@ -49,8 +49,8 @@ class server: public server_base {
 public:
 
  	static void run_server(iss::debugger_if* vm, unsigned int port) {
-		if(get()!=NULL) { LOG(logging::FATAL)<< "server already initialized"; }
-		LOG(logging::DEBUG) << "starting server";
+		if(get()!=NULL) { LOG(FATAL)<< "server already initialized"; }
+		LOG(DEBUG) << "starting server";
 		get(new server<SESSION>(vm, port));
 	}
 
@@ -113,7 +113,7 @@ private:
 			// An error occurred. Log it and return. Since we are not starting a new
 			// accept operation the io_service will run out of work to do and the
 			// thread will exit.
-			LOG(logging::ERROR) << e.message();
+			LOG(ERROR) << e.message();
 		}
 	}
 	// server related members

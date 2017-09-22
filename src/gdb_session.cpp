@@ -132,7 +132,7 @@ protected:
 int gdb_session::start() {
     conn_shptr->add_listener(shared_from_this());
     boost::asio::ip::tcp::endpoint endpoint = conn_shptr->socket().remote_endpoint();
-    CLOG(logging::TRACE, "connection") << "gdb_session::start(), got connected to remote port " << endpoint.port() << " on "
+    CLOG(TRACE, connection) << "gdb_session::start(), got connected to remote port " << endpoint.port() << " on "
             << endpoint.address().to_string();
     conn_shptr->async_read(); //start listening
     return 0;
@@ -142,7 +142,7 @@ void gdb_session::send_completed(const boost::system::error_code& e) {
     if (!e) {
         conn_shptr->async_read();
     } else {
-        LOG(logging::ERROR) << e.message() << "(" << e << ")";
+        LOG(ERROR) << e.message() << "(" << e << ")";
     }
 }
 
@@ -163,29 +163,29 @@ bool gdb_session::message_completed(std::vector<char>& buffer) {
 
 void gdb_session::receive_completed(const boost::system::error_code& e, std::string* msg) {
     if (e.value() == 2) {
-        CLOG(logging::WARNING, "connection") << "Client closed connection (" << e.message() << ")";
+        CLOG(WARNING, connection) << "Client closed connection (" << e.message() << ")";
         //TODO: cleanup settings like: server.remove_breakpoint(CORE_ID, 0);
         handler.t->close();
         return;
     } else if (e) {
-        CLOG(logging::ERROR, "connection") << "Communication error (" << e.message() << ")";
+        CLOG(ERROR, connection) << "Communication error (" << e.message() << ")";
         handler.t->close();
         return;
     }
     if (msg->compare("+") == 0) {
-        CLOG(logging::TRACE, "connection") << "Received ACK";
+        CLOG(TRACE, connection) << "Received ACK";
         last_msg = "";
         conn_shptr->async_read();
     } else if (msg->compare("-") == 0) {
-        CLOG(logging::TRACE, "connection") << "Received NACK, repeating msg '" << last_msg << "'";
+        CLOG(TRACE, connection) << "Received NACK, repeating msg '" << last_msg << "'";
         conn_shptr->write_data(&last_msg);
         conn_shptr->async_read();
     } else if (msg->at(0) == -1 && msg->at(1) == -13) {
-        CLOG(logging::TRACE, "connection") << "Received BREAK, interrupting target";
+        CLOG(TRACE, connection) << "Received BREAK, interrupting target";
         handler.t->stop();
         respond("S05");
     } else {
-        CLOG(logging::TRACE, "connection") << "Received packet '" << *msg << "', processing it";
+        CLOG(TRACE, connection) << "Received packet '" << *msg << "', processing it";
         std::string data = check_packet(*msg);
         if (data.size()) {
             conn_shptr->write_data(&ack);
@@ -205,13 +205,13 @@ void gdb_session::parse_n_execute(std::string& data) {
         switch (data[0]) {
         case '!':
             /* Set extended operation */
-            CLOG(logging::DEBUG, "connection")<<__FUNCTION__<<": switching to extended protocol mode";
+            CLOG(DEBUG, connection)<<__FUNCTION__<<": switching to extended protocol mode";
             if (handler.can_restart) {
                 handler.extended_protocol = true;
                 resp<<"OK";
             } else {
                 /* Some GDBs will accept any response as a good one. Let us bark in the log at least */
-                CLOG(logging::ERROR, "connection")<<__FUNCTION__<<": extended operations required, but not supported";
+                CLOG(ERROR, connection)<<__FUNCTION__<<": extended operations required, but not supported";
             }
             break;
         case '?':
@@ -294,9 +294,9 @@ void gdb_session::parse_n_execute(std::string& data) {
         }
         respond(resp);
     } catch (boost::system::system_error const& e1) {
-        CLOG(logging::ERROR, "connection") << "Caught boost error " << e1.what();
+        CLOG(ERROR, connection) << "Caught boost error " << e1.what();
     } catch (std::exception const& e2) {
-        CLOG(logging::ERROR, "connection") << "Caught std::exception (" << typeid(e2).name() << "): " << e2.what();
+        CLOG(ERROR, connection) << "Caught std::exception (" << typeid(e2).name() << "): " << e2.what();
     }
 }
 

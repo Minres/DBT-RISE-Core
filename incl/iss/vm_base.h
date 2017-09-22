@@ -105,7 +105,7 @@ public:
         if(this->debugging_enabled()) sync_exec=PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
-        LOG(logging::INFO)<<"Start at 0x"<<std::hex<<pc.val<<std::dec;
+        LOG(INFO)<<"Start at 0x"<<std::hex<<pc.val<<std::dec;
         try {
             vm::continuation_e cont=CONT;
             llvm::Function* func;
@@ -116,7 +116,7 @@ public:
                     auto it = func_map.find(pc_p.val);
                     if(it==func_map.end()){
 #ifndef NDEBUG
-                        LOG(logging::DEBUG)<<"Compiling and executing code for 0x"<<std::hex<<pc<<std::dec;
+                        LOG(DEBUG)<<"Compiling and executing code for 0x"<<std::hex<<pc<<std::dec;
 #endif
                         mod = jitHelper.createModule();
                         std::tie(cont, func) = disass(pc);
@@ -127,7 +127,7 @@ public:
                             func_map[pc_p.val]=f;
                     } else{
 #ifndef NDEBUG
-                        LOG(logging::DEBUG)<<"Executing code for 0x"<<std::hex<<pc<<std::dec;
+                        LOG(DEBUG)<<"Executing code for 0x"<<std::hex<<pc<<std::dec;
 #endif
                         f = it->second;
                     }
@@ -136,20 +136,20 @@ public:
                     pc.val=core.enter_trap(ta.id, ta.addr);
                 }
 #ifndef NDEBUG
-                LOG(logging::DEBUG)<<"continuing  @0x"<<std::hex<<pc<<std::dec;
+                LOG(DEBUG)<<"continuing  @0x"<<std::hex<<pc<<std::dec;
 #endif
             }
         } catch(simulation_stopped& e){
-            LOG(logging::INFO)<<"ISS execution stopped with status 0x"<<std::hex<<e.state<<std::dec;
+            LOG(INFO)<<"ISS execution stopped with status 0x"<<std::hex<<e.state<<std::dec;
             if(e.state!=1) error=e.state;
         } catch(decoding_error& e){
-            LOG(logging::ERROR)<<"ISS execution aborted at address 0x"<<std::hex<<e.addr<<std::dec;
+            LOG(ERROR)<<"ISS execution aborted at address 0x"<<std::hex<<e.addr<<std::dec;
             error=-1;
         }
         auto end = std::chrono::high_resolution_clock::now(); //end measurement here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        LOG(logging::INFO)<<"Executed "<<core.get_icount()<<" instructions in "<<func_map.size()<<" code blocks during "<<
+        LOG(INFO)<<"Executed "<<core.get_icount()<<" instructions in "<<func_map.size()<<" code blocks during "<<
                 millis<<"ms resulting in "<<(core.get_icount()*0.001/millis) <<"MIPS";
         return error;
     }

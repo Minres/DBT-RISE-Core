@@ -43,6 +43,7 @@
 #include <boost/asio.hpp>
 #include <iss/debugger/serialized_connection.h>
 
+#include <iss/log_categories.h>
 #include "cmdhandler.h"
 #include "serialized_connection.h"
 #include "server_if.h"
@@ -84,7 +85,7 @@ protected:
 	void respond(const std::string msg){
 	    last_msg=msg;
 	    //std::this_thread::sleep_for(std::chrono::milliseconds(2));
-	    CLOG(logging::TRACE, "connection")<<"Processed message, responding with '"<<last_msg<<"'";
+	    CLOG(TRACE, connection)<<"Processed message, responding with '"<<last_msg<<"'";
 	    conn_shptr->write_data(&last_msg);
 	    conn_shptr->async_read();
 	}

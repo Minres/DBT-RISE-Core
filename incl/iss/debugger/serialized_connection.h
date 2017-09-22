@@ -103,7 +103,7 @@ public:
 		archive << t;
 		outbound_data_ = archive_stream.str();
 #ifdef EXTENDED_TRACE
-		CLOG(TRACE, "connection")<<"outbound async data with len "<< outbound_data_.size()<<":'"<<outbound_data_<<"'";
+		CLOG(TRACE, connection)<<"outbound async data with len "<< outbound_data_.size()<<":'"<<outbound_data_<<"'";
 #endif
 		// Format the header.
 		std::ostringstream header_stream;
@@ -171,7 +171,7 @@ protected:
 			try {
 				std::string archive_data(&inbound_data_[0],	inbound_data_.size());
 #ifdef EXTENDED_TRACE
-				CLOG(TRACE, "connection")<<"inbound async data with len "<< inbound_data_.size()<<":'"<<archive_data<<"'";
+				CLOG(TRACE, connection)<<"inbound async data with len "<< inbound_data_.size()<<":'"<<archive_data<<"'";
 #endif
 				std::istringstream archive_stream(archive_data);
 				iarchive_type archive(archive_stream);
@@ -210,7 +210,7 @@ public:
 		archive << t;
 		outbound_data_ = archive_stream.str();
 #ifdef EXTENDED_TRACE
-		CLOG(TRACE, "connection")<<"outbound sync data with len "<< outbound_data_.size()<<":'"<<outbound_data_<<"'";
+		CLOG(TRACE, connection)<<"outbound sync data with len "<< outbound_data_.size()<<":'"<<outbound_data_<<"'";
 #endif		// Format the header.
 		std::ostringstream header_stream;
 		header_stream << std::setw(header_length) << std::hex << std::setfill('0')<<outbound_data_.size();
@@ -255,7 +255,7 @@ public:
 		boost::asio::read(socket_, boost::asio::buffer(inbound_data_, inbound_data_size), boost::asio::transfer_exactly(inbound_data_size));
 		std::string archive_data(&inbound_data_[0],	inbound_data_.size());
 #ifdef EXTENDED_TRACE
-		CLOG(TRACE, "connection")<<"inbound sync data with len "<< inbound_data_.size()<<":'"<<archive_data<<"'";
+		CLOG(TRACE, connection)<<"inbound sync data with len "<< inbound_data_.size()<<":'"<<archive_data<<"'";
 #endif
 		std::istringstream archive_stream(archive_data);
 		iarchive_type archive(archive_stream);

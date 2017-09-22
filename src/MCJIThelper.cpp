@@ -33,7 +33,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iss/jit/MCJIThelper.h>
-#include <util/logging.h>
+#include <iss/log_categories.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/Debug.h> //EnableDebugBuffering
 #include <llvm/Support/raw_ostream.h> //outs()
@@ -221,7 +221,7 @@ void MCJIT_helper::add_functions_2_module(Module* mod){
 typedef uint8_t* this_t;
 // Use default logger
 //static el::Logger* get_logger(){
-//    static el::Logger* logger = el::Loggers::getLogger("disass", true);
+//    static el::Logger* logger = el::Loggers::getLogger(disass, true);
 //    return logger;
 //}
 
@@ -306,7 +306,7 @@ void print_string(this_t iface, char* str){
 }
 
 void print_disass(this_t iface, char* str){
-    LOG(INFO)<<str<<((iss::arch_if*)iface)->get_additional_disass_info();
+    CLOG(INFO, disass)<<str<<((iss::arch_if*)iface)->get_additional_disass_info();
 }
 
 void pre_instr_sync(this_t iface){
