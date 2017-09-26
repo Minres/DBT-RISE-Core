@@ -49,7 +49,9 @@ template <typename T> static T to(unsigned char *data, size_t num_bytes) {
     return res;
 }
 
-server_base::server_base(iss::debugger_if *vm) : vm(vm), tgt(nullptr) {}
+server_base::server_base(iss::debugger_if *vm)
+: vm(vm)
+, tgt(nullptr) {}
 
 int server_base::dummy_func() { return 42; }
 // called from debugger

@@ -72,13 +72,13 @@ enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
 public:
-    using reg_e = typename arch::traits<ARCH>::reg_e ;
-    using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e ;
-    using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t ;
-    using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t ;
-    using addr_t= typename arch::traits<ARCH>::addr_t ;
-    using code_word_t= typename arch::traits<ARCH>::code_word_t ;
-    using mem_type_e = typename arch::traits<ARCH>::mem_type_e ;
+    using reg_e = typename arch::traits<ARCH>::reg_e;
+    using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e;
+    using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t;
+    using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t;
+    using addr_t = typename arch::traits<ARCH>::addr_t;
+    using code_word_t = typename arch::traits<ARCH>::code_word_t;
+    using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
     using func_ptr = typename arch::traits<ARCH>::addr_t (*)();
 
     using dbg_if = iss::debugger_if;
@@ -106,7 +106,7 @@ public:
         try {
             vm::continuation_e cont = CONT;
             llvm::Function *func;
-            func_ptr f=nullptr;
+            func_ptr f = nullptr;
             while (cycles < 0 || ((int64_t)core.get_icount()) < cycles) {
                 try {
                     const phys_addr_t pc_p = core.v2p(pc);
@@ -153,7 +153,7 @@ public:
         return error;
     }
 
-    void reset() override  { core.reset(); }
+    void reset() override { core.reset(); }
 
     void reset(uint64_t address) { core.reset(address); }
 
@@ -218,11 +218,16 @@ protected:
     }
 
     explicit vm_base(ARCH &core, bool dump = false)
-        : core(core), sync_exec(NO_SYNC) // TODO: should be NO_SYNC but this needs
-                                         // to changes code generation
-          ,
-          builder(new llvm::IRBuilder<>(getContext())), jitHelper(getContext(), dump), mod(nullptr), func(nullptr),
-          leave_blk(nullptr), trap_blk(nullptr), tgt_adapter(nullptr) {
+    : core(core)
+    , sync_exec(NO_SYNC) // TODO: should be NO_SYNC but this needs
+                         // to changes code generation
+    , builder(new llvm::IRBuilder<>(getContext()))
+    , jitHelper(getContext(), dump)
+    , mod(nullptr)
+    , func(nullptr)
+    , leave_blk(nullptr)
+    , trap_blk(nullptr)
+    , tgt_adapter(nullptr) {
         // auto* const_int64_19 = llvm::ConstantInt::get(getContext(),
         // llvm::APInt(64, this, 10));
         core_ptr = llvm::ConstantExpr::getCast(
@@ -463,7 +468,7 @@ protected:
     llvm::ConstantInt *reg_index(unsigned r) const { return llvm::ConstantInt::get(getContext(), llvm::APInt(16, r)); }
     struct processing_pc_entry {
         processing_pc_entry(vm_base<ARCH> &vm, vm_base<ARCH>::virt_addr_t pc_v, vm_base<ARCH>::phys_addr_t pc_p)
-            : vm(vm) {
+        : vm(vm) {
             vm.processing_pc.push(std::make_pair(pc_v, pc_p));
         }
         ~processing_pc_entry() { vm.processing_pc.pop(); }

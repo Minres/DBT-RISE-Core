@@ -34,9 +34,9 @@
 
 #include <iss/debugger/cmdhandler.h>
 
+#include <cstdarg>
 #include <iss/log_categories.h>
 #include <numeric>
-#include <cstdarg>
 #include <stdexcept>
 
 using namespace iss::debugger;

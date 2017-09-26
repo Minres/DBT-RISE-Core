@@ -90,14 +90,18 @@ protected:
  */
 struct decoding_error : public std::runtime_error {
     const uint64_t addr;
-    decoding_error(uint64_t a) : std::runtime_error("decoding error"), addr(a) {}
+    decoding_error(uint64_t a)
+    : std::runtime_error("decoding error")
+    , addr(a) {}
 };
 /**
  * exception class signaling end of simulation, state contains the result
  */
 struct simulation_stopped : public std::runtime_error {
     const int state;
-    simulation_stopped(int s) : std::runtime_error("simulation stopped"), state(s) {}
+    simulation_stopped(int s)
+    : std::runtime_error("simulation stopped")
+    , state(s) {}
 };
 }
 

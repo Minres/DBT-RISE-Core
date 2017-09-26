@@ -84,7 +84,10 @@ struct cmd_handler {
     };
 
     cmd_handler(iss::debugger::server_if &server)
-        : s(server), t(s.get_target()), extended_protocol(false), can_restart(false) {}
+    : s(server)
+    , t(s.get_target())
+    , extended_protocol(false)
+    , can_restart(false) {}
 
     void attach();
 

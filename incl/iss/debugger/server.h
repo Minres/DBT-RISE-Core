@@ -75,7 +75,8 @@ protected:
     }
 
     server(iss::debugger_if *vm, unsigned short port)
-        : server_base(vm), acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)) {
+    : server_base(vm)
+    , acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)) {
         // Create a pool of threads to run all of the io_services.
         std::size_t thread_pool_size_ = 2;
         work_ctrl = new boost::asio::io_service::work(io_service);

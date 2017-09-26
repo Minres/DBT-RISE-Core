@@ -45,7 +45,9 @@ namespace iss {
  * exception to be thrown if the architecture encounters a synchronous trap
  */
 struct trap_access {
-    trap_access(unsigned id, uint64_t addr) : id(id), addr(addr) {}
+    trap_access(unsigned id, uint64_t addr)
+    : id(id)
+    , addr(addr) {}
     const unsigned id;
     const uint64_t addr;
 };

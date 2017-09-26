@@ -69,7 +69,9 @@ LLVMContext &iss::getContext() {
     return context;
 }
 
-MCJIT_helper::MCJIT_helper(LLVMContext &context, bool dump) : context(context), dumpEnabled(dump) {}
+MCJIT_helper::MCJIT_helper(LLVMContext &context, bool dump)
+: context(context)
+, dumpEnabled(dump) {}
 
 std::string MCJIT_helper::GenerateUniqueName(const char *root) const {
     static int i = 0;
@@ -221,7 +223,7 @@ void MCJIT_helper::add_functions_2_module(Module *mod) {
 #include <iss/iss.h>
 #include <util/logging.h>
 
-using  this_t = uint8_t*;
+using this_t = uint8_t *;
 // Use default logger
 // static el::Logger* get_logger(){
 //    static el::Logger* logger = el::Loggers::getLogger(disass, true);

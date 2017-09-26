@@ -45,7 +45,9 @@ namespace debugger {
 
 struct target_adapter_base : public target_adapter_if {
 
-    target_adapter_base(iss::debugger::server_if *srv) : srv(srv), bp_lut(0) {}
+    target_adapter_base(iss::debugger::server_if *srv)
+    : srv(srv)
+    , bp_lut(0) {}
 
     void set_server(iss::debugger::server_if *server) { srv = server; }
 

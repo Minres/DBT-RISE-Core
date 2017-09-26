@@ -43,7 +43,7 @@ namespace iss {
 namespace debugger {
 
 /* Function to do console output from wait methods */
-using out_func = void(*)(const char *string);
+using out_func = void (*)(const char *string);
 
 /* Function to transefer data received as qRcmd response */
 using data_func = void (*)(const char *string);

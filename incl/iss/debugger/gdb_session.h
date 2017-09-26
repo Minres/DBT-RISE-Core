@@ -56,7 +56,9 @@ using boost::asio::ip::tcp;
 class gdb_session : public connection<std::string, std::string>::async_listener {
 public:
     gdb_session(server_if *server_, boost::asio::io_service &io_service)
-        : server(server_), conn_shptr(new connection<std::string, std::string>(io_service)), handler(*server) {}
+    : server(server_)
+    , conn_shptr(new connection<std::string, std::string>(io_service))
+    , handler(*server) {}
 
     virtual ~gdb_session() = default;
 

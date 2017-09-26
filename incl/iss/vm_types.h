@@ -70,9 +70,17 @@ struct addr_t {
 
     constexpr addr_t() = default;
     constexpr addr_t(access_type acc_t, address_type addr_t, unsigned s, uint64_t addr)
-        : type(acc_t | addr_t), space(s), val(addr) {}
-    constexpr addr_t(unsigned t, unsigned s, uint64_t addr) : type(t), space(s), val(addr) {}
-    constexpr addr_t(const addr_t &o) : type(o.type), space(o.space), val(o.val) {}
+    : type(acc_t | addr_t)
+    , space(s)
+    , val(addr) {}
+    constexpr addr_t(unsigned t, unsigned s, uint64_t addr)
+    : type(t)
+    , space(s)
+    , val(addr) {}
+    constexpr addr_t(const addr_t &o)
+    : type(o.type)
+    , space(o.space)
+    , val(o.val) {}
 
     constexpr addr_t &operator=(uint64_t o) {
         val = o;
@@ -126,19 +134,24 @@ inline std::ostream &operator<<(std::ostream &os, const addr_t &op) {
 }
 
 template <address_type TYPE> struct typed_addr_t : public addr_t {
-    constexpr typed_addr_t() : addr_t(READ, TYPE, 0) {};
-    constexpr typed_addr_t(access_type t, uint64_t v) : addr_t(t, TYPE, 0, v) {}
-    constexpr typed_addr_t(unsigned t, unsigned s, uint64_t v) : addr_t((t & ACCESS_TYPE) | TYPE, s, v) {}
-    constexpr typed_addr_t(const addr_t &o) : addr_t(o.getAccessType() | TYPE, o.space, o.val) {}
+    constexpr typed_addr_t()
+    : addr_t(READ, TYPE, 0){};
+    constexpr typed_addr_t(access_type t, uint64_t v)
+    : addr_t(t, TYPE, 0, v) {}
+    constexpr typed_addr_t(unsigned t, unsigned s, uint64_t v)
+    : addr_t((t & ACCESS_TYPE) | TYPE, s, v) {}
+    constexpr typed_addr_t(const addr_t &o)
+    : addr_t(o.getAccessType() | TYPE, o.space, o.val) {}
 };
 }
 
 namespace iss {
 template <typename T, int ARCH> class PrimitiveTypeHolder {
-    using  this_type = PrimitiveTypeHolder<T, ARCH> ;
+    using this_type = PrimitiveTypeHolder<T, ARCH>;
 
 public:
-    explicit PrimitiveTypeHolder(T v) : v(v) {}
+    explicit PrimitiveTypeHolder(T v)
+    : v(v) {}
     operator const T() const { return v; }
     const this_type operator+(const this_type &other) const { return this_type(v + other.v); }
     this_type &operator++() { // prefix increment

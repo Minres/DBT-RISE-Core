@@ -131,13 +131,14 @@ private:
  * template wrapper to get get rid of casting in code
  */
 template <typename ARCH> struct MCJIT_arch_helper : public MCJIT_helper {
-    using  fPtr_t = typename arch::traits<ARCH>::addr_t (*)();
+    using fPtr_t = typename arch::traits<ARCH>::addr_t (*)();
     /**
      * constructor
      * @param context the LLVM context
      * @param dump dump the generated IR per module
      */
-    MCJIT_arch_helper(llvm::LLVMContext &context, bool dump = false) : MCJIT_helper(context, dump) {}
+    MCJIT_arch_helper(llvm::LLVMContext &context, bool dump = false)
+    : MCJIT_helper(context, dump) {}
 
     /**
      * wrapper to get correctly typed function pointer from compilation

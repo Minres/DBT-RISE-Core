@@ -40,13 +40,13 @@
 #ifdef USE_TEXT
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
-using oarchive_type = boost::archive::text_oarchive ;
+using oarchive_type = boost::archive::text_oarchive;
 typedef boost::archive::text_iarchive iarchive_type;
 #else
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
-using oarchive_type = boost::archive::binary_oarchive ;
-using iarchive_type = boost::archive::binary_iarchive ;
+using oarchive_type = boost::archive::binary_oarchive;
+using iarchive_type = boost::archive::binary_iarchive;
 #endif
 #include <boost/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
@@ -75,7 +75,8 @@ public:
         virtual void receive_completed(const boost::system::error_code &error, TREQ *result) = 0;
     };
     /// Constructor.
-    connection(boost::asio::io_service &io_service) : socket_(io_service) {}
+    connection(boost::asio::io_service &io_service)
+    : socket_(io_service) {}
     /// Get the underlying socket. Used for making a connection or for accepting
     /// an incoming connection.
     boost::asio::ip::tcp::socket &socket() { return socket_; }
@@ -283,7 +284,8 @@ public:
         virtual bool message_completed(std::vector<char> &buffer) { return true; };
     };
     /// Constructor.
-    connection(boost::asio::io_service &io_service) : socket_(io_service) {}
+    connection(boost::asio::io_service &io_service)
+    : socket_(io_service) {}
     /// Get the underlying socket. Used for making a connection or for accepting
     /// an incoming connection.
     boost::asio::ip::tcp::socket &socket() { return socket_; }

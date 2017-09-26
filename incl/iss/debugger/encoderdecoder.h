@@ -33,9 +33,9 @@
  ******************************************************************************/
 #ifndef _ENCODERDECODER_H_
 #define _ENCODERDECODER_H_
-#include <iostream>
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 #include <string>
 #include <vector>
 
