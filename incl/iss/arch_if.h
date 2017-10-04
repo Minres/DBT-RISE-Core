@@ -75,6 +75,8 @@ struct arch_if {
         MULL,
         DIVL,
     };
+
+    virtual ~arch_if() = default;
     /**
      * execution phases: instruction start and end
      */
