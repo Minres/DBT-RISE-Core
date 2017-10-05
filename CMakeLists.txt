@@ -9,7 +9,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
 # Set the name of your project here
-project("iss")
+project("dbt-core")
 
 # Set the version number of your project here (format is MAJOR.MINOR.PATCHLEVEL - e.g. 1.0.0)
 set(VERSION_MAJOR "0")
@@ -43,7 +43,7 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # This sets the include directory for the reference project. This is the -I flag in gcc.
 include_directories(
     ${PROJECT_SOURCE_DIR}/incl
-    ${PROJECT_SOURCE_DIR}/../external/easyloggingpp/src
+    ${PROJECT_SOURCE_DIR}/../sc-components/incl
     ${LLVM_INCLUDE_DIRS}
 )
 
