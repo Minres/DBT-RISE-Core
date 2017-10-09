@@ -38,6 +38,7 @@
 #include <iss/vm_types.h>
 #include <string>
 #include <vector>
+#include <functional>
 
 namespace iss {
 namespace debugger {
@@ -46,7 +47,8 @@ namespace debugger {
 using out_func = void (*)(const char *string);
 
 /* Function to transefer data received as qRcmd response */
-using data_func = void (*)(const char *string);
+//using data_func = void (*)(const char *string);
+using data_func = std::function<void (const std::string&)>;
 
 /* Function to do logging */
 using log_func = void (*)(int level, const char *string, ...);
@@ -70,7 +72,8 @@ struct target_adapter_if {
         /* command name */
         const char *name;
         /* command function */
-        int (*function)(int, char **, out_func, data_func);
+        //int (*function)(int, char **, out_func, data_func);
+        std::function<int (int, char **, out_func, data_func)> function;
         /* one line of help text */
         const char *help;
     };
@@ -80,6 +83,7 @@ struct target_adapter_if {
     /* return table of remote commands */
     virtual const std::vector<custom_command> &custom_commands() = 0;
 
+    virtual void add_custom_command(custom_command&& cmd) = 0;
     /*======================   Help/Debug  =======================*/
 
     /* Help, argument is a pointer to itself */
@@ -271,6 +275,8 @@ struct target_adapter_if {
      * @return iss:Ok if successful, iss::Err otherwise
      */
     virtual iss::status remove_break(int type, uint64_t addr, unsigned int length) = 0;
+
+    virtual iss::status add_break_condition(std::function<unsigned()> break_cond) = 0;
 
     /* Query thread info */
     virtual iss::status threadinfo_query(int first, std::string &out_buf) = 0;

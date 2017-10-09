@@ -53,11 +53,14 @@ struct target_adapter_base : public target_adapter_if {
 
     void check_continue(uint64_t pc) {
         unsigned handle = bp_lut.getEntry(pc);
+        if(!handle && break_cond) handle = break_cond();
         srv->check_continue(handle);
     }
 
     /* return table of remote commands */
     const std::vector<target_adapter_if::custom_command> &custom_commands() override { return ccmds; }
+
+    void add_custom_command(custom_command&& cmd) override {ccmds.push_back(cmd); };
 
     void help(const char *prog_name) override;
 
@@ -81,10 +84,13 @@ struct target_adapter_base : public target_adapter_if {
 
     iss::status wait_blocking(std::string &status_string, out_func out) override;
 
+    iss::status add_break_condition(std::function<unsigned()> break_cond) override;
+
 protected:
     iss::debugger::server_if *srv;
     util::range_lut<unsigned> bp_lut;
     long bp_count = 0;
+    std::function<unsigned()> break_cond;
     std::vector<target_adapter_if::custom_command> ccmds;
 };
 
