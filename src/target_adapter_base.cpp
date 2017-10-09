@@ -78,3 +78,8 @@ iss::status target_adapter_base::wait_blocking(std::string &status_string, out_f
     srv->wait_for_stop();
     return iss::Ok;
 }
+
+iss::status iss::debugger::target_adapter_base::add_break_condition(std::function<unsigned()> bc) {
+    break_cond=bc;
+    return iss::Ok;
+}

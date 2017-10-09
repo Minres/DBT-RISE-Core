@@ -151,7 +151,7 @@ struct cmd_handler {
     const my_custom_command rp_remote_commands[3] = {
         /* Table of commands */
         GEN_ENTRY(help, "This help text"),
-        GEN_ENTRY(set, "Set debug level"),
+        GEN_ENTRY(set, "Set debug [level]"),
         {nullptr, nullptr, nullptr} // sentinel, end of table marker
     };
 };

@@ -38,12 +38,19 @@
 #include <iss/log_categories.h>
 #include <numeric>
 #include <stdexcept>
+#include <sstream>
 
 using namespace iss::debugger;
 
-void rp_console_output(const char *buf) { CLOG(INFO, connection) << buf; }
+void rp_console_output(const char *buf) {
+    std::string msg(buf);
+    if(buf[msg.size()-1]=='\n'){
+        CLOG(INFO, connection)<<msg.substr(0, msg.size()-1);
+    } else {
+        CLOG(INFO, connection) << buf;
+    }
+}
 
-void rp_data_output(const char *buf) {}
 /* Funcions to stuff output value */
 
 const unsigned CORE_ID = 0;
@@ -307,7 +314,7 @@ int cmd_handler::kill(const std::string in_buf, std::string &out_buf) {
         return 0;
     }
 
-    CLOG(INFO, connection) << __FUNCTION__ << ": remote proxy restarting";
+    CLOG(INFO, connection) << __FUNCTION__ << ": server restarting";
 
     /* Let us do our best while starting system */
     if (!can_restart) {
@@ -531,7 +538,14 @@ std::string cmd_handler::query(const std::string in_buf) {
 
     if (strncmp(in_buf.c_str() + 1, "Rcmd,", 5) == 0) {
         /* Remote command */
-        return to_string(rcmd(in_buf.c_str() + 6, rp_console_output, rp_data_output));
+        std::stringstream ss;
+        auto ret = rcmd(in_buf.c_str() + 6, rp_console_output, [&ss](const std::string& str)->void {
+            ss<<str;
+        });
+        if(ret == iss::Ok && ss.str().size()>0)
+            return ss.str();
+        else
+            return to_string(ret);
     }
 
     if (strncmp(in_buf.c_str() + 1, "Supported", 9) == 0 && (in_buf[10] == ':' || in_buf[10] == '\0')) {
@@ -664,7 +678,8 @@ int cmd_handler::rcmd_help(int argc, char *argv[], out_func of, data_func df) {
     int i = 0;
 
     encdec.enc_string("Remote command help:\n", buf, 1000);
-    of(buf);
+    of("Remote command help:\n");
+    df(buf);
     for (i = 0; rp_remote_commands[i].name; i++) {
 #ifdef WIN32
         sprintf(buf2, "%-10s %s\n", rp_remote_commands[i].name, rp_remote_commands[i].help);
@@ -672,7 +687,8 @@ int cmd_handler::rcmd_help(int argc, char *argv[], out_func of, data_func df) {
         snprintf(buf2, 1000, "%-10s %s\n", rp_remote_commands[i].name, rp_remote_commands[i].help);
 #endif
         encdec.enc_string(buf2, buf, 1000);
-        of(buf);
+        of(buf2);
+        df(buf);
     }
     std::vector<target_adapter_if::custom_command> cc = t->custom_commands();
     for (i = 0; i < cc.size(); i++) {
@@ -682,7 +698,8 @@ int cmd_handler::rcmd_help(int argc, char *argv[], out_func of, data_func df) {
         snprintf(buf2, 1000, "%-10s %s\n", cc[i].name, cc[i].help);
 #endif
         encdec.enc_string(buf2, buf, 1000);
-        of(buf);
+        of(buf2);
+        df(buf);
     }
     return iss::Ok;
 }
@@ -696,45 +713,50 @@ int cmd_handler::rcmd_set(int argc, char *argv[], out_func of, data_func df) {
     if (argc == 1) {
         sprintf(buf2, "Missing argument to set command.\n");
         encdec.enc_string(buf2, buf, 1000);
-        of(buf);
-        return iss::Ok;
+        of(buf2);
+        df(buf);
+        return iss::Err;
     }
 
     if (strcmp("debug", argv[1]) != 0) {
         sprintf(buf2, "Undefined set command: \"%s\"\n", argv[1]);
         encdec.enc_string(buf2, buf, 1000);
-        of(buf);
-        return iss::Ok;
+        of(buf2);
+        df(buf);
+        return iss::Err;
     }
 
     if (argc != 3) {
         sprintf(buf2, "Wrong arguments for debug command.\n");
         encdec.enc_string(buf2, buf, 1000);
-        of(buf);
-        return iss::Ok;
+        of(buf2);
+        df(buf);
+        return iss::Err;
     }
 
-    if (strcmp("0", argv[2]) == 0)
+    if (strcmp("0", argv[2]) == 0 || strcasecmp("NONE", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::NONE;
-    else if (strcmp("1", argv[2]) == 0)
+    else if (strcmp("1", argv[2]) == 0 || strcasecmp("FATAL", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::FATAL;
-    else if (strcmp("2", argv[2]) == 0)
+    else if (strcmp("2", argv[2]) == 0 || strcasecmp("ERROR", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::ERROR;
-    else if (strcmp("3", argv[2]) == 0)
+    else if (strcmp("3", argv[2]) == 0 || strcasecmp("WARNING", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::WARNING;
-    else if (strcmp("4", argv[2]) == 0)
+    else if (strcmp("4", argv[2]) == 0 || strcasecmp("INFO", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::INFO;
-    else if (strcmp("5", argv[2]) == 0)
+    else if (strcmp("5", argv[2]) == 0 || strcasecmp("DEBUG", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::DEBUG;
-    else if (strcmp("6", argv[2]) == 0)
+    else if (strcmp("6", argv[2]) == 0 || strcasecmp("TRACE", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::TRACE;
     else {
         sprintf(buf2, "Invalid debug level: \"%s\"\n", argv[2]);
         encdec.enc_string(buf2, buf, 1000);
-        of(buf);
-        return iss::Ok;
+        of(buf2);
+        df(buf);
+        return iss::Err;
     }
-
+    // print unconditional
+    LOGGER(DEFAULT)().get(logging::INFO)<<"Log level set to "<< LOGGER(DEFAULT)::reporting_level();
     return iss::Ok;
 }
 
@@ -749,8 +771,7 @@ int cmd_handler::rcmd(const char *const in_buf, out_func of, data_func df) {
     char buf[1000 + 1];
     char *s;
 
-    CLOG(DEBUG, connection) << __FUNCTION__ << ": handle_rcmd()";
-    CLOG(DEBUG, connection) << "command '" << in_buf << "'";
+    CLOG(TRACE, connection) << "command '" << in_buf << "'";
 
     if (strlen(in_buf)) {
         /* There is something to process */
@@ -763,7 +784,7 @@ int cmd_handler::rcmd(const char *const in_buf, out_func of, data_func df) {
         ptr = const_cast<char *>(in_buf);
         s = buf;
         while (*ptr) {
-            if (encdec.dec_byte(in_buf, &ch) == 0) return iss::Err;
+            if (encdec.dec_byte(ptr, &ch) == 0) return iss::Err;
             *s++ = ch;
             ptr += 2;
         }
@@ -784,7 +805,7 @@ int cmd_handler::rcmd(const char *const in_buf, out_func of, data_func df) {
             ptr++;
         }
         /* Search the command table, and execute the function if found */
-        CLOG(DEBUG, connection) << "executing target dependant command '" << args[0] << "'";
+        CLOG(TRACE, connection) << "executing target dependant command '" << args[0] << "'";
 
         /* Search the target command table first, such that we allow target to
          * override the general command.  */
