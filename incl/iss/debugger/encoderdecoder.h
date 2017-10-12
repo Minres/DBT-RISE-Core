@@ -66,8 +66,14 @@ struct encoder_decoder {
     int dec_byte(const char *in, unsigned int *byte_ptr);
     int dec_4bytes(const char *in, uint32_t *val);
     int dec_8bytes(const char *in, uint64_t *val);
-    int dec_uint32(char const **in, uint32_t *val, char break_char);
-    int dec_uint64(char const **in, uint64_t *val, char break_char);
+    int dec_uint32(const char **in, uint32_t *val, char break_char = 0);
+    int dec_uint32(const char *in, uint32_t *val, char break_char = 0) {
+        return dec_uint32(&in, val, break_char);
+    }
+    int dec_uint64(const char **in, uint64_t *val, char break_char = 0);
+    int dec_uint64(const char *in, uint64_t *val, char break_char = 0) {
+        return dec_uint64(&in, val, break_char);
+    }
     void enc_byte(unsigned char val, std::string &out, size_t offset = 0);
     char enc_byte(unsigned char val, bool highNibble) { return highNibble ? hex[(val >> 4) & 0xf] : hex[val & 0xf]; }
 

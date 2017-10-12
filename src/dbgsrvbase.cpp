@@ -53,7 +53,9 @@ server_base::server_base(iss::debugger_if *vm)
 : vm(vm)
 , tgt(nullptr) {}
 
-int server_base::dummy_func() { return 42; }
+int server_base::dummy_func() {
+    return 42;
+}
 // called from debugger
 void server_base::step(unsigned coreId, unsigned steps) {
     cycles.store(steps, std::memory_order_relaxed);
@@ -68,6 +70,13 @@ void server_base::run(unsigned coreId) {
     cycles.store(std::numeric_limits<uint64_t>::max(), std::memory_order_relaxed);
     mode.store(MODE_RUN, std::memory_order_release);
     syncronizer.enqueue_and_wait(&server_base::dummy_func, this);
+}
+void server_base::run(unsigned coreId, std::function<void(unsigned)> callback) {
+    if (mode == MODE_RUN) return;
+    cycles.store(std::numeric_limits<uint64_t>::max(), std::memory_order_relaxed);
+    mode.store(MODE_RUN, std::memory_order_release);
+    this->stop_callback=callback;
+    syncronizer.enqueue(&server_base::dummy_func, this);
 }
 // called from debugger
 void server_base::request_stop(unsigned coreId) { mode.store(MODE_STOP, std::memory_order_relaxed); }

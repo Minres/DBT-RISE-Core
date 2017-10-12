@@ -36,10 +36,11 @@
 #define _CMDHANDLER_H_
 
 #include "encoderdecoder.h"
-#include <unordered_map>
-
 #include "server_if.h"
 #include "target_adapter_if.h"
+
+#include <unordered_map>
+#include <boost/optional.hpp>
 
 namespace iss {
 namespace debugger {
@@ -58,7 +59,7 @@ enum signals {
     INTERRUPT = 2,
     QUIT = 3,
     ILLEGAL_INSTRUCTION = 4,
-    TRAP = 5,
+    BREAKPOINT = 5,
     ABORTED = 6,
     BUS_ERROR = 7,
     FLOATING_POINT_EXCEPTION = 8,
@@ -83,11 +84,12 @@ struct cmd_handler {
         const char *help;
     };
 
-    cmd_handler(iss::debugger::server_if &server)
+    cmd_handler(iss::debugger::server_if &server, std::function<void(unsigned)>& stop_callback)
     : s(server)
     , t(s.get_target())
     , extended_protocol(false)
-    , can_restart(false) {}
+    , can_restart(false)
+    , stop_callback(stop_callback){}
 
     void attach();
 
@@ -99,7 +101,7 @@ struct cmd_handler {
     std::string write_single_register(const std::string in_buf);
     std::string read_memory(const std::string in_buf);
     std::string write_memory(const std::string in_buf);
-    std::string running(const std::string in_buf);
+    std::string running(const std::string in_buf, bool blocking=true, bool vCont=false);
     int kill(const std::string in_buf, std::string &out_buf);
     std::string thread_alive(const std::string in_buf);
     void interrupt_target();
@@ -107,7 +109,7 @@ struct cmd_handler {
     std::string detach(const std::string in_buf);
     std::string query(const std::string in_buf);
     std::string set(const std::string in_buf);
-    std::string handle_extended(const std::string in_buf);
+    boost::optional<std::string> handle_extended(const std::string in_buf);
     std::string breakpoint(const std::string in_buf);
     int rcmd(const char *const in_buf, out_func of, data_func df);
     // TODO: change calls
@@ -147,6 +149,7 @@ struct cmd_handler {
     encoder_decoder encdec;
     bool extended_protocol;
     bool can_restart;
+    std::function<void(unsigned)>& stop_callback;
     std::unordered_map<uint64_t, unsigned> bp_map;
     const my_custom_command rp_remote_commands[3] = {
         /* Table of commands */

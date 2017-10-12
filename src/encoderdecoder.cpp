@@ -408,7 +408,7 @@ int encoder_decoder::dec_8bytes(const char *in, uint64_t *val) {
 }
 
 /* Decode a hex string to an unsigned 32-bit value */
-int encoder_decoder::dec_uint32(char const **in, uint32_t *val, char break_char) {
+int encoder_decoder::dec_uint32(const char **in, uint32_t *val, char break_char) {
     unsigned int nibble;
     uint32_t tmp;
     int count;
@@ -416,8 +416,7 @@ int encoder_decoder::dec_uint32(char const **in, uint32_t *val, char break_char)
     assert(in != nullptr);
     assert(val != nullptr);
 
-    if (**in == '\0') {
-        /* We are expecting at least one character */
+    if (**in == '\0') { // We are expecting at least one character
         return false;
     }
 
@@ -426,8 +425,7 @@ int encoder_decoder::dec_uint32(char const **in, uint32_t *val, char break_char)
         tmp = (tmp << 4) + nibble;
     }
 
-    if (**in != break_char) {
-        /* Wrong terminating character */
+    if (**in != break_char) { // Wrong terminating character
         return false;
     }
     if (**in) (*in)++;
@@ -436,7 +434,7 @@ int encoder_decoder::dec_uint32(char const **in, uint32_t *val, char break_char)
 }
 
 /* Decode a hex string to an unsigned 64-bit value */
-int encoder_decoder::dec_uint64(char const **in, uint64_t *val, char break_char) {
+int encoder_decoder::dec_uint64(const char** in, uint64_t *val, char break_char) {
     unsigned int nibble;
     uint64_t tmp;
     int count;
