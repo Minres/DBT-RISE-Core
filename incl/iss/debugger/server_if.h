@@ -46,15 +46,16 @@
 
 namespace iss {
 
-struct debugger_if;
+class debugger_if;
 
 namespace debugger {
 // forward declaration
-struct target_adapter_if;
+class target_adapter_if;
 /**
  * the debug server interface
  */
-struct server_if {
+class server_if {
+public:
     friend class iss::debugger_if;
     /**
      * debugger access type

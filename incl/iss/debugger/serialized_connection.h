@@ -70,7 +70,8 @@ class connection : public boost::enable_shared_from_this<connection<TREQ, TRESP>
 public:
     using ptr = boost::shared_ptr<connection<TREQ, TRESP>>;
 
-    struct async_listener : public boost::enable_shared_from_this<async_listener> {
+    class async_listener : public boost::enable_shared_from_this<async_listener> {
+    public:
         virtual void send_completed(const boost::system::error_code &error) = 0;
         virtual void receive_completed(const boost::system::error_code &error, TREQ *result) = 0;
     };
@@ -278,7 +279,8 @@ template <>
 class connection<std::string, std::string>
     : public boost::enable_shared_from_this<connection<std::string, std::string>> {
 public:
-    struct async_listener : public boost::enable_shared_from_this<async_listener> {
+    class async_listener : public boost::enable_shared_from_this<async_listener> {
+    public:
         virtual void send_completed(const boost::system::error_code &error) = 0;
         virtual void receive_completed(const boost::system::error_code &error, std::string *result) = 0;
         virtual bool message_completed(std::vector<char> &buffer) { return true; };

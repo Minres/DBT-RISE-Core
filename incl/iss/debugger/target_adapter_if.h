@@ -53,11 +53,13 @@ using data_func = std::function<void (const std::string&)>;
 /* Function to do logging */
 using log_func = void (*)(int level, const char *string, ...);
 
-struct rp_thread_ref {
+class rp_thread_ref {
+public:
     uint64_t val = std::numeric_limits<uint64_t>::max();
 };
 
-struct rp_thread_info {
+class rp_thread_info {
+public:
     rp_thread_ref thread_id;
     int exists;
     char display[256];
@@ -65,10 +67,11 @@ struct rp_thread_info {
     char more_display[256];
 };
 
-struct target_adapter_if {
-
+class target_adapter_if {
+public:
     /* Table entry definition */
-    struct custom_command {
+    class custom_command {
+    public:
         /* command name */
         const char *name;
         /* command function */

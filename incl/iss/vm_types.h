@@ -61,7 +61,8 @@ enum access_type {
 
 enum address_type { LOGICAL = 0x10, VIRTUAL = 0x20, PHYSICAL = 0x30, ADDRESS_TYPE = 0x30 };
 
-struct addr_t {
+class addr_t {
+public:
     const unsigned type{READ | PHYSICAL};
     unsigned space{0};
     uint64_t val{0};
@@ -133,7 +134,8 @@ inline std::ostream &operator<<(std::ostream &os, const addr_t &op) {
     return os;
 }
 
-template <address_type TYPE> struct typed_addr_t : public addr_t {
+template <address_type TYPE> class typed_addr_t : public addr_t {
+public:
     constexpr typed_addr_t()
     : addr_t(READ, TYPE, 0){};
     constexpr typed_addr_t(access_type t, uint64_t v)

@@ -73,9 +73,11 @@ enum signals {
 #define GEN_ENTRY(name, hlp)                                                                                           \
     { #name, &cmd_handler::rcmd_##name, hlp }
 
-struct cmd_handler {
+class cmd_handler {
+public:
     /* Table entry definition */
-    struct my_custom_command {
+    class my_custom_command {
+    public:
         /* command name */
         const char *name;
         /* command function */

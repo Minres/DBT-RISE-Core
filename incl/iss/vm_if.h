@@ -40,9 +40,10 @@
 
 namespace iss {
 // forward declaration
-struct arch_if;
+class arch_if;
 
-struct vm_if {
+class vm_if {
+public:
     /**
      * get the underlying class of the core to be simulated
      * @return pointer to the core
@@ -88,7 +89,8 @@ protected:
 /**
  * exception class signaling an error while decoding an instruction
  */
-struct decoding_error : public std::runtime_error {
+class decoding_error : public std::runtime_error {
+public:
     const uint64_t addr;
     decoding_error(uint64_t a)
     : std::runtime_error("decoding error")
@@ -97,7 +99,8 @@ struct decoding_error : public std::runtime_error {
 /**
  * exception class signaling end of simulation, state contains the result
  */
-struct simulation_stopped : public std::runtime_error {
+class simulation_stopped : public std::runtime_error {
+public:
     const int state;
     simulation_stopped(int s)
     : std::runtime_error("simulation stopped")

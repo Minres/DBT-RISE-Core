@@ -44,7 +44,8 @@ namespace iss {
 /**
  * exception to be thrown if the architecture encounters a synchronous trap
  */
-struct trap_access {
+class trap_access {
+public:
     trap_access(unsigned id, uint64_t addr)
     : id(id)
     , addr(addr) {}
@@ -55,7 +56,8 @@ struct trap_access {
 /**
  * architecture interface
  */
-struct arch_if {
+class arch_if {
+public:
     /* deprecated */
     enum operations {
         NOP,

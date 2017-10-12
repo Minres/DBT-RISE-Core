@@ -466,7 +466,8 @@ protected:
     }
 
     llvm::ConstantInt *reg_index(unsigned r) const { return llvm::ConstantInt::get(getContext(), llvm::APInt(16, r)); }
-    struct processing_pc_entry {
+    class processing_pc_entry {
+    public:
         processing_pc_entry(vm_base<ARCH> &vm, vm_base<ARCH>::virt_addr_t pc_v, vm_base<ARCH>::phys_addr_t pc_p)
         : vm(vm) {
             vm.processing_pc.push(std::make_pair(pc_v, pc_p));

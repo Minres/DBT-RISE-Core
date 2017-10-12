@@ -49,7 +49,8 @@
 namespace iss {
 namespace debugger {
 
-struct server_base : public server_if {
+class server_base : public server_if {
+public:
 
     server_base(debugger_if *adapter);
 
