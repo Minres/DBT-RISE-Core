@@ -51,9 +51,12 @@ struct target_adapter_base : public target_adapter_if {
 
     void set_server(iss::debugger::server_if *server) { srv = server; }
 
-    void check_continue(uint64_t pc) {
+    inline void check_continue(uint64_t pc) {
         unsigned handle = bp_lut.getEntry(pc);
-        if(!handle && break_cond) handle = break_cond();
+        if(!handle && break_cond){
+            handle = break_cond();
+            if(handle) break_cond=std::function<unsigned()>();
+        }
         srv->check_continue(handle);
     }
 
@@ -68,7 +71,7 @@ struct target_adapter_base : public target_adapter_if {
 
     void close() override;
 
-    iss::status connect(std::string &status_string, bool &can_restart) override;
+    iss::status connect(bool &can_restart) override;
 
     iss::status disconnect() override;
 
@@ -78,11 +81,11 @@ struct target_adapter_base : public target_adapter_if {
 
     void stop() override;
 
-    iss::status resume_from_current(bool step, int sig) override;
+    iss::status resume_from_current(bool step, int sig, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) override;
 
-    iss::status wait_non_blocking(std::string &status_string, out_func out, bool &running) override;
+    iss::status wait_non_blocking(bool &running) override;
 
-    iss::status wait_blocking(std::string &status_string, out_func out) override;
+    iss::status wait_blocking() override;
 
     iss::status add_break_condition(std::function<unsigned()> break_cond) override;
 

@@ -44,9 +44,9 @@ namespace iss {
 namespace debugger {
 
 /* Function to do console output from wait methods */
-using out_func = void (*)(const char *string);
-
-/* Function to transefer data received as qRcmd response */
+//using out_func = void (*)(const char *string);
+using out_func = std::function<void(const char *string)>;
+/* Function to transfer data received as qRcmd response */
 //using data_func = void (*)(const char *string);
 using data_func = std::function<void (const std::string&)>;
 
@@ -54,7 +54,7 @@ using data_func = std::function<void (const std::string&)>;
 using log_func = void (*)(int level, const char *string, ...);
 
 struct rp_thread_ref {
-    uint64_t val;
+    uint64_t val = std::numeric_limits<uint64_t>::max();
 };
 
 struct rp_thread_info {
@@ -101,7 +101,7 @@ struct target_adapter_if {
     virtual void close() = 0;
 
     /* Actually connect to a target and return status string; */
-    virtual iss::status connect(std::string &status_string, bool &can_restart) = 0;
+    virtual iss::status connect(bool &can_restart) = 0;
 
     /* Disconnect from a target a leave it running */
     virtual iss::status disconnect() = 0;
@@ -183,11 +183,19 @@ struct target_adapter_if {
 
     /* Resume from current address, if not supported it has to be figured out by
      * wait */
-    virtual iss::status resume_from_current(bool step, int sig) = 0;
+    inline iss::status resume_from_current(bool step, int sig, rp_thread_ref thread){
+        return resume_from_current(step, sig, thread, std::function<void(unsigned)>());
+    }
+
+    virtual iss::status resume_from_current(bool step, int sig, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) = 0;
 
     /* Resume from specified address, if not supported it
      has to be figured out by wait */
-    virtual iss::status resume_from_addr(bool step, int sig, uint64_t addr) = 0;
+    inline iss::status resume_from_addr(bool step, int sig, uint64_t addr, rp_thread_ref thread){
+        return resume_from_addr(step, sig, addr, thread, std::function<void(unsigned)>());
+    }
+
+    virtual iss::status resume_from_addr(bool step, int sig, uint64_t addr, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) = 0;
 
     /* Wait function, wait_partial is called by the proxy with one
      tick intervals, so it allows to break into running
@@ -206,7 +214,7 @@ struct target_adapter_if {
 
      status_string is unchanged unless return value is OK and
      implemented is non 0 */
-    virtual iss::status wait_non_blocking(std::string &status_string, out_func out, bool &running) {
+    virtual iss::status wait_non_blocking(bool &running) {
         return iss::NotSupported;
     }
 
@@ -221,7 +229,7 @@ struct target_adapter_if {
 
      status_string is unchanged unless return value is OK and
      implemented is non 0 */
-    virtual iss::status wait_blocking(std::string &status_string, out_func out) = 0;
+    virtual iss::status wait_blocking() = 0;
 
     /*============= Queries ===============================*/
 
@@ -286,6 +294,8 @@ struct target_adapter_if {
 
     /* Query packet size */
     virtual iss::status packetsize_query(std::string &out_buf) = 0;
+
+    virtual iss::status target_xml_query(std::string& out_buf){ return iss::NotSupported;}
 };
 
 } // namespace debugger

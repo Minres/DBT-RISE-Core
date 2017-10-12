@@ -61,20 +61,11 @@ inline bool compare(string input, string match, size_t offset = 0) {
     return (input.length() >= (offset + match.length())) && (input.compare(offset, match.length(), match) == 0);
 }
 
-inline std::vector<std::string> split(const std::string &s, char seperator) {
-    std::vector<std::string> output;
-    std::string::size_type prev_pos = 0, pos = 0;
-    while ((pos = s.find(seperator, pos)) != std::string::npos) {
-        std::string substring(s.substr(prev_pos, pos - prev_pos));
-        output.push_back(substring);
-        prev_pos = ++pos;
-    }
-    output.push_back(s.substr(prev_pos, pos - prev_pos)); // Last word
-    return output;
-}
-
 struct gdb_resp_msg {
     gdb_resp_msg() = default;
+
+    explicit gdb_resp_msg(bool is_notification): start_char(is_notification?'%':'$') {}
+
     void add(uint8_t m) {
         if (m == '#' || m == '$' || m == '}') {
             buffer.push_back('}');
@@ -100,12 +91,21 @@ struct gdb_resp_msg {
         this->operator<<(ss.str().c_str());
         return *this;
     }
+    template <typename T> gdb_resp_msg &operator<<(boost::optional<T> val) {
+        if(val) {
+            stringstream ss;
+            ss << std::hex << val.get();
+            this->operator<<(ss.str().c_str());
+        }
+        return *this;
+    }
+
     unsigned char operator[](unsigned int idx) const { return buffer.at(idx); }
     operator bool() { return /*ack||*/ body; }
     operator std::string() {
         std::stringstream ss;
         if (body) {
-            ss << "$";
+            ss << start_char;
             for (std::vector<uint8_t>::const_iterator it = buffer.begin(); it != buffer.end(); ++it) ss << *it;
             ss << "#" << get_checksum_char(0) << get_checksum_char(1);
         }
@@ -116,7 +116,22 @@ protected:
     std::vector<uint8_t> buffer;
     uint8_t check_sum = 0;
     bool body = false;
+    const char start_char = '$';
 };
+
+gdb_session::gdb_session(server_if *server_, boost::asio::io_service &io_service)
+: stop_callback([this](unsigned handle){
+    gdb_resp_msg resp;
+    resp<<(handle>0?"S05":"S02");
+    std::string msg(resp);
+    CLOG(TRACE, connection) << "Responding to client with '" << msg << "'";
+    last_msg=msg;
+    conn_shptr->write_data(msg);
+})
+, server(server_)
+, conn_shptr(new connection<std::string, std::string>(io_service))
+, handler(*server, stop_callback) {
+}
 
 int gdb_session::start() {
     conn_shptr->add_listener(shared_from_this());
@@ -144,11 +159,9 @@ bool gdb_session::message_completed(std::vector<char> &buffer) {
     // buffer.end(); ++i) std::cout << (int)*i << '('<<*i<<")
     //";std::cout<<std::endl;
     size_t s = buffer.size();
-    if (s == 1 && (buffer[0] == '+' || buffer[0] == '-')) return true;
+    if (s == 1 && (buffer[0] == '+' || buffer[0] == '-' || buffer[0]==3)) return true;
     if (s == 2 && (buffer[0] == -1 && buffer[1] == -13)) return true;
-    if (s > 4 && buffer[0] == '$' && buffer[s - 3] == '#') {
-        return true;
-    }
+    if (s > 4 && buffer[0] == '$' && buffer[s - 3] == '#') return true;
     return false;
 }
 
@@ -163,23 +176,24 @@ void gdb_session::receive_completed(const boost::system::error_code &e, std::str
         handler.t->close();
         return;
     }
+    // CLOG(TRACE, connection) << "Received message '"<<*msg<<"'";
     if (msg->compare("+") == 0) {
         CLOG(TRACE, connection) << "Received ACK";
         last_msg = "";
         conn_shptr->async_read();
     } else if (msg->compare("-") == 0) {
         CLOG(TRACE, connection) << "Received NACK, repeating msg '" << last_msg << "'";
-        conn_shptr->write_data(&last_msg);
+        conn_shptr->write_data(last_msg);
         conn_shptr->async_read();
-    } else if (msg->at(0) == -1 && msg->at(1) == -13) {
+    } else if (msg->at(0) == 3 || (msg->at(0) == -1 && msg->at(1) == -13)) {
         CLOG(TRACE, connection) << "Received BREAK, interrupting target";
         handler.t->stop();
-        respond("S05");
+        respond("+");
     } else {
         CLOG(TRACE, connection) << "Received packet '" << *msg << "', processing it";
         std::string data = check_packet(*msg);
         if (data.size()) {
-            conn_shptr->write_data(&ack);
+            conn_shptr->write_data(ack);
             parse_n_execute(data);
         } else
             respond("-");
@@ -208,7 +222,7 @@ void gdb_session::parse_n_execute(std::string &data) {
             break;
         case '?':
             /* Report the last signal status */
-            resp << "T0" << ABORTED;
+            resp << "T0" << BREAKPOINT;//ABORTED;
             break;
         case 'A':
             /* Set the argv[] array of the target */
@@ -218,7 +232,7 @@ void gdb_session::parse_n_execute(std::string &data) {
         case 'S':
         case 'c':
         case 's':
-            resp << handler.running(data);
+            resp << handler.running(data, false);
             break;
         case 'D':
             resp << handler.detach(data); // TODO: pass socket handling

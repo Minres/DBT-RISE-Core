@@ -44,7 +44,7 @@ iss::status target_adapter_base::open(int argc, char *const agrv[], const char *
 
 void target_adapter_base::close() { bp_lut.clear(); }
 
-iss::status target_adapter_base::connect(std::string &status_string, bool &can_restart) { return iss::Ok; }
+iss::status target_adapter_base::connect(bool &can_restart) { return iss::Ok; }
 
 iss::status target_adapter_base::disconnect() { return iss::Ok; }
 
@@ -53,28 +53,30 @@ void target_adapter_base::kill() {}
 iss::status target_adapter_base::restart() { return iss::Ok; }
 
 void target_adapter_base::stop() {
-    srv->request_stop(0);
+    srv->request_stop(-1);
     srv->wait_for_stop();
 }
 
-iss::status target_adapter_base::resume_from_current(bool step, int sig) {
+iss::status target_adapter_base::resume_from_current(bool step, int sig, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) {
     if (step)
-        srv->step(0, 1);
+        srv->step(thread.val, 1);
+    else if(stop_callback)
+        srv->run(thread.val, stop_callback);
     else
-        srv->run(0);
+        srv->run(thread.val);
     return iss::Ok;
 }
 
-iss::status target_adapter_base::wait_non_blocking(std::string &status_string, out_func out, bool &running) {
+iss::status target_adapter_base::wait_non_blocking(bool &running) {
     running = srv->is_running();
     if (running) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         running = srv->is_running();
     }
-    return iss::NotSupported;
+    return iss::Ok;
 }
 
-iss::status target_adapter_base::wait_blocking(std::string &status_string, out_func out) {
+iss::status target_adapter_base::wait_blocking() {
     srv->wait_for_stop();
     return iss::Ok;
 }

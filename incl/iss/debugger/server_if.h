@@ -83,6 +83,12 @@ struct server_if {
      */
     virtual void run(unsigned coreId) = 0;
     /**
+     * run the specified core asynchronously, numeric_limits<unsigned>::max() indicates all cores
+     * @param coreId the core to let run
+     * @param callback to be called when run stops
+     */
+    virtual void run(unsigned coreId, std::function<void(unsigned)> callback) = 0;
+    /**
      * stop the specified core (non-blocking)
      * @param coreId the core to stop
      */
@@ -103,15 +109,15 @@ struct server_if {
      */
     virtual void step(unsigned coreId, unsigned steps = 1) = 0;
     /**
-     * shut down the simulation and server
-     */
-    virtual void shutdown() = 0;
-    /**
      * reset the core and system
      * @param coreId core to reset
      * @return result of the operation
      */
     virtual status reset(int coreId) = 0;
+    /**
+     * shut down the simulation and server
+     */
+    virtual void shutdown() = 0;
 
     enum exec_states { initialized = 0, running = 1, stopped = 2, stepping = 3 };
     /**
@@ -129,8 +135,15 @@ struct server_if {
             mode.store(MODE_STOP, std::memory_order_release);
             last_bp = bp_handle;
         }
-        while (mode.load(std::memory_order_acquire) == MODE_STOP) {
-            syncronizer.executeNext();
+        if(mode.load(std::memory_order_acquire) == MODE_STOP){
+            if( stop_callback){
+                stop_callback(last_bp);
+                stop_callback=std::function<void(unsigned)>();
+            }
+            while (mode.load(std::memory_order_acquire) == MODE_STOP) {
+                syncronizer.executeNext();
+            }
+            last_bp = 0;
         }
         if (--cycles == 0) mode = MODE_STOP;
     }
@@ -150,6 +163,7 @@ protected:
     std::atomic<mode_e> mode{MODE_STOP};
     std::atomic<uint64_t> cycles;
     unsigned last_bp;
+    std::function<void(unsigned)> stop_callback;
 };
 
 } // namespace debugger

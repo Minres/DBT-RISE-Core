@@ -55,10 +55,7 @@ using boost::asio::ip::tcp;
 
 class gdb_session : public connection<std::string, std::string>::async_listener {
 public:
-    gdb_session(server_if *server_, boost::asio::io_service &io_service)
-    : server(server_)
-    , conn_shptr(new connection<std::string, std::string>(io_service))
-    , handler(*server) {}
+    gdb_session(server_if *server_, boost::asio::io_service &io_service);
 
     virtual ~gdb_session() = default;
 
@@ -72,6 +69,7 @@ public:
 
     bool message_completed(std::vector<char> &buffer) override;
 
+
 protected:
     std::string check_packet(std::string &msg);
 
@@ -79,9 +77,12 @@ protected:
 
     void respond(const std::string msg) {
         last_msg = msg;
-        // std::this_thread::sleep_for(std::chrono::milliseconds(2));
-        CLOG(TRACE, connection) << "Processed message, responding with '" << last_msg << "'";
-        conn_shptr->write_data(&last_msg);
+        if(msg.size()>0){
+            // std::this_thread::sleep_for(std::chrono::milliseconds(2));
+            CLOG(TRACE, connection) << "Processed message, responding with '" << msg << "'";
+            conn_shptr->write_data(msg);
+        }
+        // conn_shptr->async_write(msg);
         conn_shptr->async_read();
     }
 
@@ -90,6 +91,8 @@ private:
     boost::shared_ptr<connection<std::string, std::string>> conn_shptr;
     std::string last_msg;
     cmd_handler handler;
+
+    std::function<void(unsigned)> stop_callback;
 };
 }
 }

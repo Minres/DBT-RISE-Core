@@ -57,6 +57,8 @@ struct server_base : public server_if {
 
     void run(unsigned coreId) override;
 
+    void run(unsigned coreId, std::function<void(unsigned)> callback) override;
+
     void request_stop(unsigned coreId) override;
 
     void wait_for_stop() override;
