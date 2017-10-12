@@ -44,7 +44,8 @@
 namespace iss {
 namespace debugger {
 
-struct encoder_decoder {
+class encoder_decoder {
+public:
     /* Decode/encode functions */
     std::vector<uint8_t> dec_data(const char *in);
 

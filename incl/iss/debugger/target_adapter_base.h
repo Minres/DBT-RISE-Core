@@ -43,7 +43,8 @@
 namespace iss {
 namespace debugger {
 
-struct target_adapter_base : public target_adapter_if {
+class target_adapter_base : public target_adapter_if {
+public:
 
     target_adapter_base(iss::debugger::server_if *srv)
     : srv(srv)

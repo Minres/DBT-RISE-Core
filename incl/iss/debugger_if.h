@@ -42,7 +42,8 @@
 
 namespace iss {
 
-struct debugger_if {
+class debugger_if {
+public:
     /**
      * destructor
      */

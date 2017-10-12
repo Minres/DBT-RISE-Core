@@ -61,7 +61,8 @@ inline bool compare(string input, string match, size_t offset = 0) {
     return (input.length() >= (offset + match.length())) && (input.compare(offset, match.length(), match) == 0);
 }
 
-struct gdb_resp_msg {
+class gdb_resp_msg {
+public:
     gdb_resp_msg() = default;
 
     explicit gdb_resp_msg(bool is_notification): start_char(is_notification?'%':'$') {}

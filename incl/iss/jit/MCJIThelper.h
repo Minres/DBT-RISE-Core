@@ -65,7 +65,8 @@ namespace vm {
 /**
  * MCJIT helper class
  */
-struct MCJIT_helper {
+class MCJIT_helper {
+public:
     /**
      * constructor
      * @param context the LLVM context to use
@@ -130,7 +131,8 @@ private:
 /**
  * template wrapper to get get rid of casting in code
  */
-template <typename ARCH> struct MCJIT_arch_helper : public MCJIT_helper {
+template <typename ARCH> class MCJIT_arch_helper : public MCJIT_helper {
+public:
     using fPtr_t = typename arch::traits<ARCH>::addr_t (*)();
     /**
      * constructor
