@@ -214,7 +214,7 @@ void MCJIT_helper::add_functions_2_module(Module *mod) {
     FDECL(leave_trap, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(64));
     FDECL(wait, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64));
     FDECL(print_string, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(8)->getPointerTo());
-    FDECL(print_disass, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(8)->getPointerTo());
+    FDECL(print_disass, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64), INT_TYPE(8)->getPointerTo());
     FDECL(pre_instr_sync, VOID_TYPE, THIS_PTR_TYPE);
     FDECL(post_instr_sync, VOID_TYPE, THIS_PTR_TYPE);
 }
@@ -305,8 +305,8 @@ void wait(this_t iface, uint64_t flags) { ((iss::arch_if *)iface)->wait_until(fl
 
 void print_string(this_t iface, char *str) { LOG(DEBUG) << "[EXEC] " << str; }
 
-void print_disass(this_t iface, char *str) {
-    CLOG(INFO, disass) << str << ((iss::arch_if *)iface)->get_additional_disass_info();
+void print_disass(this_t iface, uint64_t pc, char *str) {
+    ((iss::arch_if *)iface)->disass_output(pc, str);
 }
 
 void pre_instr_sync(this_t iface) {

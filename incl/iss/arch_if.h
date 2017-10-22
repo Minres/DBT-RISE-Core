@@ -39,6 +39,8 @@
 
 #include <algorithm>
 #include <vector>
+#include <iostream>
+#include <iomanip>
 
 namespace iss {
 /**
@@ -158,7 +160,10 @@ public:
      * retrieve information to augment the disassembly
      * @return string containing the core status in text form
      */
-    virtual std::string get_additional_disass_info() { return ""; };
+    virtual void disass_output(uint64_t pc, const std::string instr) {
+//        CLOG(INFO, disass) << "0x"<<std::setw(16)<<std::setfill('0')<<std::hex<<pc<<"\t\t"<<instr;
+        std::cout << "0x"<<std::setw(16)<<std::setfill('0')<<std::hex<<pc<<"\t\t"<<instr<<std::endl;
+    };
 };
 }
 
