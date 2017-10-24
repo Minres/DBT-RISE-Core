@@ -84,7 +84,7 @@ public:
     /**
      * execution phases: instruction start and end
      */
-    enum exec_phase { ISTART, IEND };
+    enum exec_phase { ISTART, IEND, BSTART, BEND };
     /**
      * reset the core
      * @param address where to start from
