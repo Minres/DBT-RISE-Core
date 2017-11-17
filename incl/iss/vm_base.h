@@ -83,6 +83,8 @@ public:
 
     using dbg_if = iss::debugger_if;
 
+    constexpr static unsigned blk_size = 128;//std::numeric_limits<unsigned>::max();
+
     arch_if *get_arch() override { return &core; };
 
     constexpr unsigned int get_reg_width(int idx) const {
@@ -169,7 +171,6 @@ public:
 
 protected:
     std::tuple<continuation_e, llvm::Function *> disass(virt_addr_t &pc) {
-        unsigned blk_size = std::numeric_limits<unsigned>::max();
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         processing_pc_entry addr(*this, pc, this->core.v2p(pc));
