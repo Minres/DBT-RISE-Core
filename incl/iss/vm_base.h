@@ -70,6 +70,8 @@ extern llvm::cl::opt<uint32_t> UnlikelyBranchWeight;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
+void add_functions_2_module(llvm::Module *mod);
+
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
 public:
     using reg_e = typename arch::traits<ARCH>::reg_e;
@@ -79,7 +81,7 @@ public:
     using addr_t = typename arch::traits<ARCH>::addr_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
     using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
-    using func_ptr = typename arch::traits<ARCH>::addr_t (*)();
+    using func_ptr = typename arch::traits<ARCH>::addr_t (*)(void*, void*, uint8_t*);
 
     using dbg_if = iss::debugger_if;
 
@@ -117,7 +119,8 @@ public:
 #ifndef NDEBUG
                         LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << pc << std::dec;
 #endif
-                        mod = jitHelper.createModule();
+                        mod = createModule();
+
                         std::tie(cont, func) = disass(pc);
                         f = jitHelper.getPointerToFunction(std::move(mod), func);
                         if (cont == FLUSH)
@@ -130,7 +133,7 @@ public:
 #endif
                         f = it->second;
                     }
-                    pc.val = f();
+                    pc.val = f(static_cast<vm_if *>(this), static_cast<arch_if *>(&core), regs_base_ptr);
                 } catch (trap_access &ta) {
                     pc.val = core.enter_trap(ta.id, ta.addr);
                 }
@@ -207,6 +210,21 @@ protected:
         }
     }
 
+    void GenerateUniqueName(std::string &str, uint64_t mod) const {
+        char buf[21];
+        ::snprintf(buf, sizeof(buf), "@0x%016lX_", mod);
+        str += buf;
+    }
+
+    std::unique_ptr<llvm::Module> createModule() {
+        static unsigned i = 0;
+        char s[20];
+        sprintf(s, "mcjit_module_#%X_", ++i);
+        auto mod = std::make_unique<llvm::Module>(s, getContext());
+        add_functions_2_module(mod.get());
+        return mod;
+    }
+
     virtual std::tuple<continuation_e, llvm::BasicBlock *>
     gen_single_inst_behavior(virt_addr_t &pc_v, unsigned int &inst_cnt, llvm::BasicBlock *this_block) = 0;
 
@@ -214,12 +232,13 @@ protected:
 
     virtual void gen_leave_behavior(llvm::BasicBlock *leave_blk) {
         builder->SetInsertPoint(leave_blk);
-        llvm::Value *const pc_v = gen_get_reg(arch::traits<ARCH>::NEXT_PC, "next_pc");
+        llvm::Value *const pc_v = gen_get_reg(arch::traits<ARCH>::NEXT_PC);
         builder->CreateRet(pc_v);
     }
 
     explicit vm_base(ARCH &core, bool dump = false)
     : core(core)
+    , regs_base_ptr(core.get_regs_base_ptr())
     , sync_exec(NO_SYNC) // TODO: should be NO_SYNC but this needs
                          // to changes code generation
     , builder(new llvm::IRBuilder<>(getContext()))
@@ -229,17 +248,6 @@ protected:
     , leave_blk(nullptr)
     , trap_blk(nullptr)
     , tgt_adapter(nullptr) {
-        // auto* const_int64_19 = llvm::ConstantInt::get(getContext(),
-        // llvm::APInt(64, this, 10));
-        core_ptr = llvm::ConstantExpr::getCast(
-            llvm::Instruction::IntToPtr,
-            gen_const(64, (uintptr_t) static_cast<arch_if *>(&core)), // make sure it's the same type as in the
-                                                                      // dispatch function cause of vtable
-                                                                      // correction
-            llvm::PointerType::get(get_type(8), 0));
-        vm_ptr = llvm::ConstantExpr::getCast(llvm::Instruction::IntToPtr,
-                                             gen_const(64, (uintptr_t) static_cast<vm_if *>(this)),
-                                             llvm::PointerType::get(get_type(8), 0));
     }
 
     ~vm_base() override { delete tgt_adapter; }
@@ -279,10 +287,9 @@ protected:
         return str;
     }
 
-    inline llvm::Value *gen_get_reg(reg_e r, const char *nm = "") {
-        std::string str = gen_var_name(nm, "-reg", r);
+    inline llvm::Value *gen_get_reg(reg_e r) {
         std::vector<llvm::Value *> args{core_ptr, reg_index(r)};
-        return adj_from64(builder->CreateCall(mod->getFunction("get_reg"), args, str.c_str()),
+        return adj_from64(builder->CreateCall(mod->getFunction("get_reg"), args),
                           arch::traits<ARCH>::reg_bit_width(r));
     }
 
@@ -323,7 +330,6 @@ protected:
     inline llvm::Value *gen_read_mem(mem_type_e type, llvm::Value *addr, uint32_t length, const char *nm = "") {
         auto *storage = builder->CreateAlloca(llvm::IntegerType::get(mod->getContext(), length * 8));
         auto *storage_ptr = builder->CreateBitCast(storage, get_type(8)->getPointerTo(0));
-        std::string str = gen_var_name(nm, "_mem", type);
         std::vector<llvm::Value *> args{core_ptr,
                                         llvm::ConstantInt::get(getContext(), llvm::APInt(32, iss::VIRTUAL)),
                                         llvm::ConstantInt::get(getContext(), llvm::APInt(32, type)),
@@ -376,12 +382,16 @@ protected:
         builder->SetInsertPoint(label_cont);
     }
 
+    inline llvm::Value *get_reg_ptr(unsigned i) {
+        return vm::vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_width(i));
+    }
+
     inline llvm::Value *get_reg_ptr(unsigned i, unsigned size) {
-        void *ptr = this->core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offset(i);
-        return llvm::ConstantExpr::getIntToPtr(
-            llvm::ConstantInt::get(this->mod->getContext(),
-                                   llvm::APInt(8 /*bits*/ * sizeof(uint8_t *), reinterpret_cast<uint64_t>(ptr))),
-            get_type(size));
+        auto x = builder->CreateAdd(
+                this->builder->CreatePtrToInt(regs_ptr, get_type(64)),
+                this->gen_const(64U, arch::traits<ARCH>::reg_byte_offset(i)),
+                "reg_offs_ptr");
+        return this->builder->CreateIntToPtr(x, get_type(size)->getPointerTo(0));
     }
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
@@ -456,13 +466,24 @@ protected:
 
     virtual llvm::Function *open_block_func() {
         std::string name("block");
-        jitHelper.GenerateUniqueName(name, processing_pc.top().second.val);
-        std::vector<llvm::Type *> mainFuncTyArgs;
+        GenerateUniqueName(name, processing_pc.top().second.val);
+        std::vector<llvm::Type *> mainFuncTyArgs{
+            llvm::Type::getInt8PtrTy(mod->getContext()),
+            llvm::Type::getInt8PtrTy(mod->getContext()),
+            llvm::Type::getInt8PtrTy(mod->getContext())
+        };
         llvm::Type *ret_t = get_type(get_reg_width(arch::traits<ARCH>::PC));
         llvm::FunctionType *const mainFuncTy = llvm::FunctionType::get(ret_t, mainFuncTyArgs, false);
         llvm::Function *f =
             llvm::Function::Create(mainFuncTy, llvm::GlobalValue::ExternalLinkage, name.c_str(), mod.get());
         f->setCallingConv(llvm::CallingConv::C);
+        auto iter = f->getArgumentList().begin();
+        vm_ptr = llvm::dyn_cast<llvm::Value>(iter++);
+        core_ptr = llvm::dyn_cast<llvm::Value>(iter++);
+        regs_ptr = llvm::dyn_cast<llvm::Value>(iter++);
+        vm_ptr->setName("vm_ptr");
+        core_ptr->setName("core_ptr");
+        regs_ptr->setName("regs_ptr");
         return f;
     }
 
@@ -479,10 +500,11 @@ protected:
         vm_base<ARCH> &vm;
     };
     ARCH &core;
+    uint8_t* regs_base_ptr;
     sync_type sync_exec;
-    llvm::Value *core_ptr = nullptr, *vm_ptr = nullptr;
+    llvm::Value *core_ptr = nullptr, *vm_ptr = nullptr, *regs_ptr = nullptr;
     llvm::IRBuilder<> *builder = nullptr;
-    MCJIT_arch_helper<ARCH> jitHelper;
+    MCJIT_arch_helper<ARCH, func_ptr> jitHelper;
     std::unique_ptr<llvm::Module> mod;
     llvm::Function *func;
     llvm::BasicBlock *leave_blk, *trap_blk;
