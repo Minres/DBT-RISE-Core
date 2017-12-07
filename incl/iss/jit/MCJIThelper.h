@@ -74,23 +74,6 @@ public:
      */
     MCJIT_helper(llvm::LLVMContext &context, bool dump = false);
     /**
-     * generate a unique name from a character array using internal static counter
-     * @param root
-     * @return the generated name
-     */
-    std::string GenerateUniqueName(const char *root) const;
-    /**
-     * Generate a unique name based on str by appending mod in hex notation
-     * @param str the base string
-     * @param mod the modification count
-     */
-    void GenerateUniqueName(std::string &str, uint64_t count) const;
-    /**
-     * create a module with all global function declarations
-     * @return the module pointer
-     */
-    std::unique_ptr<llvm::Module> createModule();
-    /**
      * compile the function named <name> of module mod
      * @param mod the module to be compiled
      * @param name the name of the toplevel entry function
@@ -105,7 +88,7 @@ public:
      * @param mod the module to be compiled
      * @param func the toplevel entry function
      */
-    void *getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function *const func);
+    uint64_t getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function *const func);
     /**
      * Execute the specified function with the specified arguments, and return the
      * result.
@@ -119,7 +102,6 @@ protected:
     llvm::ExecutionEngine *createExecutionEngine(std::unique_ptr<llvm::Module> mod);
     llvm::ExecutionEngine *compileModule(std::unique_ptr<llvm::Module> mod);
 
-    void add_functions_2_module(llvm::Module *mod);
 
     std::unique_ptr<llvm::legacy::FunctionPassManager> createFpm(const std::unique_ptr<llvm::Module> &mod);
 
@@ -131,9 +113,9 @@ private:
 /**
  * template wrapper to get get rid of casting in code
  */
-template <typename ARCH> class MCJIT_arch_helper : public MCJIT_helper {
+template <typename ARCH, typename FTYPE> class MCJIT_arch_helper : public MCJIT_helper {
 public:
-    using fPtr_t = typename arch::traits<ARCH>::addr_t (*)();
+    using fPtr_t = typename arch::traits<ARCH>::addr_t (*)(void*, void*, uint8_t*);
     /**
      * constructor
      * @param context the LLVM context
@@ -148,8 +130,8 @@ public:
      * @param f the toplevel entry function of the module
      * @return the function pointer
      */
-    fPtr_t getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function *const func) {
-        return (fPtr_t)MCJIT_helper::getPointerToFunction(std::move(mod), func);
+    FTYPE getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function *const func) {
+        return (FTYPE)MCJIT_helper::getPointerToFunction(std::move(mod), func);
     }
 
     typename arch::traits<ARCH>::addr_t executeFunction(std::unique_ptr<llvm::Module> mod, const llvm::Function *func) {
