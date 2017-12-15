@@ -46,61 +46,75 @@ enum status { Ok, Err, NotSupported };
 
 enum sync_type { NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3 };
 
-enum access_type {
-    WRITE = 0,
-    READ = 1,
-    FETCH = 3,
-    DATA = 0,
-    CODE = 2,
-    DEBUG_WRITE = 4,
-    DEBUG_READ = 5,
-    DEBUG_FETCH = 7,
-    DEBUG = DEBUG_WRITE,
-    ACCESS_TYPE = 0x7
+enum struct access_type: uint16_t {
+    // operations
+    READ = 0x0,
+    WRITE = 0x1,
+    FETCH = 0x2,
+    DEBUG_READ = 0x4,
+    DEBUG_WRITE = 0x5,
+    DEBUG_FETCH = 0x6,
+    // bit meanings
+    READ_WRITE = 0x1,
+    CODE_DATA = 0x2,
+    FUNC = 0x3,
+    DEBUG = 0x4,
+    // aliases
+    DATA = 0x0,
+    CODE = 0x2
 };
 
-enum address_type { LOGICAL = 0x10, VIRTUAL = 0x20, PHYSICAL = 0x30, ADDRESS_TYPE = 0x30 };
+inline
+access_type operator&(access_type a1, access_type a2){
+    return static_cast<access_type>(static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2));
+}
+
+inline
+access_type operator&(access_type a1, uint16_t a2){
+    return static_cast<access_type>(static_cast<uint16_t>(a1) & a2);
+}
+
+inline
+bool operator==(access_type a, uint16_t i){
+    return static_cast<uint16_t>(a)==i;
+}
+
+inline
+bool operator!=(access_type a, uint16_t i){
+    return static_cast<uint16_t>(a)!=i;
+}
+
+inline
+bool operator&&(access_type a1, access_type a2){
+    return (static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2));
+}
+
+enum struct address_type: uint16_t { LOGICAL, VIRTUAL, PHYSICAL };
 
 class addr_t {
 public:
-    const unsigned type{READ | PHYSICAL};
-    unsigned space{0};
-    uint64_t val{0};
+    const address_type type = address_type::LOGICAL;
+    const access_type access = access_type::WRITE;
+    uint32_t space = 0;
+    uint64_t val = 0;
 
-    unsigned getAccessType() const { return type & ACCESS_TYPE; };
-
-    constexpr addr_t() = default;
-    constexpr addr_t(access_type acc_t, address_type addr_t, unsigned s, uint64_t addr)
-    : type(acc_t | addr_t)
-    , space(s)
+    constexpr addr_t(access_type acc_type, address_type addr_type, uint32_t space, uint64_t addr)
+    : type(addr_type)
+    , access(acc_type)
+    , space(space)
     , val(addr) {}
-    constexpr addr_t(unsigned t, unsigned s, uint64_t addr)
-    : type(t)
-    , space(s)
-    , val(addr) {}
-    constexpr addr_t(const addr_t &o)
-    : type(o.type)
-    , space(o.space)
-    , val(o.val) {}
 
-    constexpr addr_t &operator=(uint64_t o) {
+    constexpr addr_t& operator=(uint64_t o) {
         val = o;
         return *this;
     }
 
-    constexpr addr_t &operator=(const addr_t &o) {
+    constexpr addr_t& operator=(const addr_t &o) {
         val = o.val;
         return *this;
     }
 
-    constexpr addr_t operator+(const addr_t &o) const {
-        assert(type == o.type && space == o.space);
-        addr_t ret(*this);
-        ret.val += o.val;
-        return ret;
-    }
-
-    addr_t &operator++() { // prefix increment
+    addr_t& operator++() { // prefix increment
         val++;
         return *this;
     }
@@ -111,25 +125,41 @@ public:
         return ret;
     }
 
-    addr_t &operator--() {
+    addr_t& operator--() {
         val--;
         return *this;
     }
 
-    constexpr addr_t operator+(int m) const {
-        addr_t ret(*this);
-        ret.val += m;
-        return ret;
+    addr_t& operator&=(uint64_t m) {
+        val &= m;
+        return *this;
     }
 
-    constexpr addr_t operator-(int m) const {
-        addr_t ret(*this);
-        ret.val -= m;
-        return ret;
-    }
 };
 
-inline std::ostream &operator<<(std::ostream &os, const addr_t &op) {
+inline
+constexpr addr_t operator+(const addr_t& a, const addr_t &o) {
+    assert(a.type == o.type && a.space == o.space);
+    return addr_t{a.access, a.type, a.space, a.val+o.val};
+}
+
+inline
+constexpr addr_t operator-(const addr_t& a, const addr_t &o) {
+    assert(a.type == o.type && a.space == o.space);
+    return addr_t{a.access, a.type, a.space, a.val-o.val};
+}
+
+inline
+constexpr addr_t operator+(addr_t& a, uint64_t m) {
+    return addr_t{a.access, a.type, a.space, a.val+m};
+}
+
+inline
+constexpr addr_t operator-(addr_t& a, uint64_t m) {
+    return addr_t{a.access, a.type, a.space, a.val-m};
+}
+
+inline std::ostream &operator<<(std::ostream &os, const addr_t& op) {
     os << "[" << op.space << "]0x" << std::hex << op.val << std::dec;
     return os;
 }
@@ -137,13 +167,12 @@ inline std::ostream &operator<<(std::ostream &os, const addr_t &op) {
 template <address_type TYPE> class typed_addr_t : public addr_t {
 public:
     constexpr typed_addr_t()
-    : addr_t(READ, TYPE, 0){};
+    : addr_t(access_type::WRITE, TYPE, 0, 0){};
+    constexpr typed_addr_t(access_type acc_type, uint32_t space, uint64_t v)
+    : addr_t(acc_type, TYPE, space, v) {}
     constexpr typed_addr_t(access_type t, uint64_t v)
     : addr_t(t, TYPE, 0, v) {}
-    constexpr typed_addr_t(unsigned t, unsigned s, uint64_t v)
-    : addr_t((t & ACCESS_TYPE) | TYPE, s, v) {}
-    constexpr typed_addr_t(const addr_t &o)
-    : addr_t(o.getAccessType() | TYPE, o.space, o.val) {}
+    constexpr typed_addr_t(const addr_t& o): typed_addr_t(o.access, o.space, o.val) {}
 };
 }
 

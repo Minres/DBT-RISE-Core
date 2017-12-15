@@ -46,17 +46,20 @@ class vm_if {
 public:
     /**
      * get the underlying class of the core to be simulated
+     *
      * @return pointer to the core
      */
     virtual arch_if *get_arch() = 0;
     /**
      * start the simulation
+     *
      * @param cycles number if instructions to be simulated
      * @return number of executed instructions
      */
-    virtual int start(int64_t cycles = -1) = 0;
+    virtual int start(int64_t cycles = -1, bool dump = false) = 0;
     /**
      * reset the core
+     *
      * @param address start address after reset
      */
     virtual void reset(uint64_t address) = 0;
@@ -65,20 +68,18 @@ public:
      */
     virtual void reset() = 0;
     /**
-     * syncronization point at the beginning of the instruction
+     * Synchronization point at the before executing the next instruction
      */
     virtual void pre_instr_sync() = 0;
     /**
-     * syncronization point at the beginning of the instruction
-     */
-    virtual void post_instr_sync() = 0;
-    /**
      * check if instruction disassembly is enabled
+     *
      * @return true if enabled
      */
     bool isDisassEnabled() { return disass_enabled; }
     /**
      * set the disassembly flag
+     *
      * @param enable the flag to enable disassembling
      */
     void setDisassEnabled(bool enable) { disass_enabled = enable; }

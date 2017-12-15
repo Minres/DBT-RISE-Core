@@ -55,13 +55,13 @@ using namespace iss::vm;
 using namespace logging;
 
 void iss::init_jit(int argc, char *argv[]) {
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
+    InitializeNativeTargetAsmParser();
 
-    llvm::sys::PrintStackTraceOnErrorSignal(argv[0]);
-    // llvm::PrettyStackTraceProgram X(argc, argv);
-    // llvm::EnableDebugBuffering = true;
+    sys::PrintStackTraceOnErrorSignal(argv[0]);
+    // PrettyStackTraceProgram X(argc, argv);
+    // EnableDebugBuffering = true;
 }
 
 LLVMContext &iss::getContext() {
@@ -69,124 +69,42 @@ LLVMContext &iss::getContext() {
     return context;
 }
 
-MCJIT_helper::MCJIT_helper(LLVMContext &context, bool dump)
-: context(context)
-, dumpEnabled(dump) {}
+MCJIT_helper::MCJIT_helper(LLVMContext &context)
+: context(context), bldr(new llvm::IRBuilder<>(getContext())) {}
 
-/*
-std::string MCJIT_helper::GenerateUniqueName(const char *root) const {
-    static int i = 0;
+uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)> generator,
+        bool dumpEnabled) {
+#ifndef NDEBUG
+    LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
+#endif
+    static unsigned i = 0;
     char s[20];
-    sprintf(s, "%s#%X_", root, i++);
-    return std::string(s);
-}
-
-void MCJIT_helper::GenerateUniqueName(std::string &str, uint64_t mod) const {
-    char buf[21];
-    ::snprintf(buf, sizeof(buf), "@0x%016lX_", mod);
-    str += buf;
-}
-
-std::unique_ptr<llvm::Module> MCJIT_helper::createModule() {
-    //  create a new Module.
-    auto mod_name = GenerateUniqueName("mcjit_module_");
-    auto mod = std::make_unique<Module>(mod_name, context);
-    add_functions_2_module(mod.get());
-    return mod;
-}
-*/
-
-std::unique_ptr<legacy::FunctionPassManager>
-iss::vm::MCJIT_helper::createFpm(const std::unique_ptr<llvm::Module> &mod) {
-    // Create a new pass manager attached to it.
-    std::unique_ptr<legacy::FunctionPassManager> fpm = llvm::make_unique<legacy::FunctionPassManager>(mod.get());
-    // promote memory references to be register references
-    //fpm->add(createPromoteMemoryToRegisterPass());
-    // Do simple "peephole" optimizations and bit-twiddling optzns.
-    //    fpm->add(createInstructionCombiningPass());
-    // Reassociate expressions.
-    //>    fpm->add(createReassociatePass());
-    // Eliminate Common SubExpressions.
-    //>    fpm->add(createGVNPass());
-    // Simplify the control flow graph (deleting unreachable blocks, etc).
-    //    fpm->add(createCFGSimplificationPass());
-    // flatten CFG, reduce number of conditional branches by using parallel-and
-    // and parallel-or mode, etc...
-    //>    fpm->add(createFlattenCFGPass());
-    // merges loads and stores in diamonds. Loads are hoisted into the header,
-    // while stores sink into the footer.
-    //fpm->add(createMergedLoadStoreMotionPass());
-    // Remove redundant instructions.
-    //>    fpm->add(createInstructionSimplifierPass());
-    //fpm->add(createDeadStoreEliminationPass());
-    // perform global value numbering and redundant load elimination
-    //fpm->add(createNewGVNPass());
-    // Combine loads into bigger loads.
-    //fpm->add(createLoadCombinePass());
-
-    fpm->add(createDeadStoreEliminationPass());
-    // Promote allocas to registers.
-    fpm->add(createPromoteMemoryToRegisterPass());
-    // Do simple "peephole" optimizations and bit-twiddling optzns.
-    fpm->add(createInstructionCombiningPass());
-    // Reassociate expressions.
-    fpm->add(createReassociatePass());
-    // Eliminate Common SubExpressions.
-    fpm->add(createGVNPass());
-    // Simplify the control flow graph (deleting unreachable blocks, etc).
-    fpm->add(createCFGSimplificationPass());
-
-    fpm->doInitialization();
-    return fpm;
-}
-
-llvm::ExecutionEngine *iss::vm::MCJIT_helper::createExecutionEngine(std::unique_ptr<llvm::Module> mod) {
-    std::string ErrStr;
-    EngineBuilder EEB(std::move(mod));
-    //    EEB.setUseOrcMCJITReplacement(true);
-    ExecutionEngine *EE = EEB.setErrorStr(&ErrStr)
-                              .setMCJITMemoryManager(std::make_unique<SectionMemoryManager>())
-                              .setOptLevel(CodeGenOpt::Aggressive)
-                              .create();
-    // Set the global so the code gen can use this.
-    if (!EE) throw std::runtime_error(ErrStr.c_str());
-    return EE;
-}
-
-ExecutionEngine *MCJIT_helper::compileModule(std::unique_ptr<llvm::Module> mod) {
-    assert(engineMap.find(mod->getModuleIdentifier()) == engineMap.end());
+    sprintf(s, "mcjit_module_#%X_", ++i);
+    auto mod = std::make_unique<Module>(s, getContext());
+    auto* f = generator(mod.get());
+    assert(f!=nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
         std::error_code ec;
         std::string name(((std::string)mod->getName()) + ".il");
-        llvm::raw_fd_ostream os(llvm::StringRef(name), ec, llvm::sys::fs::F_None);
-        // llvm::WriteBitcodeToFile(mod, OS);
+        raw_fd_ostream os(StringRef(name), ec, sys::fs::F_None);
+        // WriteBitcodeToFile(mod, OS);
         // mod->dump();
         mod->print(os, nullptr, false, true);
         os.flush();
     }
-    const std::string moduleID = mod->getModuleIdentifier();
-    ExecutionEngine *ee = createExecutionEngine(std::move(mod));
-    ee->finalizeObject();
-    // Store this engine
-    engineMap[moduleID] = ee;
-    return ee;
-}
-
-uint64_t MCJIT_helper::getPointerToFunction(std::unique_ptr<Module> mod, llvm::Function *const func) {
-    // Create a new pass manager attached to it.
-    createFpm(mod)->run(*func);
-    if (func && !func->empty()) {
-//        return compileModule(std::move(mod))->getPointerToFunction(func);
-        return compileModule(std::move(mod))->getFunctionAddress(func->getName());
-    }
-    return 0;
-}
-
-GenericValue MCJIT_helper::executeFunction(std::unique_ptr<llvm::Module> mod, const std::string &name) {
-    // Look for the functions in our modules, compiling only as necessary
-    Function *func = mod->getFunction(name);
-    if (!func || func->empty()) throw std::runtime_error("could not find function");
-    std::vector<GenericValue> args(0);
-    return createExecutionEngine(std::move(mod))->runFunction(func, args);
+    std::string ErrStr;
+    EngineBuilder eeb(std::move(mod)); // eeb and ee take ownership of module
+    //    EEB.setUseOrcMCJITReplacement(true);
+    ExecutionEngine *ee = eeb.setErrorStr(&ErrStr)
+                                          //.setMCJITMemoryManager(std::make_unique<SectionMemoryManager>())
+                                          //.setOptLevel(CodeGenOpt::Aggressive)
+                                          .setOptLevel(CodeGenOpt::None)
+                                          .create();
+    // Set the global so the code gen can use this.
+    if (!ee) throw std::runtime_error(ErrStr.c_str());
+    ee->setVerifyModules(false);
+    uint64_t fptr = ee->getFunctionAddress(f->getName());
+    func_map[phys_addr] = MCJIT_block{ee, fptr};
+    return fptr;
 }
 
