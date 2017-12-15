@@ -41,11 +41,14 @@
 #include <iss/arch/traits.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/Error.h>
 #include <sstream>
 
 #include <unordered_map>
+#include <loki/AssocVector.h>
 #include <vector>
+#include "boost/variant.hpp"
 
 namespace iss {
 /**
@@ -66,77 +69,86 @@ namespace vm {
  * MCJIT helper class
  */
 class MCJIT_helper {
+    struct MCJIT_block {
+        boost::variant<llvm::ExecutionEngine*, llvm::Module*> mod_eng{(llvm::ExecutionEngine*)nullptr};
+        uint64_t f_ptr=0;
+    };
 public:
     /**
      * constructor
      * @param context the LLVM context to use
      * @param dump dump the generated IR per module
      */
-    MCJIT_helper(llvm::LLVMContext &context, bool dump = false);
+    MCJIT_helper(llvm::LLVMContext &context = getContext());
     /**
      * compile the function named <name> of module mod
-     * @param mod the module to be compiled
-     * @param name the name of the toplevel entry function
+     *
+     * @param cluster_id    id of the cluster the code is JIT'ed for
+     * @param phys_addr     physical address of the JIT#ed code
+     * @param generator     function generating JIT'ing the target code
+     * @param dump_enabled  dump IR in text form if enabled
+     * @return the pointer to the compiled function
      */
-    void *getPointerToFunction(std::unique_ptr<llvm::Module> mod, const std::string &name) {
-        // Look for the function in our modules
-        llvm::Function *func = mod->getFunction(name);
-        return getPointerToFunction(std::move(mod), name);
+    template <typename FTYPE>
+    inline
+    FTYPE getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<llvm::Function*(llvm::Module*)> generator, bool dump_enabled) {
+        auto it = this->func_map.find(phys_addr);
+        if (it == this->func_map.end()) {
+            return (FTYPE)MCJIT_helper::getPointerToFunction_(cluster_id, phys_addr, generator, dump_enabled);
+        } else {
+            return (FTYPE)it->second.f_ptr;
+        }
     }
     /**
-     * compile the function named <name> of module mod
-     * @param mod the module to be compiled
-     * @param func the toplevel entry function
+     * remove all compiled functions for a given cluster
+     *
+     * @param cluster_id
      */
-    uint64_t getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function *const func);
+    void flush_entries(unsigned cluster_id){
+        for(std::pair<long unsigned int,MCJIT_block>& e: func_map){
+            if ( llvm::ExecutionEngine** p1 = boost::get<llvm::ExecutionEngine*>(&(e.second.mod_eng)))
+                delete(*p1);
+            else if ( llvm::Module** p2 = boost::get<llvm::Module*>(&(e.second.mod_eng)))
+                delete(*p2);
+        }
+        func_map.clear();
+    }
     /**
-     * Execute the specified function with the specified arguments, and return the
-     * result.
-     * @param mod the module to be compiled
-     * @param name the toplevel entry function
-     * @return the result
+     * remove a specific function (at a physical address) for a given cluster
+     *
+     * @param cluster_id    id of the cluster the code is JIT'ed for
+     * @param phys_addr     physical address of the JIT#ed code
      */
-    llvm::GenericValue executeFunction(std::unique_ptr<llvm::Module> mod, const std::string &name);
-
+    void remove_entry(unsigned cluster_id, uint64_t phys_addr){
+        auto it =func_map.find(phys_addr);
+        if(it!=func_map.end()){
+            MCJIT_block& e = it->second;
+            if ( llvm::ExecutionEngine** p1 = boost::get<llvm::ExecutionEngine*>( &e.mod_eng ) )
+                delete(*p1);
+            else if ( llvm::Module** p2 = boost::get<llvm::Module*>( &e.mod_eng ) )
+                delete(*p2);
+            func_map.erase(it);
+        }
+    }
+    /**
+     * get the number of JIT'ed code blocks for a given cluster
+     * @param cluster_id
+     * @return  the number ot entries in the lookup table
+     */
+    size_t size(unsigned cluster_id){
+        return func_map.size();
+    }
+    /**
+     * get an IR builder
+     *
+     * @return  the IR builder reference
+     */
+    llvm::IRBuilder<>& builder() { return *bldr.get();}
 protected:
-    llvm::ExecutionEngine *createExecutionEngine(std::unique_ptr<llvm::Module> mod);
-    llvm::ExecutionEngine *compileModule(std::unique_ptr<llvm::Module> mod);
-
-
-    std::unique_ptr<llvm::legacy::FunctionPassManager> createFpm(const std::unique_ptr<llvm::Module> &mod);
-
-private:
+    uint64_t getPointerToFunction_(unsigned cluster_id, uint64_t phys_addr, std::function<llvm::Function*(llvm::Module*)> generator, bool dumpEnabled);
     llvm::LLVMContext &context;
-    std::unordered_map<std::string, llvm::ExecutionEngine *> engineMap;
-    const bool dumpEnabled;
-};
-/**
- * template wrapper to get get rid of casting in code
- */
-template <typename ARCH, typename FTYPE> class MCJIT_arch_helper : public MCJIT_helper {
-public:
-    using fPtr_t = typename arch::traits<ARCH>::addr_t (*)(void*, void*, uint8_t*);
-    /**
-     * constructor
-     * @param context the LLVM context
-     * @param dump dump the generated IR per module
-     */
-    MCJIT_arch_helper(llvm::LLVMContext &context, bool dump = false)
-    : MCJIT_helper(context, dump) {}
-
-    /**
-     * wrapper to get correctly typed function pointer from compilation
-     * @param m the module to compile
-     * @param f the toplevel entry function of the module
-     * @return the function pointer
-     */
-    FTYPE getPointerToFunction(std::unique_ptr<llvm::Module> mod, llvm::Function *const func) {
-        return (FTYPE)MCJIT_helper::getPointerToFunction(std::move(mod), func);
-    }
-
-    typename arch::traits<ARCH>::addr_t executeFunction(std::unique_ptr<llvm::Module> mod, const llvm::Function *func) {
-        return MCJIT_helper::executeFunction(std::move(mod), func->getName()).IntVal.getZExtValue();
-    }
+    Loki::AssocVector<uint64_t, MCJIT_block> func_map;
+    std::unique_ptr<llvm::IRBuilder<> > bldr;
 };
 }
 }

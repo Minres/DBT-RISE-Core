@@ -90,7 +90,7 @@ void add_functions_2_module(Module *mod) {
     FDECL(print_string, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(8)->getPointerTo());
     FDECL(print_disass, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64), INT_TYPE(8)->getPointerTo());
     FDECL(pre_instr_sync, VOID_TYPE, THIS_PTR_TYPE);
-    FDECL(post_instr_sync, VOID_TYPE, THIS_PTR_TYPE);
+    FDECL(notify_phase, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(32));
 }
 
 }
@@ -146,14 +146,14 @@ void update_flags(this_t iface, int16_t op, uint64_t opr1, uint64_t opr2) {
 }
 
 uint8_t fetch(this_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
-    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::FETCH | addr_type, space, addr}, length, data);
+    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::access_type::FETCH, (iss::address_type)addr_type, (uint16_t)space, addr}, length, data);
 }
 
 uint8_t fetch_dbg(this_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
-    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::DEBUG_FETCH | addr_type, space, addr}, length, data);
+    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::access_type::DEBUG_FETCH, (iss::address_type)addr_type,(uint16_t) space, addr}, length, data);
 }
 uint8_t read_mem(this_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
-    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::READ | addr_type, space, addr}, length, data);
+    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::access_type::READ, (iss::address_type)addr_type,(uint16_t)space, addr}, length, data);
 }
 
 uint8_t write_mem(this_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
@@ -161,24 +161,28 @@ uint8_t write_mem(this_t iface, uint32_t addr_type, uint32_t space, uint64_t add
     LOG(TRACE) << "EXEC: write mem " << (unsigned)type << " of core " << iface << " at addr 0x" << hex << addr
                << " with value 0x" << data << dec << " of len " << length;
 #endif
-    return ((iss::arch_if *)iface)->write(iss::addr_t{iss::WRITE | addr_type, space, addr}, length, data);
+    return ((iss::arch_if *)iface)->write(iss::addr_t{iss::access_type::WRITE, (iss::address_type)addr_type,(uint16_t)space, addr}, length, data);
 }
 
 uint8_t read_mem_dbg(this_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
-    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::DEBUG_READ | addr_type, space, addr}, length, data);
+    return ((iss::arch_if *)iface)->read(iss::addr_t{iss::access_type::DEBUG_READ, (iss::address_type)addr_type,(uint16_t)space, addr}, length, data);
 }
 
 uint8_t write_mem_dbg(this_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
-    return ((iss::arch_if *)iface)->write(iss::addr_t{iss::DEBUG_WRITE | addr_type, space, addr}, length, data);
+    return ((iss::arch_if *)iface)->write(iss::addr_t{iss::access_type::DEBUG_WRITE, (iss::address_type)addr_type,(uint16_t)space, addr}, length, data);
 }
 
 uint64_t enter_trap(this_t iface, uint64_t flags, uint64_t addr) {
     return ((iss::arch_if *)iface)->enter_trap(flags, addr);
 }
 
-uint64_t leave_trap(this_t iface, uint64_t flags) { return ((iss::arch_if *)iface)->leave_trap(flags); }
+uint64_t leave_trap(this_t iface, uint64_t flags) {
+    return ((iss::arch_if *)iface)->leave_trap(flags);
+}
 
-void wait(this_t iface, uint64_t flags) { ((iss::arch_if *)iface)->wait_until(flags); }
+void wait(this_t iface, uint64_t flags) {
+    ((iss::arch_if *)iface)->wait_until(flags);
+}
 
 void print_string(this_t iface, char *str) { LOG(DEBUG) << "[EXEC] " << str; }
 
@@ -187,10 +191,11 @@ void print_disass(this_t iface, uint64_t pc, char *str) {
 }
 
 void pre_instr_sync(this_t iface) {
-    iss::vm_if *vm = reinterpret_cast<iss::vm_if *>(iface);
-    vm->pre_instr_sync();
+    ((iss::vm_if *)iface)->pre_instr_sync();
 }
 
-void post_instr_sync(this_t iface) { ((iss::vm_if *)iface)->post_instr_sync(); }
+void notify_phase(this_t iface, uint32_t phase) {
+    ((iss::arch_if *)iface)->notify_phase((iss::arch_if::exec_phase)phase);
+}
 }
 

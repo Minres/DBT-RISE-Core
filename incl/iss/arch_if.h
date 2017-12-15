@@ -87,22 +87,27 @@ public:
     enum exec_phase { ISTART, IEND, BSTART, BEND };
     /**
      * reset the core
+     *
      * @param address where to start from
      */
     virtual void reset(uint64_t address) = 0;
     /**
      * preload memories from file
+     *
      * @param name name of th efile to load
      * @param type of file, implementation dependent
      */
     virtual void load_file(std::string name, int type = -1) = 0;
+
     /**
      * notify the core about the execution phase (if needed)
+     *
      * @param the actual phase the vm is in
      */
-    virtual void notify_phase(exec_phase) = 0;
+    virtual void notify_phase(exec_phase){};
     /**
      * get the pointer to the register array
+     *
      * @return pointer to the registers
      */
     virtual uint8_t *get_regs_base_ptr() = 0;
@@ -115,6 +120,7 @@ public:
     virtual void update_flags(operations op, uint64_t opr1, uint64_t opr2){};
     /**
      * read from addresses
+     *
      * @param addr address to read from, contains access type, address space and
      * address
      * @param length length of th edata to read
@@ -124,6 +130,7 @@ public:
     virtual iss::status read(const addr_t &addr, unsigned length, uint8_t *const data) = 0;
     /**
      * write to addresses
+     *
      * @param addr address to read from, contains access type, address space and
      * address
      * @param length length of the data to write
@@ -133,12 +140,14 @@ public:
     virtual iss::status write(const addr_t &addr, unsigned length, const uint8_t *const data) = 0;
     /**
      * vm encountered a trap (exception, interrupt), process accordingly in core
+     *
      * @param flags trap flags
      * @return new (virtual) address to continue from
      */
     virtual uint64_t enter_trap(uint64_t flags) { return 0; }
     /**
      * vm encountered a trap (exception, interrupt), process accordingly in core
+     *
      * @param flags trap flags
      * @param addr address where the trap enountered
      * @return new (virtual) address to continue from
@@ -147,17 +156,20 @@ public:
     /**
      * vm decoded the instruction to return from trap (exception, interrupt),
      * process accordingly in core
+     *
      * @param flags trap flags
      * @return new (virtual) address to continue from
      */
     virtual uint64_t leave_trap(uint64_t flags) { return 0; }
     /**
      * wait until condition indicated by flags becomes true
+     *
      * @param flags indicating the condition
      */
     virtual void wait_until(uint64_t flags) {}
     /**
      * retrieve information to augment the disassembly
+     *
      * @return string containing the core status in text form
      */
     virtual void disass_output(uint64_t pc, const std::string instr) {
