@@ -97,7 +97,7 @@ public:
         return *reinterpret_cast<T *>(&res[0]);
     }
 
-    int start(int64_t cycles = -1, bool dump = false) override {
+    int start(int64_t icount = -1, bool dump = false) override {
         int error = 0;
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
@@ -114,7 +114,7 @@ public:
                 this->func=nullptr;
                 return func;
             };
-            while (cycles < 0 || ((int64_t)core.get_icount()) < cycles) {
+            while (icount < 0 || ((int64_t)core.get_icount()) < icount) {
                 try {
                     const phys_addr_t pc_p = core.v2p(pc);
                     func_ptr f=jitHelper.getPointerToFunction<func_ptr>(cluster_id, pc_p.val, build_if_needed, dump);
@@ -436,7 +436,7 @@ protected:
     // NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3
     const iss::arch_if::exec_phase notifier_mapping[4] = {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART};
 
-    inline void gen_sync(sync_type s) {
+    inline void gen_sync(sync_type s, unsigned inst_id) {
         if (s  == PRE_SYNC){
             // update icount
             auto* icount_val = builder.CreateAdd(
