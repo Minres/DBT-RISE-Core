@@ -245,11 +245,11 @@ int encoder_decoder::enc_string(const char *s, char *out, size_t out_size) {
     return i;
 }
 
-void encoder_decoder::encode_str(std::stringstream &ss, const char *const str) {
+void encoder_decoder::encode_str(std::stringstream &ss, const std::string& str) {
     /* and Encode value */
     std::ios init(NULL);
     init.copyfmt(ss);
-    ss << std::setw(2) << std::setfill('0') << std::hex << strlen(str);
+    ss << std::setw(2) << std::setfill('0') << std::hex << str.length();
     ss.copyfmt(init);
     ss << str;
 }

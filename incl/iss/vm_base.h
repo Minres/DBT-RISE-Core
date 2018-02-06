@@ -56,6 +56,7 @@
 #include <sstream>
 #include <utility>
 #include <vector>
+#include <array>
 
 namespace iss {
 
@@ -194,9 +195,9 @@ protected:
     }
 
     void GenerateUniqueName(std::string &str, uint64_t mod) const {
-        char buf[21];
-        ::snprintf(buf, sizeof(buf), "@0x%016lX_", mod);
-        str += buf;
+		std::array<char, 21> buf;
+		::snprintf(buf.data(), buf.size(), "@0x%016lX_", mod);
+		str += buf.data();
     }
 
     virtual std::tuple<continuation_e, llvm::BasicBlock *>
@@ -434,7 +435,8 @@ protected:
     }
 
     // NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3
-    const iss::arch_if::exec_phase notifier_mapping[4] = {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART};
+	const std::array<const iss::arch_if::exec_phase, 4> notifier_mapping = { {
+			iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND,	iss::arch_if::ISTART } };
 
     inline void gen_sync(sync_type s, unsigned inst_id) {
         if (s  == PRE_SYNC){
