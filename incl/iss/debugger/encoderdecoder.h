@@ -80,7 +80,7 @@ public:
 
 private:
     const char *hex = "0123456789abcdef";
-    void encode_str(std::stringstream &ss, const char *const str);
+    void encode_str(std::stringstream &ss, const std::string& str);
 };
 
 } // namespace debugger

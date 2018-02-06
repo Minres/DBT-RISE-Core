@@ -49,6 +49,8 @@
 
 #include "llvm/Analysis/Passes.h"
 #include <iostream>
+#include <array>
+#include <memory>
 
 using namespace llvm;
 using namespace iss::vm;
@@ -78,9 +80,9 @@ uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_
     LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
-    char s[20];
-    sprintf(s, "mcjit_module_#%X_", ++i);
-    auto mod = std::make_unique<Module>(s, getContext());
+	std::array<char, 20> s;
+	sprintf(s.data(), "mcjit_module_#%X_", ++i);
+	auto mod = std::make_unique<Module>(s.data(), getContext());
     auto* f = generator(mod.get());
     assert(f!=nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
@@ -101,7 +103,8 @@ uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_
                                           .setOptLevel(CodeGenOpt::None)
                                           .create();
     // Set the global so the code gen can use this.
-    if (!ee) throw std::runtime_error(ErrStr.c_str());
+	if (!ee)
+		throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
     uint64_t fptr = ee->getFunctionAddress(f->getName());
     func_map[phys_addr] = MCJIT_block{ee, fptr};

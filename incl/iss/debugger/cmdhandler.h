@@ -41,6 +41,7 @@
 
 #include <unordered_map>
 #include <boost/optional.hpp>
+#include <array>
 
 namespace iss {
 namespace debugger {
@@ -153,12 +154,12 @@ public:
     bool can_restart;
     std::function<void(unsigned)>& stop_callback;
     std::unordered_map<uint64_t, unsigned> bp_map;
-    const my_custom_command rp_remote_commands[3] = {
-        /* Table of commands */
-        GEN_ENTRY(help, "This help text"),
-        GEN_ENTRY(set, "Set debug [level]"),
-        {nullptr, nullptr, nullptr} // sentinel, end of table marker
-    };
+    std::array<const my_custom_command,3> rp_remote_commands = { {
+    		/* Table of commands */
+			GEN_ENTRY(help, "This help text"),
+			GEN_ENTRY(set, "Set debug [level]"),
+			{nullptr, nullptr, nullptr} // sentinel, end of table marker
+	}};
 };
 
 } // namespace debugger

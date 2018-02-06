@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <array>
 
 namespace iss {
 namespace debugger {
@@ -62,9 +63,9 @@ class rp_thread_info {
 public:
     rp_thread_ref thread_id;
     int exists;
-    char display[256];
-    char thread_name[32];
-    char more_display[256];
+	std::string display;
+	std::string thread_name;
+	std::string more_display;
 };
 
 class target_adapter_if {
