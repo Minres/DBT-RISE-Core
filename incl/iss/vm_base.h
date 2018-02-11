@@ -43,6 +43,7 @@
 #include "util/ities.h"
 #include "util/range_lut.h"
 #include "vm_if.h"
+#include "vm_plugin.h"
 
 #include <util/logging.h>
 
@@ -70,6 +71,11 @@ enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 void add_functions_2_module(llvm::Module *mod);
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
+	struct plugin_entry {
+		sync_type sync;
+		vm_plugin& plugin;
+		llvm::Value* plugin_ptr;
+	};
 public:
     using reg_e = typename arch::traits<ARCH>::reg_e;
     using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e;
@@ -216,8 +222,7 @@ protected:
     , core_id(core_id)
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
-    , sync_exec(NO_SYNC) // TODO: should be NO_SYNC but this needs
-                         // to changes code generation
+    , sync_exec(NO_SYNC)
     , jitHelper()
     , builder(jitHelper.builder())
     , mod(nullptr)
@@ -225,10 +230,18 @@ protected:
     , leave_blk(nullptr)
     , trap_blk(nullptr)
     , tgt_adapter(nullptr) {
-        sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+    	sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
     }
 
     ~vm_base() override { delete tgt_adapter; }
+
+	void register_plugin(vm_plugin& plugin ){
+		if(plugin.registration("1.0", *this)){
+			llvm::Value* ptr = //this->builder.CreateIntToPtr(&plugin, get_type(8)->getPointerTo(0));
+			llvm::ConstantInt::get(getContext(), llvm::APInt(64, (uint64_t)&plugin)); //TODO: this is definitely non-portable and wrong
+			plugins.push_back(plugin_entry{plugin.get_sync(), plugin, ptr});
+		}
+	}
 
     inline llvm::Type *get_type(unsigned width) const {
         assert(width > 0);
@@ -456,6 +469,18 @@ protected:
         }
         if ((s & sync_exec))
             builder.CreateCall(mod->getFunction("notify_phase"), std::vector<llvm::Value *>{core_ptr, gen_const(32, notifier_mapping[s])});
+        for(plugin_entry e: plugins){
+        	if(e.sync & s)
+        		// callback(unsigned core_id = 0, unsigned cluster_id = 0, sync_type phase, uint64_t pc, unsigned instr_id)
+                builder.CreateCall(mod->getFunction("call_plugin"),
+                		std::vector<llvm::Value *>{
+        					e.plugin_ptr,
+							gen_const(32, core_id),
+							gen_const(32, cluster_id),
+							gen_const(32, s),
+							gen_const(32, inst_id)
+        				});
+        }
     }
 
     virtual llvm::Function *open_block_func() {
@@ -507,6 +532,7 @@ protected:
     std::stack<std::pair<virt_addr_t, phys_addr_t>> processing_pc;
     //std::vector<llvm::Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
+    std::vector<plugin_entry> plugins;
 };
 }
 }

@@ -34,6 +34,7 @@
 
 #include <iss/iss.h>
 #include <iss/vm_base.h>
+#include <iss/vm_plugin.h>
 #include <util/logging.h>
 
 
@@ -92,6 +93,7 @@ void add_functions_2_module(Module *mod) {
     FDECL(print_disass, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64), INT_TYPE(8)->getPointerTo());
     FDECL(pre_instr_sync, VOID_TYPE, THIS_PTR_TYPE);
     FDECL(notify_phase, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(32));
+    FDECL(call_plugin, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(32), INT_TYPE(32));
 }
 
 }
@@ -198,5 +200,10 @@ void pre_instr_sync(this_t iface) {
 void notify_phase(this_t iface, uint32_t phase) {
     ((iss::arch_if *)iface)->notify_phase((iss::arch_if::exec_phase)phase);
 }
+
+void call_plugin(this_t iface, uint32_t core_id, uint32_t cluster_id, uint32_t phase, uint32_t instr_id) {
+    ((iss::vm_plugin*)iface)->callback((unsigned)core_id, (unsigned)cluster_id, (iss::sync_type)phase, (unsigned)instr_id);
+}
+
 }
 
