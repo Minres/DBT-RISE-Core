@@ -57,6 +57,7 @@
 #include <sstream>
 #include <utility>
 #include <vector>
+#include <stack>
 #include <array>
 
 namespace iss {
@@ -495,7 +496,7 @@ protected:
         llvm::FunctionType *const mainFuncTy = llvm::FunctionType::get(ret_t, mainFuncTyArgs, false);
         llvm::Function *f = llvm::Function::Create(mainFuncTy, llvm::GlobalValue::ExternalLinkage, name.c_str(), mod);
         f->setCallingConv(llvm::CallingConv::C);
-        auto iter = f->getArgumentList().begin();
+        auto iter = f->arg_begin();
         vm_ptr = llvm::dyn_cast<llvm::Value>(iter++);
         core_ptr = llvm::dyn_cast<llvm::Value>(iter++);
         regs_ptr = llvm::dyn_cast<llvm::Value>(iter++);
