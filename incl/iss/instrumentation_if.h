@@ -32,36 +32,33 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _ISS_VM_PLUGIN_H_
-#define _ISS_VM_PLUGIN_H_
+#ifndef _INCL_ISS_INSTRUMENTATION_IF_H_
+#define _INCL_ISS_INSTRUMENTATION_IF_H_
 
-#include "vm_if.h"
-#include "util/bit_field.h"
-#include <memory>
+#include <cstdint>
 
 namespace iss {
 
-BEGIN_BF_DECL(instr_info_t, uint64_t)
-	BF_FIELD(cluster_id, 56, 8)
-	BF_FIELD(core_id, 40, 16)
-	BF_FIELD(instr_id, 24, 16)
-	BF_FIELD(phase_id, 16, 8)
-	instr_info_t(uint64_t cluster_id, uint64_t core_id, uint64_t instr_id, uint64_t phase_id): instr_info_t() {
-		this->cluster_id=cluster_id;
-		this->core_id=core_id;
-		this->instr_id=instr_id;
-		this->phase_id=phase_id;
-	}
-END_BF_DECL();
+inline namespace v1 {
+struct instrumentation_if {
 
-class vm_plugin { // @suppress("Class has a virtual method and non-virtual destructor")
-public:
-	virtual bool registration(const char* const version, vm_if& arch) = 0;
+	virtual ~instrumentation_if(){};
 
-	virtual sync_type get_sync() = 0;
+	/**
+	 * get the name of this architecture
+	 *
+	 * @return the name of this architecture
+	 */
+	virtual const std::string core_type_name() const = 0;
 
-	virtual void callback(instr_info_t instr_info) = 0;
+	virtual uint64_t get_pc() = 0;
+
+	virtual uint64_t get_next_pc() = 0;
+
+	virtual void set_curr_instr_cycles(unsigned cycles) = 0;
 };
 }
 
-#endif /* DBT_CORE_INCL_ISS_VM_PLUGIN_H_ */
+} /* namespace iss */
+
+#endif /* _INCL_ISS_INSTRUMENTATION_IF_H_ */

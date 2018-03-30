@@ -68,12 +68,11 @@ llvm::cl::opt<uint32_t> UnlikelyBranchWeight("unlikely-branch-weight", llvm::cl:
 using namespace llvm;
 
 void add_functions_2_module(Module *mod) {
-    // Type* voidType = Type::getVoidTy(CurrentModule->getContext());
-    FDECL(get_reg, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(16));
-    FDECL(set_reg, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(64));
-    FDECL(get_flag, INT_TYPE(1), THIS_PTR_TYPE, INT_TYPE(16));
-    FDECL(set_flag, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(1));
-    FDECL(update_flags, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(64), INT_TYPE(64));
+//    FDECL(get_reg, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(16));
+//    FDECL(set_reg, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(64));
+//    FDECL(get_flag, INT_TYPE(1), THIS_PTR_TYPE, INT_TYPE(16));
+//    FDECL(set_flag, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(1));
+//    FDECL(update_flags, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(64), INT_TYPE(64));
     FDECL(fetch, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
           INT_TYPE(8)->getPointerTo());
     FDECL(fetch_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
@@ -93,7 +92,7 @@ void add_functions_2_module(Module *mod) {
     FDECL(print_disass, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64), INT_TYPE(8)->getPointerTo());
     FDECL(pre_instr_sync, VOID_TYPE, THIS_PTR_TYPE);
     FDECL(notify_phase, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(32));
-    FDECL(call_plugin, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(32), INT_TYPE(32));
+    FDECL(call_plugin, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64));
 }
 
 }
@@ -111,42 +110,42 @@ using this_t = uint8_t *;
 //}
 
 extern "C" {
-uint64_t get_reg(this_t iface, int16_t idx) {
-    std::vector<uint8_t> data(8, 0);
-    ((iss::arch_if *)iface)->get_reg(idx, data);
-#ifdef EXEC_LOGGING
-    LOG(TRACE) << "EXEC: read reg " << idx << " of core " << iface << " getting value 0x" << hex << res << dec;
-#endif
-    return *(reinterpret_cast<uint64_t *>(&data[0]));
-}
-
-void set_reg(this_t iface, int16_t idx, uint64_t value) {
-#ifdef EXEC_LOGGING
-    LOG(TRACE) << "EXEC: write reg " << idx << " of core " << iface << " with value 0x" << hex << value << dec;
-#endif
-    std::vector<uint8_t> data(8, 0);
-    *(reinterpret_cast<uint64_t *>(&data[0])) = value;
-    ((iss::arch_if *)iface)->set_reg(idx, data);
-}
-
-bool get_flag(this_t iface, int16_t flag) {
-    bool res = ((iss::arch_if *)iface)->get_flag(flag);
-#ifdef EXEC_LOGGING
-    LOG(TRACE) << "EXEC: read flag " << flag << " of core " << iface << " getting value 0x" << hex << res << dec;
-#endif
-    return res;
-}
-
-void set_flag(this_t iface, int16_t flag, bool value) {
-#ifdef EXEC_LOGGING
-    LOG(TRACE) << "EXEC: write flag " << flag << " of core " << iface << " with value 0x" << value;
-#endif
-    ((iss::arch_if *)iface)->set_flag(flag, value);
-}
-
-void update_flags(this_t iface, int16_t op, uint64_t opr1, uint64_t opr2) {
-    ((iss::arch_if *)iface)->update_flags((iss::arch_if::operations)op, opr1, opr2);
-}
+//uint64_t get_reg(this_t iface, int16_t idx) {
+//    std::vector<uint8_t> data(8, 0);
+//    ((iss::arch_if *)iface)->get_reg(idx, data);
+//#ifdef EXEC_LOGGING
+//    LOG(TRACE) << "EXEC: read reg " << idx << " of core " << iface << " getting value 0x" << hex << res << dec;
+//#endif
+//    return *(reinterpret_cast<uint64_t *>(&data[0]));
+//}
+//
+//void set_reg(this_t iface, int16_t idx, uint64_t value) {
+//#ifdef EXEC_LOGGING
+//    LOG(TRACE) << "EXEC: write reg " << idx << " of core " << iface << " with value 0x" << hex << value << dec;
+//#endif
+//    std::vector<uint8_t> data(8, 0);
+//    *(reinterpret_cast<uint64_t *>(&data[0])) = value;
+//    ((iss::arch_if *)iface)->set_reg(idx, data);
+//}
+//
+//bool get_flag(this_t iface, int16_t flag) {
+//    bool res = ((iss::arch_if *)iface)->get_flag(flag);
+//#ifdef EXEC_LOGGING
+//    LOG(TRACE) << "EXEC: read flag " << flag << " of core " << iface << " getting value 0x" << hex << res << dec;
+//#endif
+//    return res;
+//}
+//
+//void set_flag(this_t iface, int16_t flag, bool value) {
+//#ifdef EXEC_LOGGING
+//    LOG(TRACE) << "EXEC: write flag " << flag << " of core " << iface << " with value 0x" << value;
+//#endif
+//    ((iss::arch_if *)iface)->set_flag(flag, value);
+//}
+//
+//void update_flags(this_t iface, int16_t op, uint64_t opr1, uint64_t opr2) {
+//    ((iss::arch_if *)iface)->update_flags((iss::arch_if::operations)op, opr1, opr2);
+//}
 
 uint8_t fetch(this_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
     return ((iss::arch_if *)iface)->read(iss::addr_t{iss::access_type::FETCH, (iss::address_type)addr_type, (uint16_t)space, addr}, length, data);
@@ -201,8 +200,8 @@ void notify_phase(this_t iface, uint32_t phase) {
     ((iss::arch_if *)iface)->notify_phase((iss::arch_if::exec_phase)phase);
 }
 
-void call_plugin(this_t iface, uint32_t core_id, uint32_t cluster_id, uint32_t phase, uint32_t instr_id) {
-    ((iss::vm_plugin*)iface)->callback((unsigned)core_id, (unsigned)cluster_id, (iss::sync_type)phase, (unsigned)instr_id);
+void call_plugin(this_t iface, uint64_t instr_info) {
+    ((iss::vm_plugin*)iface)->callback(iss::instr_info_t(instr_info));
 }
 
 }

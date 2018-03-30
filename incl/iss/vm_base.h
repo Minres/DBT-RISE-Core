@@ -471,16 +471,18 @@ protected:
         if ((s & sync_exec))
             builder.CreateCall(mod->getFunction("notify_phase"), std::vector<llvm::Value *>{core_ptr, gen_const(32, notifier_mapping[s])});
         for(plugin_entry e: plugins){
-        	if(e.sync & s)
-        		// callback(unsigned core_id = 0, unsigned cluster_id = 0, sync_type phase, uint64_t pc, unsigned instr_id)
+        	if(e.sync & s){
+        		iss::instr_info_t iinfo;
+        		iinfo.cluster_id=cluster_id;
+        		iinfo.core_id=core_id;
+        		iinfo.phase_id=s;
+        		iinfo.instr_id=inst_id;
                 builder.CreateCall(mod->getFunction("call_plugin"),
                 		std::vector<llvm::Value *>{
         					e.plugin_ptr,
-							gen_const(32, core_id),
-							gen_const(32, cluster_id),
-							gen_const(32, s),
-							gen_const(32, inst_id)
+							gen_const(64, static_cast<uint64_t>(iinfo)),
         				});
+        	}
         }
     }
 
