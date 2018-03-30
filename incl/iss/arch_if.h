@@ -90,12 +90,6 @@ public:
      */
     enum exec_phase { ISTART, IEND, BSTART, BEND };
     /**
-     * get the name of this architecture
-     *
-     * @return the name of this architecture
-     */
-    virtual const std::string core_type_name() const = 0;
-    /**
      * reset the core
      *
      * @param address where to start from
