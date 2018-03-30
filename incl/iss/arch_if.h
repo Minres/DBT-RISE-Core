@@ -36,6 +36,7 @@
 #define _ARCH_IF_H_
 
 #include "vm_types.h"
+#include "common.h"
 
 #include <algorithm>
 #include <vector>
@@ -55,6 +56,9 @@ public:
     const uint64_t addr;
 };
 
+inline namespace v1 {
+struct instrumentation_if;
+}
 /**
  * architecture interface
  */
@@ -86,12 +90,6 @@ public:
      */
     enum exec_phase { ISTART, IEND, BSTART, BEND };
     /**
-     * get the name of this architecture
-     *
-     * @return the name of this architecture
-     */
-    virtual const std::string core_type_name() const = 0;
-    /**
      * reset the core
      *
      * @param address where to start from
@@ -117,13 +115,12 @@ public:
      * @return pointer to the registers
      */
     virtual uint8_t *get_regs_base_ptr() = 0;
-    /* deprecated */
-    virtual void get_reg(short idx, std::vector<uint8_t> &value){};
-    virtual void set_reg(short idx, const std::vector<uint8_t> &value){};
-    /* deprecated */
-    virtual bool get_flag(int flag) { return false; };
-    virtual void set_flag(int flag, bool value){};
-    virtual void update_flags(operations op, uint64_t opr1, uint64_t opr2){};
+
+    DEPRECATED virtual void get_reg(short idx, std::vector<uint8_t> &value){};
+    DEPRECATED virtual void set_reg(short idx, const std::vector<uint8_t> &value){};
+    DEPRECATED virtual bool get_flag(int flag) { return false; };
+    DEPRECATED virtual void set_flag(int flag, bool value){};
+    DEPRECATED virtual void update_flags(operations op, uint64_t opr1, uint64_t opr2){};
     /**
      * read from addresses
      *
@@ -179,9 +176,14 @@ public:
      * @return string containing the core status in text form
      */
     virtual void disass_output(uint64_t pc, const std::string instr) {
-//        CLOG(INFO, disass) << "0x"<<std::setw(16)<<std::setfill('0')<<std::hex<<pc<<"\t\t"<<instr;
         std::cout << "0x"<<std::setw(16)<<std::setfill('0')<<std::hex<<pc<<"\t\t"<<instr<<std::endl;
     };
+	/**
+	 * add cycle information of last executed instruction. Should be called during post instruction sync
+	 *
+	 * @param cycles
+	 */
+    virtual instrumentation_if* get_instrumentation_if() = 0;
 };
 }
 

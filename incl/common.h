@@ -32,36 +32,19 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _ISS_VM_PLUGIN_H_
-#define _ISS_VM_PLUGIN_H_
+#ifndef _ISS_DEFINITIONS_H_
+#define _ISS_DEFINITIONS_H_
 
-#include "vm_if.h"
-#include "util/bit_field.h"
-#include <memory>
+#if defined(__cplusplus) && (__cplusplus >= 201402L)
+#  define DEPRECATED [[deprecated]]
+#elif defined( __GNUC__)
+#define DEPRECATED __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define DEPRECATED __declspec(deprecated)
+#else
+#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
+#define DEPRECATED
+#endif
 
-namespace iss {
 
-BEGIN_BF_DECL(instr_info_t, uint64_t)
-	BF_FIELD(cluster_id, 56, 8)
-	BF_FIELD(core_id, 40, 16)
-	BF_FIELD(instr_id, 24, 16)
-	BF_FIELD(phase_id, 16, 8)
-	instr_info_t(uint64_t cluster_id, uint64_t core_id, uint64_t instr_id, uint64_t phase_id): instr_info_t() {
-		this->cluster_id=cluster_id;
-		this->core_id=core_id;
-		this->instr_id=instr_id;
-		this->phase_id=phase_id;
-	}
-END_BF_DECL();
-
-class vm_plugin { // @suppress("Class has a virtual method and non-virtual destructor")
-public:
-	virtual bool registration(const char* const version, vm_if& arch) = 0;
-
-	virtual sync_type get_sync() = 0;
-
-	virtual void callback(instr_info_t instr_info) = 0;
-};
-}
-
-#endif /* DBT_CORE_INCL_ISS_VM_PLUGIN_H_ */
+#endif /* DBT_CORE_INCL_ISS_DEFINITIONS_H_ */
