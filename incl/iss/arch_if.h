@@ -177,12 +177,13 @@ public:
     virtual void disass_output(uint64_t pc, const std::string instr) {
         std::cout << "0x"<<std::setw(16)<<std::setfill('0')<<std::hex<<pc<<"\t\t"<<instr<<std::endl;
     };
-	/**
-	 * add cycle information of last executed instruction. Should be called during post instruction sync
-	 *
-	 * @param cycles
-	 */
-    virtual instrumentation_if* get_instrumentation_if() = 0;
+    /**
+     * get the pointer to the instrumentation interface. In case there is no instrumentation
+     * supported a null pointer is returned
+     *
+     * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
+     */
+    virtual instrumentation_if* get_instrumentation_if() { return nullptr;};
 };
 }
 
