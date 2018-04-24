@@ -116,7 +116,7 @@ public:
             auto build_if_needed = [this, &cont, &pc](llvm::Module* m)->llvm::Function*{
                 llvm::Function *func;
                 this->mod=m;
-                add_functions_2_module(m);
+                this->setup_module(m);
                 std::tie(cont, func) = disass(pc);
                 this->mod=nullptr;
                 this->func=nullptr;
@@ -205,6 +205,10 @@ protected:
 		std::array<char, 21> buf;
 		::snprintf(buf.data(), buf.size(), "@0x%016lX_", mod);
 		str += buf.data();
+    }
+
+    virtual void setup_module(llvm::Module* m){
+        add_functions_2_module(m);
     }
 
     virtual std::tuple<continuation_e, llvm::BasicBlock *>

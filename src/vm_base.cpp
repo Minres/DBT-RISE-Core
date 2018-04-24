@@ -48,9 +48,11 @@ llvm::cl::opt<uint32_t> LikelyBranchWeight("likely-branch-weight", llvm::cl::Hid
 llvm::cl::opt<uint32_t> UnlikelyBranchWeight("unlikely-branch-weight", llvm::cl::Hidden, llvm::cl::init(4),
                                              llvm::cl::desc("Weight of the branch unlikely to be taken (default = 4)"));
 
-#define INT_TYPE(L) IntegerType::get(mod->getContext(), L)
-#define VOID_TYPE Type::getVoidTy(mod->getContext())
-#define THIS_PTR_TYPE INT_TYPE(8)->getPointerTo()
+#define INT_TYPE(L)   Type::getIntNTy(mod->getContext(), L)
+#define FLOAT_TYPE    Type::getFloatTy(mod->getContext())
+#define DOUBLE_TYPE   Type::getDoubleTy(mod->getContext())
+#define VOID_TYPE     Type::getVoidTy(mod->getContext())
+#define THIS_PTR_TYPE Type::getIntNPtrTy(mod->getContext(), 8)
 #define FDECLL(NAME, RET, ...)                                                                                         \
     Function *NAME##_func = CurrentModule->getFunction(#NAME);                                                         \
     if (!NAME##_func) {                                                                                                \
