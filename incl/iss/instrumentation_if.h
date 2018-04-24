@@ -35,11 +35,14 @@
 #ifndef _INCL_ISS_INSTRUMENTATION_IF_H_
 #define _INCL_ISS_INSTRUMENTATION_IF_H_
 
+#include <string>
 #include <cstdint>
 
 namespace iss {
 
-inline namespace v1 {
+inline namespace v1 {}
+
+namespace v1 {
 struct instrumentation_if {
 
 	virtual ~instrumentation_if(){};
@@ -50,11 +53,23 @@ struct instrumentation_if {
 	 * @return the name of this architecture
 	 */
 	virtual const std::string core_type_name() const = 0;
-
+    /**
+     * Retrieve the current value of the program counter
+     *
+     * @return the value of the PC
+     */
 	virtual uint64_t get_pc() = 0;
-
+	/**
+	 * Retrieve the current value of the program counter of the next instruction
+	 *
+	 * @return the value of the next PC
+	 */
 	virtual uint64_t get_next_pc() = 0;
-
+	/**
+	 * update the cycle count (default is 1) of the last executed instruction
+	 *
+	 * @param cycles
+	 */
 	virtual void set_curr_instr_cycles(unsigned cycles) = 0;
 };
 }

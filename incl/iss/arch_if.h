@@ -38,6 +38,7 @@
 #include "vm_types.h"
 #include "common.h"
 
+#include <gsl/span>
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -56,7 +57,7 @@ public:
     const uint64_t addr;
 };
 
-inline namespace v1 {
+namespace v1 {
 struct instrumentation_if;
 }
 /**
@@ -184,7 +185,7 @@ public:
      *
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
-    virtual instrumentation_if* get_instrumentation_if() { return nullptr;};
+    virtual v1::instrumentation_if* get_instrumentation_if() { return nullptr;};
 };
 }
 
