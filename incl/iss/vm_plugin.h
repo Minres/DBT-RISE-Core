@@ -56,6 +56,8 @@ END_BF_DECL();
 
 class vm_plugin { // @suppress("Class has a virtual method and non-virtual destructor")
 public:
+    virtual ~vm_plugin(){}
+
 	virtual bool registration(const char* const version, vm_if& arch) = 0;
 
 	virtual sync_type get_sync() = 0;
