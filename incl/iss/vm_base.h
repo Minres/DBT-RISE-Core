@@ -104,27 +104,6 @@ public:
         return *reinterpret_cast<T *>(&res[0]);
     }
 
-    struct vm_jit_generator : public jit_generator {
-        vm_jit_generator(vm_base* vm, vm::continuation_e& cont, virt_addr_t& pc):
-        vm(vm), cont(cont), pc(pc){}
-
-        llvm::Function* operator()(llvm::Module* m) override {
-            llvm::Function *func;
-            vm->mod=m;
-            vm->setup_module(m);
-            std::tie(cont, func) = vm->disass(pc);
-            vm->mod=nullptr;
-            vm->func=nullptr;
-            return func;
-        }
-    protected:
-        vm_base* vm;
-        vm::continuation_e& cont;
-        virt_addr_t& pc;
-    };
-
-    friend struct vm_jit_generator;
-
     int start(int64_t icount = -1, bool dump = false) override {
         int error = 0;
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
@@ -133,12 +112,23 @@ public:
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             vm::continuation_e cont = CONT;
-            vm_jit_generator generator(this, cont, pc);
+            // struct to minimize the type size of the closure below to allow SSO
+            struct {vm_base* vm; virt_addr_t& pc; vm::continuation_e& cont;} param = {this, pc, cont};
+            auto generator{[&param](llvm::Module* m)->llvm::Function*{
+                llvm::Function *func;
+                param.vm->mod=m;
+                param.vm->setup_module(m);
+                std::tie(param.cont, func) = param.vm->disass(param.pc);
+                param.vm->mod=nullptr;
+                param.vm->func=nullptr;
+                return func;
+            }};
+            // explicit std::function to allow use as reference in call below
+            std::function<llvm::Function*(llvm::Module*)> gen_ref(std::ref(generator));
             while (icount < 0 || ((int64_t)core.get_icount()) < icount) {
                 try {
-                    const phys_addr_t pc_p = core.v2p(pc);
-                    typename jit_helper<typename arch::traits<ARCH>::addr_t>::func_ptr f=
-                            jit.getPointerToFunction(cluster_id, pc_p.val, generator, dump);
+                    const auto pc_p = core.v2p(pc);
+                    auto f=jit.getPointerToFunction(cluster_id, pc_p.val, gen_ref, dump);
                     pc.val = f(regs_base_ptr, static_cast<arch_if *>(&core), static_cast<vm_if *>(this));
 //                    pc.val=jit.jitAndExecute(cluster_id, pc_p.val, generator, dump);
                     if(cont == FLUSH) jit.flush_entries(cluster_id);

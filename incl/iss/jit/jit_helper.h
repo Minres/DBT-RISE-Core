@@ -71,11 +71,6 @@ class vm_if;
 
 namespace vm {
 
-struct jit_generator{
-    virtual llvm::Function* operator()(llvm::Module* m) = 0;
-    virtual ~jit_generator(){}
-};
-
 namespace detail {
 struct alignas(64) jit_block {
     uint64_t f_ptr=0;
@@ -90,10 +85,10 @@ struct alignas(64) jit_block {
     }
 };
 
-jit_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator, bool dumpEnabled);
+jit_block getPointerToFunction(
+        unsigned cluster_id, uint64_t phys_addr, std::function<llvm::Function*(llvm::Module*)>& generator, bool dumpEnabled);
 
 }
-
 /**
  * MCJIT helper class
  */
@@ -111,7 +106,7 @@ public:
     : regs_base_ptr(regs_base_ptr), core(core), vm(vm), bldr(new llvm::IRBuilder<>(getContext())) {}
 
     inline
-    R jitAndExecute(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator, bool dump_enabled){
+    R jitAndExecute(unsigned cluster_id, uint64_t phys_addr, std::function<llvm::Function*(llvm::Module*)>& generator, bool dump_enabled){
         func_ptr f=getPointerToFunction(cluster_id, phys_addr, generator, dump_enabled);
         return f(regs_base_ptr, core, vm);
 
@@ -126,7 +121,7 @@ public:
      * @return the pointer to the compiled function
      */
     inline
-    func_ptr getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator, bool dump_enabled) {
+    func_ptr getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<llvm::Function*(llvm::Module*)>& generator, bool dump_enabled) {
         auto it = this->func_map.find(phys_addr);
         if (it == this->func_map.end()) {
             auto res = detail::getPointerToFunction(cluster_id, phys_addr, generator, dump_enabled);

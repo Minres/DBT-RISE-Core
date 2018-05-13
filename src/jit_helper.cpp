@@ -74,7 +74,7 @@ LLVMContext &getContext() {
 namespace vm {
 namespace detail {
 
-jit_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator,
+jit_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)>& generator,
         bool dumpEnabled) {
 #ifndef NDEBUG
     LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
