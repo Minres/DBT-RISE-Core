@@ -32,7 +32,7 @@
 //       eyck@minres.com - initial API and implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iss/jit/MCJIThelper.h>
+#include <iss/jit/jit_helper.h>
 #include <iss/log_categories.h>
 #include <llvm/Support/Debug.h> //EnableDebugBuffering
 #include <llvm/Support/Error.h>
@@ -53,10 +53,10 @@
 #include <memory>
 
 using namespace llvm;
-using namespace iss::vm;
 using namespace logging;
 
-void iss::init_jit(int argc, char *argv[]) {
+namespace iss {
+void init_jit(int argc, char *argv[]) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
@@ -66,15 +66,15 @@ void iss::init_jit(int argc, char *argv[]) {
     // EnableDebugBuffering = true;
 }
 
-LLVMContext &iss::getContext() {
+LLVMContext &getContext() {
     static LLVMContext context;
     return context;
 }
 
-MCJIT_helper::MCJIT_helper(LLVMContext &context)
-: context(context), bldr(new llvm::IRBuilder<>(getContext())) {}
+namespace vm {
+namespace detail {
 
-uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)> generator,
+jit_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator,
         bool dumpEnabled) {
 #ifndef NDEBUG
     LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
@@ -82,7 +82,7 @@ uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_
     static unsigned i = 0;
 	std::array<char, 20> s;
 	sprintf(s.data(), "mcjit_module_#%X_", ++i);
-	auto mod = std::make_unique<Module>(s.data(), getContext());
+	auto mod = std::make_unique<llvm::Module>(s.data(), iss::getContext());
     auto* f = generator(mod.get());
     assert(f!=nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
@@ -107,7 +107,9 @@ uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_
 		throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
     uint64_t fptr = ee->getFunctionAddress(f->getName());
-    func_map[phys_addr] = MCJIT_block{ee, fptr};
-    return fptr;
+    return jit_block(ee, fptr);
 }
 
+}
+}
+}

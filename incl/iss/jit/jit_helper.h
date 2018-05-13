@@ -48,6 +48,8 @@
 #include <unordered_map>
 #include <loki/AssocVector.h>
 #include <vector>
+#include <memory>
+#include <tuple>
 #include "boost/variant.hpp"
 
 namespace iss {
@@ -64,22 +66,56 @@ llvm::LLVMContext &getContext();
  */
 void init_jit(int argc, char *argv[]);
 
+class arch_if;
+class vm_if;
+
 namespace vm {
+
+struct jit_generator{
+    virtual llvm::Function* operator()(llvm::Module* m) = 0;
+    virtual ~jit_generator(){}
+};
+
+namespace detail {
+struct alignas(64) jit_block {
+    uint64_t f_ptr=0;
+    std::array<uintptr_t, 6> cont;
+    llvm::ExecutionEngine* mod_eng{nullptr};
+    jit_block(llvm::ExecutionEngine* ee, uint64_t f_ptr):mod_eng(ee), f_ptr(f_ptr){}
+    jit_block() = default;
+    template<typename... Arguments>
+    uint64_t execute(Arguments... params){
+        typedef uint64_t(fptr)(Arguments...);
+        return ((fptr)f_ptr)(params...);
+    }
+};
+
+jit_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator, bool dumpEnabled);
+
+}
+
 /**
  * MCJIT helper class
  */
-class MCJIT_helper {
-    struct MCJIT_block {
-        boost::variant<llvm::ExecutionEngine*, llvm::Module*> mod_eng{(llvm::ExecutionEngine*)nullptr};
-        uint64_t f_ptr=0;
-    };
+template <typename R>
+class jit_helper {
 public:
+    using func_ptr = R (*)(uint8_t*, void*, void*);
+
     /**
      * constructor
      * @param context the LLVM context to use
      * @param dump dump the generated IR per module
      */
-    MCJIT_helper(llvm::LLVMContext &context = getContext());
+    jit_helper(uint8_t* regs_base_ptr, iss::arch_if* core, iss::vm_if* vm, llvm::LLVMContext &context = getContext())
+    : regs_base_ptr(regs_base_ptr), core(core), vm(vm), bldr(new llvm::IRBuilder<>(getContext())) {}
+
+    inline
+    R jitAndExecute(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator, bool dump_enabled){
+        func_ptr f=getPointerToFunction(cluster_id, phys_addr, generator, dump_enabled);
+        return f(regs_base_ptr, core, vm);
+
+    }
     /**
      * compile the function named <name> of module mod
      *
@@ -89,14 +125,15 @@ public:
      * @param dump_enabled  dump IR in text form if enabled
      * @return the pointer to the compiled function
      */
-    template <typename FTYPE>
     inline
-    FTYPE getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<llvm::Function*(llvm::Module*)> generator, bool dump_enabled) {
+    func_ptr getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, jit_generator& generator, bool dump_enabled) {
         auto it = this->func_map.find(phys_addr);
         if (it == this->func_map.end()) {
-            return (FTYPE)MCJIT_helper::getPointerToFunction_(cluster_id, phys_addr, generator, dump_enabled);
+            auto res = detail::getPointerToFunction(cluster_id, phys_addr, generator, dump_enabled);
+            func_map[phys_addr] =res;
+            return (func_ptr)res.f_ptr;
         } else {
-            return (FTYPE)it->second.f_ptr;
+            return (func_ptr)it->second.f_ptr;
         }
     }
     /**
@@ -105,12 +142,8 @@ public:
      * @param cluster_id
      */
     void flush_entries(unsigned cluster_id){
-        for(std::pair<long unsigned int,MCJIT_block>& e: func_map){
-            if ( llvm::ExecutionEngine** p1 = boost::get<llvm::ExecutionEngine*>(&(e.second.mod_eng)))
-                delete(*p1);
-            else if ( llvm::Module** p2 = boost::get<llvm::Module*>(&(e.second.mod_eng)))
-                delete(*p2);
-        }
+        for(auto& e: func_map)
+            delete(e.second.mod_eng);
         func_map.clear();
     }
     /**
@@ -122,11 +155,7 @@ public:
     void remove_entry(unsigned cluster_id, uint64_t phys_addr){
         auto it =func_map.find(phys_addr);
         if(it!=func_map.end()){
-            MCJIT_block& e = it->second;
-            if ( llvm::ExecutionEngine** p1 = boost::get<llvm::ExecutionEngine*>( &e.mod_eng ) )
-                delete(*p1);
-            else if ( llvm::Module** p2 = boost::get<llvm::Module*>( &e.mod_eng ) )
-                delete(*p2);
+            delete(it->second.mod_eng);
             func_map.erase(it);
         }
     }
@@ -145,9 +174,10 @@ public:
      */
     llvm::IRBuilder<>& builder() { return *bldr.get();}
 protected:
-    uint64_t getPointerToFunction_(unsigned cluster_id, uint64_t phys_addr, std::function<llvm::Function*(llvm::Module*)> generator, bool dumpEnabled);
-    llvm::LLVMContext &context;
-    Loki::AssocVector<uint64_t, MCJIT_block> func_map;
+    Loki::AssocVector<uint64_t, detail::jit_block> func_map;
+    uint8_t* regs_base_ptr;
+    iss::arch_if* core;
+    iss::vm_if* vm;
     std::unique_ptr<llvm::IRBuilder<> > bldr;
 };
 }

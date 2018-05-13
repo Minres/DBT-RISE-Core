@@ -35,11 +35,11 @@
 #ifndef _VM_BASE_H_
 #define _VM_BASE_H_
 
+#include <iss/jit/jit_helper.h>
 #include "arch/traits.h"
 #include "arch_if.h"
 #include "debugger/target_adapter_base.h"
 #include "debugger_if.h"
-#include "jit/MCJIThelper.h"
 #include "util/ities.h"
 #include "util/range_lut.h"
 #include "vm_if.h"
@@ -85,7 +85,6 @@ public:
     using addr_t = typename arch::traits<ARCH>::addr_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
     using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
-    using func_ptr = typename arch::traits<ARCH>::addr_t (*)(void*, void*, uint8_t*);
 
     using dbg_if = iss::debugger_if;
 
@@ -105,6 +104,27 @@ public:
         return *reinterpret_cast<T *>(&res[0]);
     }
 
+    struct vm_jit_generator : public jit_generator {
+        vm_jit_generator(vm_base* vm, vm::continuation_e& cont, virt_addr_t& pc):
+        vm(vm), cont(cont), pc(pc){}
+
+        llvm::Function* operator()(llvm::Module* m) override {
+            llvm::Function *func;
+            vm->mod=m;
+            vm->setup_module(m);
+            std::tie(cont, func) = vm->disass(pc);
+            vm->mod=nullptr;
+            vm->func=nullptr;
+            return func;
+        }
+    protected:
+        vm_base* vm;
+        vm::continuation_e& cont;
+        virt_addr_t& pc;
+    };
+
+    friend struct vm_jit_generator;
+
     int start(int64_t icount = -1, bool dump = false) override {
         int error = 0;
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
@@ -113,22 +133,16 @@ public:
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             vm::continuation_e cont = CONT;
-            auto build_if_needed = [this, &cont, &pc](llvm::Module* m)->llvm::Function*{
-                llvm::Function *func;
-                this->mod=m;
-                this->setup_module(m);
-                std::tie(cont, func) = disass(pc);
-                this->mod=nullptr;
-                this->func=nullptr;
-                return func;
-            };
+            vm_jit_generator generator(this, cont, pc);
             while (icount < 0 || ((int64_t)core.get_icount()) < icount) {
                 try {
                     const phys_addr_t pc_p = core.v2p(pc);
-                    func_ptr f=jitHelper.getPointerToFunction<func_ptr>(cluster_id, pc_p.val, build_if_needed, dump);
-                    pc.val = f(static_cast<vm_if *>(this), static_cast<arch_if *>(&core), regs_base_ptr);
-                    if(cont == FLUSH) jitHelper.flush_entries(cluster_id);
-                    if(cont==TRAP) jitHelper.remove_entry(cluster_id, pc_p.val);
+                    typename jit_helper<typename arch::traits<ARCH>::addr_t>::func_ptr f=
+                            jit.getPointerToFunction(cluster_id, pc_p.val, generator, dump);
+                    pc.val = f(regs_base_ptr, static_cast<arch_if *>(&core), static_cast<vm_if *>(this));
+//                    pc.val=jit.jitAndExecute(cluster_id, pc_p.val, generator, dump);
+                    if(cont == FLUSH) jit.flush_entries(cluster_id);
+                    if(cont==TRAP) jit.remove_entry(cluster_id, pc_p.val);
                 } catch (trap_access &ta) {
                     pc.val = core.enter_trap(ta.id, ta.addr);
                 }
@@ -147,7 +161,7 @@ public:
                                                               // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        LOG(INFO) << "Executed " << core.get_icount() << " instructions in " << jitHelper.size(cluster_id)
+        LOG(INFO) << "Executed " << core.get_icount() << " instructions in " << jit.size(cluster_id)
                   << " code blocks during " << millis << "ms resulting in " << (core.get_icount() * 0.001 / millis)
                   << "MIPS";
         return error;
@@ -176,6 +190,8 @@ protected:
         trap_blk = llvm::BasicBlock::Create(mod->getContext(), "trap", func);
         gen_trap_behavior(trap_blk);
         llvm::BasicBlock *bb = llvm::BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
+        builder.SetInsertPoint(bb);
+        builder.CreateStore(this->gen_const(32, 0), get_reg_ptr(arch::traits<ARCH>::LAST_BRANCH), false);
         vm::continuation_e cont = iss::vm::CONT;
         try {
             while (cont == CONT && cur_blk < blk_size) {
@@ -228,8 +244,8 @@ protected:
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
     , sync_exec(NO_SYNC)
-    , jitHelper()
-    , builder(jitHelper.builder())
+    , jit(regs_base_ptr, &core, this)
+    , builder(jit.builder())
     , mod(nullptr)
     , func(nullptr)
     , leave_blk(nullptr)
@@ -275,14 +291,6 @@ protected:
         return val->getType()->getScalarSizeInBits() == 64 ? val : builder.CreateZExt(val, builder.getInt64Ty());
     }
 
-//    inline std::string gen_var_name(const char *prefix, const char *op, int id) {
-//        std::stringstream ss;
-//        ss << prefix << op << id;
-//        std::string str(ss.str());
-//        GenerateUniqueName(str, processing_pc.top().second.val);
-//        return str;
-//    }
-//
     inline llvm::Value *gen_get_reg(reg_e r) {
         std::vector<llvm::Value *> args{core_ptr, reg_index(r)};
         return adj_from64(builder.CreateCall(mod->getFunction("get_reg"), args),
@@ -499,12 +507,12 @@ protected:
         llvm::Function *f = llvm::Function::Create(mainFuncTy, llvm::GlobalValue::ExternalLinkage, name.c_str(), mod);
         f->setCallingConv(llvm::CallingConv::C);
         auto iter = f->arg_begin();
-        vm_ptr = llvm::dyn_cast<llvm::Value>(iter++);
-        core_ptr = llvm::dyn_cast<llvm::Value>(iter++);
         regs_ptr = llvm::dyn_cast<llvm::Value>(iter++);
-        vm_ptr->setName("vm_ptr");
-        core_ptr->setName("core_ptr");
+        core_ptr = llvm::dyn_cast<llvm::Value>(iter++);
+        vm_ptr = llvm::dyn_cast<llvm::Value>(iter++);
         regs_ptr->setName("regs_ptr");
+        core_ptr->setName("core_ptr");
+        vm_ptr->setName("vm_ptr");
         return f;
     }
 
@@ -525,7 +533,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
     sync_type sync_exec;
-    MCJIT_helper jitHelper;
+    jit_helper<typename arch::traits<ARCH>::addr_t> jit;
     llvm::IRBuilder<>& builder;
     // non-owning pointers
     llvm::Module* mod;
