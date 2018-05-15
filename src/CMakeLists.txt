@@ -3,7 +3,7 @@ set(LIB_HEADERS ${IssHeaders} )
 set(LIB_SOURCES
     dbgsrvbase.cpp
     gdb_session.cpp
-    MCJIThelper.cpp
+    jit_helper.cpp
     vm_base.cpp
     cmdhandler.cpp
     target_adapter_base.cpp

@@ -32,7 +32,7 @@
 //       eyck@minres.com - initial API and implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iss/jit/MCJIThelper.h>
+#include <iss/jit/jit_helper.h>
 #include <iss/log_categories.h>
 #include <llvm/Support/Debug.h> //EnableDebugBuffering
 #include <llvm/Support/Error.h>
@@ -53,10 +53,10 @@
 #include <memory>
 
 using namespace llvm;
-using namespace iss::vm;
 using namespace logging;
 
-void iss::init_jit(int argc, char *argv[]) {
+namespace iss {
+void init_jit(int argc, char *argv[]) {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
@@ -66,23 +66,23 @@ void iss::init_jit(int argc, char *argv[]) {
     // EnableDebugBuffering = true;
 }
 
-LLVMContext &iss::getContext() {
+LLVMContext &getContext() {
     static LLVMContext context;
     return context;
 }
 
-MCJIT_helper::MCJIT_helper(LLVMContext &context)
-: context(context), bldr(new llvm::IRBuilder<>(getContext())) {}
+namespace vm {
+namespace jit {
 
-uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)> generator,
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)>& generator,
         bool dumpEnabled) {
 #ifndef NDEBUG
     LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
-	std::array<char, 20> s;
+	std::array<char, 32> s;
 	sprintf(s.data(), "mcjit_module_#%X_", ++i);
-	auto mod = std::make_unique<Module>(s.data(), getContext());
+	auto mod = std::make_unique<llvm::Module>(s.data(), iss::getContext());
     auto* f = generator(mod.get());
     assert(f!=nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
@@ -96,18 +96,19 @@ uint64_t MCJIT_helper::getPointerToFunction_(unsigned cluster_id, uint64_t phys_
     }
     std::string ErrStr;
     EngineBuilder eeb(std::move(mod)); // eeb and ee take ownership of module
-    //    EEB.setUseOrcMCJITReplacement(true);
-    ExecutionEngine *ee = eeb.setErrorStr(&ErrStr)
-                                          //.setMCJITMemoryManager(std::make_unique<SectionMemoryManager>())
-                                          //.setOptLevel(CodeGenOpt::Aggressive)
-                                          .setOptLevel(CodeGenOpt::None)
-                                          .create();
-    // Set the global so the code gen can use this.
+    eeb.setUseOrcMCJITReplacement(true);
+    TargetOptions to;
+    to.EnableFastISel=true;
+    to.GuaranteedTailCallOpt=false;
+    to.MCOptions.SanitizeAddress=false;
+    ExecutionEngine *ee = eeb.setEngineKind(EngineKind::JIT).setTargetOptions(to)
+            .setErrorStr(&ErrStr).setOptLevel(CodeGenOpt::None).create();
 	if (!ee)
 		throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
-    uint64_t fptr = ee->getFunctionAddress(f->getName());
-    func_map[phys_addr] = MCJIT_block{ee, fptr};
-    return fptr;
+    return translation_block{.f_ptr=ee->getFunctionAddress(f->getName()), .cont={nullptr, nullptr}, .mod_eng=ee};
 }
 
+}
+}
+}
