@@ -72,15 +72,15 @@ LLVMContext &getContext() {
 }
 
 namespace vm {
-namespace detail {
+namespace jit {
 
-jit_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)>& generator,
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)>& generator,
         bool dumpEnabled) {
 #ifndef NDEBUG
     LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
-	std::array<char, 20> s;
+	std::array<char, 32> s;
 	sprintf(s.data(), "mcjit_module_#%X_", ++i);
 	auto mod = std::make_unique<llvm::Module>(s.data(), iss::getContext());
     auto* f = generator(mod.get());
@@ -96,18 +96,17 @@ jit_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::fun
     }
     std::string ErrStr;
     EngineBuilder eeb(std::move(mod)); // eeb and ee take ownership of module
-    //    EEB.setUseOrcMCJITReplacement(true);
-    ExecutionEngine *ee = eeb.setErrorStr(&ErrStr)
-                                          //.setMCJITMemoryManager(std::make_unique<SectionMemoryManager>())
-                                          //.setOptLevel(CodeGenOpt::Aggressive)
-                                          .setOptLevel(CodeGenOpt::None)
-                                          .create();
-    // Set the global so the code gen can use this.
+    eeb.setUseOrcMCJITReplacement(true);
+    TargetOptions to;
+    to.EnableFastISel=true;
+    to.GuaranteedTailCallOpt=false;
+    to.MCOptions.SanitizeAddress=false;
+    ExecutionEngine *ee = eeb.setEngineKind(EngineKind::JIT).setTargetOptions(to)
+            .setErrorStr(&ErrStr).setOptLevel(CodeGenOpt::None).create();
 	if (!ee)
 		throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
-    uint64_t fptr = ee->getFunctionAddress(f->getName());
-    return jit_block(ee, fptr);
+    return translation_block{.f_ptr=ee->getFunctionAddress(f->getName()), .cont={nullptr, nullptr}, .mod_eng=ee};
 }
 
 }

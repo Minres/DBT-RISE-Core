@@ -64,7 +64,7 @@ public:
      * @param cycles number if instructions to be simulated
      * @return number of executed instructions
      */
-    virtual int start(int64_t cycles = -1, bool dump = false) = 0;
+    virtual int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false) = 0;
     /**
      * reset the core
      *

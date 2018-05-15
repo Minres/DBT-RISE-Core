@@ -104,7 +104,9 @@ public:
         return *reinterpret_cast<T *>(&res[0]);
     }
 
-    int start(int64_t icount = -1, bool dump = false) override {
+    using func_ptr = uint64_t (*)(uint8_t*, void*, void*);
+
+    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false) override {
         int error = 0;
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
@@ -125,14 +127,52 @@ public:
             }};
             // explicit std::function to allow use as reference in call below
             std::function<llvm::Function*(llvm::Module*)> gen_ref(std::ref(generator));
+            jit::translation_block *last_tb = nullptr, *cur_tb=nullptr;
+            uint32_t last_branch = std::numeric_limits<uint32_t>::max();
             while (icount < 0 || ((int64_t)core.get_icount()) < icount) {
                 try {
+                    // translate into physical address
                     const auto pc_p = core.v2p(pc);
-                    auto f=jit.getPointerToFunction(cluster_id, pc_p.val, gen_ref, dump);
-                    pc.val = f(regs_base_ptr, static_cast<arch_if *>(&core), static_cast<vm_if *>(this));
-//                    pc.val=jit.jitAndExecute(cluster_id, pc_p.val, generator, dump);
-                    if(cont == FLUSH) jit.flush_entries(cluster_id);
-                    if(cont==TRAP) jit.remove_entry(cluster_id, pc_p.val);
+                    // check if we have the block already compiled
+                    auto it = this->func_map.find(pc_p.val);
+                    if (it == this->func_map.end()){ // if not generate and compile it
+                        auto res  = func_map.insert(
+                                std::make_pair(pc_p.val, vm::jit::getPointerToFunction(cluster_id, pc_p.val, gen_ref, dump))
+                            );
+                        it=res.first;
+                    }
+                    cur_tb = &(it->second);
+                    // if we have a previous block link the just compiled one as successor of the last tb
+                    if(last_tb && last_branch<2 && last_tb->cont[last_branch]==nullptr)
+                        last_tb->cont[last_branch]=cur_tb;
+                    do {
+                        // execute the compiled function
+                        pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(
+                                regs_base_ptr,
+                                static_cast<arch_if *>(&core),
+                                static_cast<vm_if *>(this));
+                        // update last state
+                        last_tb=cur_tb;
+                        last_branch = core.get_last_branch();
+                        auto cur_icount=core.get_icount();
+                        // if the current tb has a successor assign to current tb
+                        if(last_branch<2 && cur_tb->cont[last_branch]!=nullptr && cur_icount<icount)
+                            cur_tb=cur_tb->cont[last_branch];
+                        else // if not we need to compile one
+                            cur_tb=nullptr;
+                    } while(cur_tb!=nullptr);
+                    if(cont == FLUSH){
+                        for(auto& e: func_map)
+                            delete(e.second.mod_eng);
+                        func_map.clear();
+                    }
+                    if(cont==TRAP){
+                        auto it =func_map.find(pc_p.val);
+                        if(it!=func_map.end()){
+                            delete(it->second.mod_eng);
+                            func_map.erase(it);
+                        }
+                    }
                 } catch (trap_access &ta) {
                     pc.val = core.enter_trap(ta.id, ta.addr);
                 }
@@ -151,7 +191,7 @@ public:
                                                               // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        LOG(INFO) << "Executed " << core.get_icount() << " instructions in " << jit.size(cluster_id)
+        LOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size()
                   << " code blocks during " << millis << "ms resulting in " << (core.get_icount() * 0.001 / millis)
                   << "MIPS";
         return error;
@@ -171,10 +211,10 @@ protected:
     std::tuple<continuation_e, llvm::Function *> disass(virt_addr_t &pc) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
-        processing_pc_entry addr(*this, pc, this->core.v2p(pc));
+        std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, this->core.v2p(pc));
         unsigned int num_inst = 0;
         //loaded_regs.clear();
-        func = this->open_block_func();
+        func = this->open_block_func(cur_pc_mark.second);
         leave_blk = llvm::BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
         trap_blk = llvm::BasicBlock::Create(mod->getContext(), "trap", func);
@@ -194,11 +234,11 @@ protected:
                 builder.CreateBr(leave_blk);
             }
             const phys_addr_t end_pc(this->core.v2p(--cur_pc));
-            assert(this->processing_pc.top().first.val <= cur_pc.val);
+            assert(cur_pc_mark.first.val <= cur_pc.val);
             return std::make_tuple(cont, func);
         } catch (trap_access &ta) {
             const phys_addr_t end_pc(this->core.v2p(--cur_pc));
-            if (this->processing_pc.top().first.val <= cur_pc.val) { // close the block and return result up to here
+            if (cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
                 builder.SetInsertPoint(bb);
                 builder.CreateBr(leave_blk);
                 return std::make_tuple(cont, func);
@@ -234,8 +274,7 @@ protected:
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
     , sync_exec(NO_SYNC)
-    , jit(regs_base_ptr, &core, this)
-    , builder(jit.builder())
+    , builder(getContext())
     , mod(nullptr)
     , func(nullptr)
     , leave_blk(nullptr)
@@ -254,7 +293,7 @@ protected:
 		}
 	}
 
-    inline llvm::Type *get_type(unsigned width) const {
+    inline llvm::Type *get_type(unsigned width) {
         assert(width > 0);
         if (width < 2)
             return builder.getInt1Ty();
@@ -270,25 +309,19 @@ protected:
         return builder.getInt64Ty();
     }
 
-    inline llvm::Value *adj_from64(llvm::Value *val, size_t len) {
-        if (len != 64)
-            return builder.CreateTrunc(val, get_type(len));
-        else
-            return val;
-    }
-
     inline llvm::Value *adj_to64(llvm::Value *val) {
         return val->getType()->getScalarSizeInBits() == 64 ? val : builder.CreateZExt(val, builder.getInt64Ty());
     }
 
     inline llvm::Value *gen_get_reg(reg_e r) {
-        std::vector<llvm::Value *> args{core_ptr, reg_index(r)};
-        return adj_from64(builder.CreateCall(mod->getFunction("get_reg"), args),
-                          arch::traits<ARCH>::reg_bit_width(r));
+        std::vector<llvm::Value *> args{core_ptr, llvm::ConstantInt::get(getContext(), llvm::APInt(16, r))};
+        auto reg_size = arch::traits<ARCH>::reg_bit_width(r);
+        auto ret = builder.CreateCall(mod->getFunction("get_reg"), args);
+        return reg_size==64?ret:builder.CreateTrunc(ret, get_type(reg_size));
     }
 
     inline void gen_set_reg(reg_e r, llvm::Value *val) {
-        std::vector<llvm::Value *> args{core_ptr, reg_index(r), adj_to64(val)};
+        std::vector<llvm::Value *> args{core_ptr, llvm::ConstantInt::get(getContext(), llvm::APInt(16, r)), adj_to64(val)};
         builder.CreateCall(mod->getFunction("set_reg"), args);
     }
 
@@ -399,29 +432,26 @@ protected:
 
     template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
     inline llvm::Value *gen_ext(T val, unsigned size) const {
-        // vm::gen_ext(this->builder, val, size, isSigned);
         return llvm::ConstantInt::get(getContext(), llvm::APInt(size, val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
     inline llvm::Value *gen_ext(T val, unsigned size) const {
-        // vm::gen_ext(this->builder, val, size, isSigned);
         return llvm::ConstantInt::get(getContext(), llvm::APInt(size, val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
-    inline llvm::Value *gen_ext(T val, unsigned size) const {
+    inline llvm::Value *gen_ext(T val, unsigned size) {
         return builder.CreateZExtOrTrunc(val, builder.getIntNTy(size));
     }
 
     template <typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
     inline llvm::Value *gen_ext(T val, unsigned size, bool isSigned) const {
-        // vm::gen_ext(this->builder, val, size, isSigned);
         return llvm::ConstantInt::get(getContext(), llvm::APInt(size, val, isSigned));
     }
 
     template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
-    inline llvm::Value *gen_ext(T val, unsigned size, bool isSigned) const {
+    inline llvm::Value *gen_ext(T val, unsigned size, bool isSigned) {
         if (isSigned)
             return builder.CreateSExtOrTrunc(val, builder.getIntNTy(size));
         else
@@ -429,7 +459,7 @@ protected:
     }
 
     inline llvm::Value *gen_cond_assign(llvm::Value *cond, llvm::Value *t,
-                                        llvm::Value *f) const { // cond must be 1 or 0
+                                        llvm::Value *f) { // cond must be 1 or 0
         using namespace llvm;
         Value *const f_mask =
             builder.CreateSub(builder.CreateZExt(cond, get_type(f->getType()->getPrimitiveSizeInBits())),
@@ -440,7 +470,7 @@ protected:
     }
 
     inline void gen_cond_branch(llvm::Value *when, llvm::BasicBlock *then, llvm::BasicBlock *otherwise,
-                                unsigned likelyBranch = 0) const { // cond must be 1 or 0
+                                unsigned likelyBranch = 0) { // cond must be 1 or 0
         llvm::SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
         if (likelyBranch == 1)
             Weights[0] = LikelyBranchWeight;
@@ -484,9 +514,9 @@ protected:
         }
     }
 
-    virtual llvm::Function *open_block_func() {
+    virtual llvm::Function *open_block_func(phys_addr_t pc) {
         std::string name("block");
-        GenerateUniqueName(name, processing_pc.top().second.val);
+        GenerateUniqueName(name, pc.val);
         std::vector<llvm::Type *> mainFuncTyArgs{
             llvm::Type::getInt8PtrTy(mod->getContext()),
             llvm::Type::getInt8PtrTy(mod->getContext()),
@@ -506,31 +536,18 @@ protected:
         return f;
     }
 
-    llvm::ConstantInt *reg_index(unsigned r) const { return llvm::ConstantInt::get(getContext(), llvm::APInt(16, r)); }
-    class processing_pc_entry {
-    public:
-        processing_pc_entry(vm_base<ARCH> &vm, vm_base<ARCH>::virt_addr_t pc_v, vm_base<ARCH>::phys_addr_t pc_p)
-        : vm(vm) {
-            vm.processing_pc.push(std::make_pair(pc_v, pc_p));
-        }
-        ~processing_pc_entry() { vm.processing_pc.pop(); }
-
-    protected:
-        vm_base<ARCH> &vm;
-    };
     ARCH &core;
     unsigned core_id = 0;
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
     sync_type sync_exec;
-    jit_helper<typename arch::traits<ARCH>::addr_t> jit;
-    llvm::IRBuilder<>& builder;
+    std::unordered_map<uint64_t, jit::translation_block> func_map;
+    llvm::IRBuilder<> builder{getContext()};
     // non-owning pointers
     llvm::Module* mod;
     llvm::Function *func;
     llvm::Value *core_ptr = nullptr, *vm_ptr = nullptr, *regs_ptr = nullptr;
     llvm::BasicBlock *leave_blk, *trap_blk;
-    std::stack<std::pair<virt_addr_t, phys_addr_t>> processing_pc;
     //std::vector<llvm::Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
