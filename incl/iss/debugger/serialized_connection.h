@@ -209,7 +209,7 @@ public:
         header_stream << std::setw(header_length) << std::hex << std::setfill('0') << outbound_data_.size();
         if (!header_stream || header_stream.str().size() != header_length) {
             // Something went wrong, inform the caller.
-            ec.assign(boost::asio::error::invalid_argument, boost::system::get_system_category());
+            ec.assign(boost::asio::error::invalid_argument, boost::system::system_category());
             return;
         }
         outbound_header_ = header_stream.str();
@@ -241,7 +241,7 @@ public:
         std::size_t inbound_data_size = 0;
         if (!(is >> std::hex >> inbound_data_size)) {
             // Header doesn't seem to be valid. Inform the caller.
-            ec.assign(boost::asio::error::invalid_argument, boost::system::get_system_category());
+            ec.assign(boost::asio::error::invalid_argument, boost::system::system_category());
             return;
         }
         // Start an synchronous call to receive the data.

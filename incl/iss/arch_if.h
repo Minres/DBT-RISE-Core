@@ -57,7 +57,7 @@ public:
     const uint64_t addr;
 };
 
-namespace v1 {
+inline namespace v1 {
 struct instrumentation_if;
 }
 /**
