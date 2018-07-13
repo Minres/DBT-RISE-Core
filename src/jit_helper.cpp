@@ -61,9 +61,11 @@ void init_jit(int argc, char *argv[]) {
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
 
+#ifdef LLVM_DEBUG
     sys::PrintStackTraceOnErrorSignal(argv[0]);
-    // PrettyStackTraceProgram X(argc, argv);
-    // EnableDebugBuffering = true;
+    PrettyStackTraceProgram X(argc, argv);
+    EnableDebugBuffering = true;
+#endif
 }
 
 LLVMContext &getContext() {

@@ -129,7 +129,7 @@ public:
             std::function<llvm::Function*(llvm::Module*)> gen_ref(std::ref(generator));
             jit::translation_block *last_tb = nullptr, *cur_tb=nullptr;
             uint32_t last_branch = std::numeric_limits<uint32_t>::max();
-            while (icount < 0 || ((int64_t)core.get_icount()) < icount) {
+            while (!core.should_stop() && core.get_icount() < icount) {
                 try {
                     // translate into physical address
                     const auto pc_p = core.v2p(pc);
