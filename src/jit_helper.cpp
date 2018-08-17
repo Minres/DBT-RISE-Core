@@ -84,7 +84,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
     static unsigned i = 0;
 	std::array<char, 32> s;
 	sprintf(s.data(), "mcjit_module_#%X_", ++i);
-	auto mod = std::make_unique<llvm::Module>(s.data(), iss::getContext());
+	auto mod = llvm::make_unique<Module>(s.data(), iss::getContext());
     auto* f = generator(mod.get());
     assert(f!=nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
@@ -108,7 +108,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
 	if (!ee)
 		throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
-    return translation_block{.f_ptr=ee->getFunctionAddress(f->getName()), .cont={nullptr, nullptr}, .mod_eng=ee};
+    return translation_block(ee->getFunctionAddress(f->getName()), {nullptr, nullptr}, ee);
 }
 
 }

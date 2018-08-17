@@ -39,7 +39,6 @@
 
 #include "server_if.h"
 #include <atomic>
-#include <boost/lockfree/queue.hpp>
 #include <condition_variable>
 #include <deque>
 #include <iss/debugger_if.h>

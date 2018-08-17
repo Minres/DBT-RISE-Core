@@ -46,7 +46,6 @@
 #include <sstream>
 
 #include <unordered_map>
-#include <loki/AssocVector.h>
 #include <vector>
 #include <memory>
 #include <tuple>
@@ -76,6 +75,7 @@ struct alignas(4*sizeof(void*)) translation_block {
     uintptr_t f_ptr=0;
     std::array<translation_block*, 2> cont;
     llvm::ExecutionEngine* mod_eng;
+    explicit translation_block(uintptr_t f_ptr_, std::array<translation_block*, 2> cont_, llvm::ExecutionEngine* mod_eng_): f_ptr(f_ptr_), cont(cont_), mod_eng(mod_eng_){}
 };
 
 using gen_func = std::function<llvm::Function*(llvm::Module*)>;

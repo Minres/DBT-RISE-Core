@@ -226,7 +226,7 @@ std::string cmd_handler::running(const std::string in_buf, bool blocking, bool v
     CLOG(TRACE, connection) << "executing " << __FUNCTION__<<"("<<in_buf<<")";
     auto step = false;
     uint32_t sig{TARGET_SIGNAL0};
-    auto ret{iss::Err};
+    iss::status ret{iss::Err};
     /* 's' step from address
      * 'S' step from address with signal
      * 'c' continue from address
@@ -239,7 +239,7 @@ std::string cmd_handler::running(const std::string in_buf, bool blocking, bool v
             if(cmd[0] == 't'){
                 t->stop();
             } else {
-                auto c{cmd};
+                std::string c{cmd};
                 if(cmd.find(':')!=cmd.npos){ // the command is related to a specific thread
                     auto fields = util::split(cmd, ':');
                     // TODO: change to thread id instead of numbers

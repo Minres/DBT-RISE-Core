@@ -116,7 +116,7 @@ public:
             vm::continuation_e cont = CONT;
             // struct to minimize the type size of the closure below to allow SSO
             struct {vm_base* vm; virt_addr_t& pc; vm::continuation_e& cont;} param = {this, pc, cont};
-            auto generator{[&param](llvm::Module* m)->llvm::Function*{
+            std::function<llvm::Function*(llvm::Module*)> generator{[&param](llvm::Module* m)->llvm::Function*{
                 llvm::Function *func;
                 param.vm->mod=m;
                 param.vm->setup_module(m);
@@ -126,7 +126,7 @@ public:
                 return func;
             }};
             // explicit std::function to allow use as reference in call below
-            std::function<llvm::Function*(llvm::Module*)> gen_ref(std::ref(generator));
+            //std::function<llvm::Function*(llvm::Module*)> gen_ref(std::ref(generator));
             jit::translation_block *last_tb = nullptr, *cur_tb=nullptr;
             uint32_t last_branch = std::numeric_limits<uint32_t>::max();
             while (!core.should_stop() && core.get_icount() < icount) {
@@ -137,7 +137,7 @@ public:
                     auto it = this->func_map.find(pc_p.val);
                     if (it == this->func_map.end()){ // if not generate and compile it
                         auto res  = func_map.insert(
-                                std::make_pair(pc_p.val, vm::jit::getPointerToFunction(cluster_id, pc_p.val, gen_ref, dump))
+                                std::make_pair(pc_p.val, vm::jit::getPointerToFunction(cluster_id, pc_p.val, generator, dump))
                             );
                         it=res.first;
                     }

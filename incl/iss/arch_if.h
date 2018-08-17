@@ -38,7 +38,6 @@
 #include "vm_types.h"
 #include "common.h"
 
-#include <gsl/span>
 #include <algorithm>
 #include <vector>
 #include <iostream>

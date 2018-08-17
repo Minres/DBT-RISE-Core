@@ -104,12 +104,12 @@ public:
     , space(space)
     , val(addr) {}
 
-    constexpr addr_t& operator=(uint64_t o) {
+    const addr_t& operator=(uint64_t o) {
         val = o;
         return *this;
     }
 
-    constexpr addr_t& operator=(const addr_t &o) {
+    const addr_t& operator=(const addr_t &o) {
         val = o.val;
         return *this;
     }
@@ -138,24 +138,24 @@ public:
 };
 
 inline
-constexpr addr_t operator+(const addr_t& a, const addr_t &o) {
+addr_t operator+(const addr_t& a, const addr_t &o) {
     assert(a.type == o.type && a.space == o.space);
     return addr_t{a.access, a.type, a.space, a.val+o.val};
 }
 
 inline
-constexpr addr_t operator-(const addr_t& a, const addr_t &o) {
+addr_t operator-(const addr_t& a, const addr_t &o) {
     assert(a.type == o.type && a.space == o.space);
     return addr_t{a.access, a.type, a.space, a.val-o.val};
 }
 
 inline
-constexpr addr_t operator+(addr_t& a, uint64_t m) {
+addr_t operator+(addr_t& a, uint64_t m) {
     return addr_t{a.access, a.type, a.space, a.val+m};
 }
 
 inline
-constexpr addr_t operator-(addr_t& a, uint64_t m) {
+addr_t operator-(addr_t& a, uint64_t m) {
     return addr_t{a.access, a.type, a.space, a.val-m};
 }
 
