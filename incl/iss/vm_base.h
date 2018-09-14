@@ -129,6 +129,8 @@ public:
             //std::function<llvm::Function*(llvm::Module*)> gen_ref(std::ref(generator));
             jit::translation_block *last_tb = nullptr, *cur_tb=nullptr;
             uint32_t last_branch = std::numeric_limits<uint32_t>::max();
+            arch_if* const arch_if_ptr = static_cast<arch_if *>(&core);
+            vm_if* const vm_if_ptr = static_cast<vm_if *>(this);
             while (!core.should_stop() && core.get_icount() < icount) {
                 try {
                     // translate into physical address
@@ -147,10 +149,7 @@ public:
                         last_tb->cont[last_branch]=cur_tb;
                     do {
                         // execute the compiled function
-                        pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(
-                                regs_base_ptr,
-                                static_cast<arch_if *>(&core),
-                                static_cast<vm_if *>(this));
+                        pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
                         // update last state
                         last_tb=cur_tb;
                         last_branch = core.get_last_branch();
