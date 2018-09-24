@@ -79,7 +79,7 @@ namespace jit {
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)>& generator,
         bool dumpEnabled) {
 #ifndef NDEBUG
-    LOG(DEBUG) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
+    LOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
 	std::array<char, 32> s;

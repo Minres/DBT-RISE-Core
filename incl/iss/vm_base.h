@@ -176,7 +176,7 @@ public:
                     pc.val = core.enter_trap(ta.id, ta.addr);
                 }
 #ifndef NDEBUG
-                LOG(DEBUG) << "continuing  @0x" << std::hex << pc << std::dec;
+                LOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
 #endif
             }
         } catch (simulation_stopped &e) {
