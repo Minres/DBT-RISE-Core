@@ -46,12 +46,16 @@ class vm_plugin;
 
 class vm_if { // @suppress("Class has a virtual method and non-virtual destructor")
 public:
-	/**
-	 * register a plugin to the virtual machine
-	 *
-	 * @param plugin reference to the plugin to be registered
-	 */
-	virtual void register_plugin(vm_plugin& plugin) = 0;
+    /**
+     * virtual destructor
+     */
+    virtual ~vm_if() {}
+    /**
+     * register a plugin to the virtual machine
+     *
+     * @param plugin reference to the plugin to be registered
+     */
+    virtual void register_plugin(vm_plugin& plugin) = 0;
     /**
      * get the underlying class of the core to be simulated
      *
