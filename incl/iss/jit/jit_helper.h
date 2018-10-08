@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,16 +40,16 @@
 #include <iostream>
 #include <iss/arch/traits.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/IR/Module.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/Error.h>
 #include <sstream>
 
-#include <unordered_map>
-#include <vector>
+#include "boost/variant.hpp"
 #include <memory>
 #include <tuple>
-#include "boost/variant.hpp"
+#include <unordered_map>
+#include <vector>
 
 namespace iss {
 /**
@@ -71,17 +71,20 @@ class vm_if;
 namespace vm {
 namespace jit {
 
-struct alignas(4*sizeof(void*)) translation_block {
-    uintptr_t f_ptr=0;
-    std::array<translation_block*, 2> cont;
-    llvm::ExecutionEngine* mod_eng;
-    explicit translation_block(uintptr_t f_ptr_, std::array<translation_block*, 2> cont_, llvm::ExecutionEngine* mod_eng_): f_ptr(f_ptr_), cont(cont_), mod_eng(mod_eng_){}
+struct alignas(4 * sizeof(void *)) translation_block {
+    uintptr_t f_ptr = 0;
+    std::array<translation_block *, 2> cont;
+    llvm::ExecutionEngine *mod_eng;
+    explicit translation_block(uintptr_t f_ptr_, std::array<translation_block *, 2> cont_,
+                               llvm::ExecutionEngine *mod_eng_)
+    : f_ptr(f_ptr_)
+    , cont(cont_)
+    , mod_eng(mod_eng_) {}
 };
 
-using gen_func = std::function<llvm::Function*(llvm::Module*)>;
+using gen_func = std::function<llvm::Function *(llvm::Module *)>;
 
-translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func& generator, bool dumpEnabled);
-
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
 }
 }
 }

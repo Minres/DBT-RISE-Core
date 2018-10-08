@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,8 +36,8 @@
 #define _VM_IF_H_
 
 #include "vm_types.h"
-#include <string>
 #include <memory>
+#include <string>
 
 namespace iss {
 // forward declaration
@@ -55,7 +55,7 @@ public:
      *
      * @param plugin reference to the plugin to be registered
      */
-    virtual void register_plugin(vm_plugin& plugin) = 0;
+    virtual void register_plugin(vm_plugin &plugin) = 0;
     /**
      * get the underlying class of the core to be simulated
      *

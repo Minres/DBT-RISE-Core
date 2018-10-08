@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -357,13 +357,13 @@ protected:
 
 public:
     ///
-    void write_data(const std::string& t) {
+    void write_data(const std::string &t) {
         boost::system::error_code ec;
         this->write_data(t, ec);
         boost::asio::detail::throw_error(ec);
     }
 
-    void write_data(const std::string& t, boost::system::error_code &ec) {
+    void write_data(const std::string &t, boost::system::error_code &ec) {
         outbound_data_ = t;
 #ifdef EXTENDED_TRACE
         LOG(TRACE) << "outbound sync data with len " << outbound_data_.size() << ":'" << outbound_data_ << "'";

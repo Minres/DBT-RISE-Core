@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,9 +39,9 @@
 #include "server_if.h"
 #include "target_adapter_if.h"
 
-#include <unordered_map>
-#include <boost/optional.hpp>
 #include <array>
+#include <boost/optional.hpp>
+#include <unordered_map>
 
 namespace iss {
 namespace debugger {
@@ -87,12 +87,12 @@ public:
         const char *help;
     };
 
-    cmd_handler(iss::debugger::server_if &server, std::function<void(unsigned)>& stop_callback)
+    cmd_handler(iss::debugger::server_if &server, std::function<void(unsigned)> &stop_callback)
     : s(server)
     , t(s.get_target())
     , extended_protocol(false)
     , can_restart(false)
-    , stop_callback(stop_callback){}
+    , stop_callback(stop_callback) {}
 
     void attach();
 
@@ -104,7 +104,7 @@ public:
     std::string write_single_register(const std::string in_buf);
     std::string read_memory(const std::string in_buf);
     std::string write_memory(const std::string in_buf);
-    std::string running(const std::string in_buf, bool blocking=true, bool vCont=false);
+    std::string running(const std::string in_buf, bool blocking = true, bool vCont = false);
     int kill(const std::string in_buf, std::string &out_buf);
     std::string thread_alive(const std::string in_buf);
     void interrupt_target();
@@ -152,14 +152,14 @@ public:
     encoder_decoder encdec;
     bool extended_protocol;
     bool can_restart;
-    std::function<void(unsigned)>& stop_callback;
+    std::function<void(unsigned)> &stop_callback;
     std::unordered_map<uint64_t, unsigned> bp_map;
-    std::array<const my_custom_command,3> rp_remote_commands = { {
-    		/* Table of commands */
-			GEN_ENTRY(help, "This help text"),
-			GEN_ENTRY(set, "Set debug [level]"),
-			{nullptr, nullptr, nullptr} // sentinel, end of table marker
-	}};
+    std::array<const my_custom_command, 3> rp_remote_commands = {{
+        /* Table of commands */
+        GEN_ENTRY(help, "This help text"),
+        GEN_ENTRY(set, "Set debug [level]"),
+        {nullptr, nullptr, nullptr} // sentinel, end of table marker
+    }};
 };
 
 } // namespace debugger

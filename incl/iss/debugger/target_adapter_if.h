@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,21 +35,21 @@
 #ifndef _TARGET_ADAPTER_IF_H_
 #define _TARGET_ADAPTER_IF_H_
 
+#include <array>
+#include <functional>
 #include <iss/vm_types.h>
 #include <string>
 #include <vector>
-#include <functional>
-#include <array>
 
 namespace iss {
 namespace debugger {
 
 /* Function to do console output from wait methods */
-//using out_func = void (*)(const char *string);
+// using out_func = void (*)(const char *string);
 using out_func = std::function<void(const char *string)>;
 /* Function to transfer data received as qRcmd response */
-//using data_func = void (*)(const char *string);
-using data_func = std::function<void (const std::string&)>;
+// using data_func = void (*)(const char *string);
+using data_func = std::function<void(const std::string &)>;
 
 /* Function to do logging */
 using log_func = void (*)(int level, const char *string, ...);
@@ -63,9 +63,9 @@ class rp_thread_info {
 public:
     rp_thread_ref thread_id;
     int exists;
-	std::string display;
-	std::string thread_name;
-	std::string more_display;
+    std::string display;
+    std::string thread_name;
+    std::string more_display;
 };
 
 class target_adapter_if {
@@ -76,8 +76,8 @@ public:
         /* command name */
         const char *name;
         /* command function */
-        //int (*function)(int, char **, out_func, data_func);
-        std::function<int (int, char **, out_func, data_func)> function;
+        // int (*function)(int, char **, out_func, data_func);
+        std::function<int(int, char **, out_func, data_func)> function;
         /* one line of help text */
         const char *help;
     };
@@ -87,7 +87,7 @@ public:
     /* return table of remote commands */
     virtual const std::vector<custom_command> &custom_commands() = 0;
 
-    virtual void add_custom_command(custom_command&& cmd) = 0;
+    virtual void add_custom_command(custom_command &&cmd) = 0;
     /*======================   Help/Debug  =======================*/
 
     /* Help, argument is a pointer to itself */
@@ -187,19 +187,21 @@ public:
 
     /* Resume from current address, if not supported it has to be figured out by
      * wait */
-    inline iss::status resume_from_current(bool step, int sig, rp_thread_ref thread){
+    inline iss::status resume_from_current(bool step, int sig, rp_thread_ref thread) {
         return resume_from_current(step, sig, thread, std::function<void(unsigned)>());
     }
 
-    virtual iss::status resume_from_current(bool step, int sig, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) = 0;
+    virtual iss::status resume_from_current(bool step, int sig, rp_thread_ref thread,
+                                            std::function<void(unsigned)> stop_callback) = 0;
 
     /* Resume from specified address, if not supported it
      has to be figured out by wait */
-    inline iss::status resume_from_addr(bool step, int sig, uint64_t addr, rp_thread_ref thread){
+    inline iss::status resume_from_addr(bool step, int sig, uint64_t addr, rp_thread_ref thread) {
         return resume_from_addr(step, sig, addr, thread, std::function<void(unsigned)>());
     }
 
-    virtual iss::status resume_from_addr(bool step, int sig, uint64_t addr, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) = 0;
+    virtual iss::status resume_from_addr(bool step, int sig, uint64_t addr, rp_thread_ref thread,
+                                         std::function<void(unsigned)> stop_callback) = 0;
 
     /* Wait function, wait_partial is called by the proxy with one
      tick intervals, so it allows to break into running
@@ -218,9 +220,7 @@ public:
 
      status_string is unchanged unless return value is OK and
      implemented is non 0 */
-    virtual iss::status wait_non_blocking(bool &running) {
-        return iss::NotSupported;
-    }
+    virtual iss::status wait_non_blocking(bool &running) { return iss::NotSupported; }
 
     /* Wait for event, fill (null-terminated) status_string upon successful
      return, if there is not enough space for 'TAA... string' use
@@ -299,7 +299,7 @@ public:
     /* Query packet size */
     virtual iss::status packetsize_query(std::string &out_buf) = 0;
 
-    virtual iss::status target_xml_query(std::string& out_buf){ return iss::NotSupported;}
+    virtual iss::status target_xml_query(std::string &out_buf) { return iss::NotSupported; }
 };
 
 } // namespace debugger

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,7 +50,6 @@ namespace debugger {
 
 class server_base : public server_if {
 public:
-
     server_base(debugger_if *adapter);
 
     unsigned int get_reg_width(int index) const;

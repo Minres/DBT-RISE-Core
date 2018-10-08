@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,13 +35,13 @@
 #ifndef _ARCH_IF_H_
 #define _ARCH_IF_H_
 
-#include "vm_types.h"
 #include "common.h"
+#include "vm_types.h"
 
 #include <algorithm>
-#include <vector>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
+#include <vector>
 
 namespace iss {
 /**
@@ -56,9 +56,7 @@ public:
     const uint64_t addr;
 };
 
-inline namespace v1 {
-struct instrumentation_if;
-}
+inline namespace v1 { struct instrumentation_if; }
 /**
  * architecture interface
  */
@@ -101,7 +99,7 @@ public:
      * @param name name of th efile to load
      * @param type of file, implementation dependent
      */
-    virtual std::pair<uint64_t,bool> load_file(std::string name, int type = -1) = 0;
+    virtual std::pair<uint64_t, bool> load_file(std::string name, int type = -1) = 0;
 
     /**
      * notify the core about the execution phase (if needed)
@@ -176,7 +174,7 @@ public:
      * @return string containing the core status in text form
      */
     virtual void disass_output(uint64_t pc, const std::string instr) {
-        std::cout << "0x"<<std::setw(16)<<std::setfill('0')<<std::hex<<pc<<"\t\t"<<instr<<std::endl;
+        std::cout << "0x" << std::setw(16) << std::setfill('0') << std::hex << pc << "\t\t" << instr << std::endl;
     };
     /**
      * get the pointer to the instrumentation interface. In case there is no instrumentation
@@ -184,7 +182,7 @@ public:
      *
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
-    virtual v1::instrumentation_if* get_instrumentation_if() { return nullptr;};
+    virtual v1::instrumentation_if *get_instrumentation_if() { return nullptr; };
 };
 }
 

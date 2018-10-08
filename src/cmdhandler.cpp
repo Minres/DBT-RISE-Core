@@ -1,54 +1,54 @@
-////////////////////////////////////////////////////////////////////////////////
-// Copyright (C) 2017, MINRES Technologies GmbH
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-// Contributors:
-//       eyck@minres.com - initial API and implementation
-////////////////////////////////////////////////////////////////////////////////
+/*******************************************************************************
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * Contributors:
+ *       eyck@minres.com - initial API and implementation
+ ******************************************************************************/
 
 #include "iss/debugger/cmdhandler.h"
 #include "iss/log_categories.h"
 #include "util/ities.h"
 
+#include <boost/tokenizer.hpp>
 #include <cstdarg>
 #include <numeric>
-#include <stdexcept>
 #include <sstream>
-#include <boost/tokenizer.hpp>
+#include <stdexcept>
 
 using namespace iss::debugger;
 using namespace boost;
 
 void rp_console_output(const char *buf) {
     std::string msg(buf);
-    if(buf[msg.size()-1]=='\n'){
-        CLOG(INFO, connection)<<msg.substr(0, msg.size()-1);
+    if (buf[msg.size() - 1] == '\n') {
+        CLOG(INFO, connection) << msg.substr(0, msg.size() - 1);
     } else {
         CLOG(INFO, connection) << buf;
     }
@@ -223,7 +223,7 @@ std::string cmd_handler::write_memory(const std::string in_buf) {
 }
 
 std::string cmd_handler::running(const std::string in_buf, bool blocking, bool vCont) {
-    CLOG(TRACE, connection) << "executing " << __FUNCTION__<<"("<<in_buf<<")";
+    CLOG(TRACE, connection) << "executing " << __FUNCTION__ << "(" << in_buf << ")";
     auto step = false;
     uint32_t sig{TARGET_SIGNAL0};
     iss::status ret{iss::Err};
@@ -232,32 +232,33 @@ std::string cmd_handler::running(const std::string in_buf, bool blocking, bool v
      * 'c' continue from address
      * 'C' continue from address with signal
      */
-    if(vCont){//s:0;c
+    if (vCont) { // s:0;c
         auto cmds = util::split(in_buf, ';');
-        for(auto& cmd : cmds){
+        for (auto &cmd : cmds) {
             rp_thread_ref thread{};
-            if(cmd[0] == 't'){
+            if (cmd[0] == 't') {
                 t->stop();
             } else {
                 std::string c{cmd};
-                if(cmd.find(':')!=cmd.npos){ // the command is related to a specific thread
+                if (cmd.find(':') != cmd.npos) { // the command is related to a specific thread
                     auto fields = util::split(cmd, ':');
                     // TODO: change to thread id instead of numbers
                     if (!encdec.dec_uint64(fields[1].c_str(), &thread.val)) return "E00";
-                    c=fields[0];
+                    c = fields[0];
                 }
-                if(c.size()>1)
-                    if (!encdec.dec_uint32(c.data()+1, &sig)) return "E00";
-                step |= (c[0]& 0x5f) == 'S'; // convert to uppercase and check
-                ret = t->resume_from_current((c[0]& 0x5f) == 'S', sig, thread, blocking? std::function<void(unsigned)>{}:stop_callback);
+                if (c.size() > 1)
+                    if (!encdec.dec_uint32(c.data() + 1, &sig)) return "E00";
+                step |= (c[0] & 0x5f) == 'S'; // convert to uppercase and check
+                ret = t->resume_from_current((c[0] & 0x5f) == 'S', sig, thread,
+                                             blocking ? std::function<void(unsigned)>{} : stop_callback);
                 if (ret == iss::Err) return to_string(ret);
             }
         }
-    }else{//c[addr] or Csig[;addr]
-        step = (in_buf[0]& 0x5f) == 'S'; // convert to uppercase and check
-        const char* addr_ptr = nullptr;
+    } else {                              // c[addr] or Csig[;addr]
+        step = (in_buf[0] & 0x5f) == 'S'; // convert to uppercase and check
+        const char *addr_ptr = nullptr;
         if (in_buf[0] < 'a') { // Uppercase, resume with signal, format Csig[;AA..AA], Ssig[;AA..AA], or Wsig[;AA..AA]
-            const char* in = in_buf.data()+1;
+            const char *in = in_buf.data() + 1;
             if (strchr(in, ';')) {
                 if (!encdec.dec_uint32(&in, &sig, ';')) return "E00";
                 addr_ptr = in;
@@ -270,27 +271,29 @@ std::string cmd_handler::running(const std::string in_buf, bool blocking, bool v
         if (addr_ptr) {
             uint64_t addr;
             if (!encdec.dec_uint64(&addr_ptr, &addr, '\0')) return "E00";
-            ret = t->resume_from_addr(step, sig, addr, rp_thread_ref{}, blocking? std::function<void(unsigned)>{}:stop_callback);
+            ret = t->resume_from_addr(step, sig, addr, rp_thread_ref{},
+                                      blocking ? std::function<void(unsigned)>{} : stop_callback);
         } else {
-            ret = t->resume_from_current(step, sig, rp_thread_ref{}, blocking? std::function<void(unsigned)>{}:stop_callback);
+            ret = t->resume_from_current(step, sig, rp_thread_ref{},
+                                         blocking ? std::function<void(unsigned)>{} : stop_callback);
         }
         if (ret != iss::Ok) return to_string(ret);
     }
 
     /* Now we have to wait for the target */
     /* Try a non-blocking wait first */
-    bool running=false;
+    bool running = false;
     ret = t->wait_non_blocking(running);
-    if((ret == iss::NotSupported || blocking) && !step){
+    if ((ret == iss::NotSupported || blocking) && !step) {
         // There is no partial wait facility for this target or there is no stop callback provided,
         // so use as blocking wait */
         ret = t->wait_blocking();
-        running=false;
+        running = false;
     }
     if (ret == iss::Err) return to_string(ret);
     if (!running) {
         /* We are done. The program has already stopped */
-        return "S05";// answer with SIGTRAP
+        return "S05"; // answer with SIGTRAP
     } else
         return "OK";
 }
@@ -542,10 +545,8 @@ std::string cmd_handler::query(const std::string in_buf) {
     if (strncmp(in_buf.c_str() + 1, "Rcmd,", 5) == 0) {
         /* Remote command */
         std::stringstream ss;
-        auto ret = rcmd(in_buf.c_str() + 6, rp_console_output, [&ss](const std::string& str)->void {
-            ss<<str;
-        });
-        if(ret == iss::Ok && ss.str().size()>0)
+        auto ret = rcmd(in_buf.c_str() + 6, rp_console_output, [&ss](const std::string &str) -> void { ss << str; });
+        if (ret == iss::Ok && ss.str().size() > 0)
             return ss.str();
         else
             return to_string(ret);
@@ -554,19 +555,19 @@ std::string cmd_handler::query(const std::string in_buf) {
         /* query features 'Xfer:features:read:annex:offset,length*/
         static std::string buf;
         const std::string start("l"); // last packet otherwise 'm'
-        if(buf.size()==0) t->target_xml_query(buf);
+        if (buf.size() == 0) t->target_xml_query(buf);
         auto col_pos = in_buf.find_first_of(':', 20);
-        auto annex=in_buf.substr(20, col_pos-20);
-        auto cpos=in_buf.find_first_of(',', col_pos);
-        auto offset_str = in_buf.substr(col_pos+1, cpos-col_pos-1);
-        auto length_str = in_buf.substr(cpos+1);
+        auto annex = in_buf.substr(20, col_pos - 20);
+        auto cpos = in_buf.find_first_of(',', col_pos);
+        auto offset_str = in_buf.substr(col_pos + 1, cpos - col_pos - 1);
+        auto length_str = in_buf.substr(cpos + 1);
         // TODO: implement xml handling properly
         return start + buf;
     }
     if (strncmp(in_buf.c_str() + 1, "Supported", 9) == 0 && (in_buf[10] == ':' || in_buf[10] == '\0')) {
         std::string stdFeat("vContSupported+;hwbreak+;swbreak+;qXfer:features:read+");
-//        std::string stdFeat("vContSupported+;hwbreak+;swbreak+");
-        //std::string stdFeat("hwbreak+;swbreak+");
+        //        std::string stdFeat("vContSupported+;hwbreak+;swbreak+");
+        // std::string stdFeat("hwbreak+;swbreak+");
         std::string buf;
         ret = t->packetsize_query(buf);
         switch (ret) {
@@ -772,7 +773,7 @@ int cmd_handler::rcmd_set(int argc, char *argv[], out_func of, data_func df) {
         return iss::Err;
     }
     // print unconditional
-    LOGGER(DEFAULT)().get(logging::INFO)<<"Log level set to "<< LOGGER(DEFAULT)::reporting_level();
+    LOGGER(DEFAULT)().get(logging::INFO) << "Log level set to " << LOGGER(DEFAULT)::reporting_level();
     return iss::Ok;
 }
 
@@ -846,17 +847,17 @@ boost::optional<std::string> cmd_handler::handle_extended(const std::string in_b
         t->stop();
         return boost::optional<std::string>{"OK"};
         // to be implemented later
-    } else if(in_buf.find("vCont", 0)==0){
-        if(in_buf[5]=='?') {
+    } else if (in_buf.find("vCont", 0) == 0) {
+        if (in_buf[5] == '?') {
             // return boost::optional<std::string>{"vCont;c;C;t;s;S"};
             return boost::optional<std::string>{""};
-        } else if(in_buf.size()==5){
+        } else if (in_buf.size() == 5) {
             std::string ret = running("c", false, true);
-            if(ret.size()>0) return ret;
+            if (ret.size() > 0) return ret;
             return boost::optional<std::string>{};
         } else {
             std::string ret = running(in_buf.substr(6), false, true);
-            if(ret.size()>0) return ret;
+            if (ret.size() > 0) return ret;
             return boost::optional<std::string>{};
         }
     } else if (in_buf.find("vRun", 0) == 0) {

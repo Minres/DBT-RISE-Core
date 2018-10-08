@@ -45,7 +45,6 @@ namespace debugger {
 
 class target_adapter_base : public target_adapter_if {
 public:
-
     target_adapter_base(iss::debugger::server_if *srv)
     : srv(srv)
     , bp_lut(0) {}
@@ -54,9 +53,9 @@ public:
 
     inline void check_continue(uint64_t pc) {
         unsigned handle = bp_lut.getEntry(pc);
-        if(!handle && break_cond){
+        if (!handle && break_cond) {
             handle = break_cond();
-            if(handle) break_cond=std::function<unsigned()>();
+            if (handle) break_cond = std::function<unsigned()>();
         }
         srv->check_continue(handle);
     }
@@ -64,7 +63,7 @@ public:
     /* return table of remote commands */
     const std::vector<target_adapter_if::custom_command> &custom_commands() override { return ccmds; }
 
-    void add_custom_command(custom_command&& cmd) override {ccmds.push_back(cmd); };
+    void add_custom_command(custom_command &&cmd) override { ccmds.push_back(cmd); };
 
     void help(const char *prog_name) override;
 
@@ -82,7 +81,8 @@ public:
 
     void stop() override;
 
-    iss::status resume_from_current(bool step, int sig, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) override;
+    iss::status resume_from_current(bool step, int sig, rp_thread_ref thread,
+                                    std::function<void(unsigned)> stop_callback) override;
 
     iss::status wait_non_blocking(bool &running) override;
 

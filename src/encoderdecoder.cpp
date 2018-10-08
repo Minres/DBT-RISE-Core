@@ -1,36 +1,35 @@
-////////////////////////////////////////////////////////////////////////////////
-// Copyright (C) 2017, MINRES Technologies GmbH
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-//    this list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-// LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-// CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-// CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-// ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-// POSSIBILITY OF SUCH DAMAGE.
-//
-// Contributors:
-//       eyck@minres.com - initial API and implementation
-////////////////////////////////////////////////////////////////////////////////
+/*******************************************************************************
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ * Contributors:
+ *       eyck@minres.com - initial API and implementation
+ ******************************************************************************/
 
 #include "iss/debugger/encoderdecoder.h"
 
@@ -100,7 +99,7 @@ std::vector<uint8_t> encoder_decoder::dec_reg_assignment(const char *in, unsigne
 int encoder_decoder::dec_mem(const char *in, uint64_t *addr, size_t *len) {
     assert(in != nullptr);
     assert(addr != nullptr);
-    assert(len != 0);
+    assert(len != nullptr);
     if (!dec_uint64(&in, addr, ',')) return false;
 
     *len = 0;
@@ -217,7 +216,7 @@ std::string encoder_decoder::enc_data(const std::vector<uint8_t> &data) {
     assert(data.size() > 0);
 
     std::stringstream ss;
-    for (size_t i = 0; i < data.size(); i++) ss << enc_byte(data[i], true) << enc_byte(data[i], false);
+    for (unsigned char i : data) ss << enc_byte(i, true) << enc_byte(i, false);
     return ss.str();
 }
 /* Encode string into an array of characters */
@@ -245,9 +244,9 @@ int encoder_decoder::enc_string(const char *s, char *out, size_t out_size) {
     return i;
 }
 
-void encoder_decoder::encode_str(std::stringstream &ss, const std::string& str) {
+void encoder_decoder::encode_str(std::stringstream &ss, const std::string &str) {
     /* and Encode value */
-    std::ios init(NULL);
+    std::ios init(nullptr);
     init.copyfmt(ss);
     ss << std::setw(2) << std::setfill('0') << std::hex << str.length();
     ss.copyfmt(init);
@@ -313,7 +312,7 @@ std::string encoder_decoder::enc_process_query_response(unsigned int mask, const
         default:
             /* Unexpected tag value */
             assert(false);
-            return 0;
+            return nullptr;
         }
     }
 
@@ -434,7 +433,7 @@ int encoder_decoder::dec_uint32(const char **in, uint32_t *val, char break_char)
 }
 
 /* Decode a hex string to an unsigned 64-bit value */
-int encoder_decoder::dec_uint64(const char** in, uint64_t *val, char break_char) {
+int encoder_decoder::dec_uint64(const char **in, uint64_t *val, char break_char) {
     unsigned int nibble;
     uint64_t tmp;
     int count;

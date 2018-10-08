@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,8 +36,8 @@
 #define _ISS_DEFINITIONS_H_
 
 #if defined(__cplusplus) && (__cplusplus >= 201402L)
-#  define DEPRECATED [[deprecated]]
-#elif defined( __GNUC__)
+#define DEPRECATED [[deprecated]]
+#elif defined(__GNUC__)
 #define DEPRECATED __attribute__((deprecated))
 #elif defined(_MSC_VER)
 #define DEPRECATED __declspec(deprecated)
@@ -45,6 +45,5 @@
 #pragma message("WARNING: You need to implement DEPRECATED for this compiler")
 #define DEPRECATED
 #endif
-
 
 #endif /* DBT_CORE_INCL_ISS_DEFINITIONS_H_ */
