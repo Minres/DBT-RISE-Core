@@ -31,7 +31,7 @@ include_directories(
     ${LLVM_INCLUDE_DIRS}
 )
 
-add_dependent_header(util)
+#add_dependent_header(util)
 
 add_definitions(${LLVM_DEFINITIONS})
 
