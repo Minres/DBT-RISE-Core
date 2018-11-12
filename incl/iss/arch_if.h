@@ -128,7 +128,20 @@ public:
      * @param data pointer to the memory to read into
      * @return success or failure of access
      */
-    virtual iss::status read(const addr_t &addr, unsigned length, uint8_t *const data) = 0;
+    inline iss::status read(const addr_t &addr, const unsigned length, uint8_t *const data){
+        return read(addr.type, addr.access, addr.space, addr.val, length, data);
+    }
+    /**
+     * read from addresses
+     *
+     * @param addr address to read from, contains access type, address space and
+     * address
+     * @param length length of th edata to read
+     * @param data pointer to the memory to read into
+     * @return success or failure of access
+     */
+    virtual iss::status read(const address_type type, const access_type access, const uint32_t space,
+            const uint64_t addr, const unsigned length, uint8_t *const data) = 0;
     /**
      * write to addresses
      *
@@ -138,8 +151,21 @@ public:
      * @param data pointer to the memory to write from
      * @return success or failure of access
      */
-    virtual iss::status write(const addr_t &addr, unsigned length, const uint8_t *const data) = 0;
+    inline iss::status write(const addr_t &addr, const unsigned length, const uint8_t *const data){
+        return write(addr.type, addr.access, addr.space, addr.val, length, data);
+    }
     /**
+     * write to addresses
+     *
+     * @param addr address to read from, contains access type, address space and
+     * address
+     * @param length length of the data to write
+     * @param data pointer to the memory to write from
+     * @return success or failure of access
+     */
+    virtual iss::status write(const address_type type, const access_type access, const uint32_t space,
+            const uint64_t addr, const unsigned length, const uint8_t *const data) = 0;
+   /**
      * vm encountered a trap (exception, interrupt), process accordingly in core
      *
      * @param flags trap flags
