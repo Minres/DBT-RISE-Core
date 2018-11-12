@@ -32,18 +32,60 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _ISS_DEFINITIONS_H_
-#define _ISS_DEFINITIONS_H_
+#ifndef _MCJITHELPER_H_
+#define _MCJITHELPER_H_
 
-#if defined(__cplusplus) && (__cplusplus >= 201402L)
-#define DEPRECATED [[deprecated]]
-#elif defined(__GNUC__)
-#define DEPRECATED __attribute__((deprecated))
-#elif defined(_MSC_VER)
-#define DEPRECATED __declspec(deprecated)
-#else
-#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
-#define DEPRECATED
-#endif
+#include "llvm/ExecutionEngine/GenericValue.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include <iostream>
+#include <iss/arch/traits.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Support/Error.h>
+#include <sstream>
 
-#endif /* DBT_CORE_INCL_ISS_DEFINITIONS_H_ */
+#include "boost/variant.hpp"
+#include <memory>
+#include <tuple>
+#include <unordered_map>
+#include <vector>
+
+namespace iss {
+/**
+ * get the LLVM context
+ * NOTE: this is a singleton and not threadsave
+ * @return the cotext
+ */
+llvm::LLVMContext &getContext();
+/**
+ * initialize the LLVM infrastructure
+ * @param argc the number of CLI arguments
+ * @param argv the array of CLI arguments
+ */
+void init_jit(int argc, char *argv[]);
+
+class arch_if;
+class vm_if;
+
+namespace vm {
+namespace jit {
+
+struct alignas(4 * sizeof(void *)) translation_block {
+    uintptr_t f_ptr = 0;
+    std::array<translation_block *, 2> cont;
+    llvm::ExecutionEngine *mod_eng;
+    explicit translation_block(uintptr_t f_ptr_, std::array<translation_block *, 2> cont_,
+                               llvm::ExecutionEngine *mod_eng_)
+    : f_ptr(f_ptr_)
+    , cont(cont_)
+    , mod_eng(mod_eng_) {}
+};
+
+using gen_func = std::function<llvm::Function *(llvm::Module *)>;
+
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
+}
+}
+}
+#endif /* _MCJITHELPER_H_ */

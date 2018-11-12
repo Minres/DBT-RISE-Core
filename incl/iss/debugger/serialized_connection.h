@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -209,7 +209,7 @@ public:
         header_stream << std::setw(header_length) << std::hex << std::setfill('0') << outbound_data_.size();
         if (!header_stream || header_stream.str().size() != header_length) {
             // Something went wrong, inform the caller.
-            ec.assign(boost::asio::error::invalid_argument, boost::system::get_system_category());
+            ec.assign(boost::asio::error::invalid_argument, boost::system::system_category());
             return;
         }
         outbound_header_ = header_stream.str();
@@ -241,7 +241,7 @@ public:
         std::size_t inbound_data_size = 0;
         if (!(is >> std::hex >> inbound_data_size)) {
             // Header doesn't seem to be valid. Inform the caller.
-            ec.assign(boost::asio::error::invalid_argument, boost::system::get_system_category());
+            ec.assign(boost::asio::error::invalid_argument, boost::system::system_category());
             return;
         }
         // Start an synchronous call to receive the data.
@@ -357,13 +357,13 @@ protected:
 
 public:
     ///
-    void write_data(const std::string& t) {
+    void write_data(const std::string &t) {
         boost::system::error_code ec;
         this->write_data(t, ec);
         boost::asio::detail::throw_error(ec);
     }
 
-    void write_data(const std::string& t, boost::system::error_code &ec) {
+    void write_data(const std::string &t, boost::system::error_code &ec) {
         outbound_data_ = t;
 #ifdef EXTENDED_TRACE
         LOG(TRACE) << "outbound sync data with len " << outbound_data_.size() << ":'" << outbound_data_ << "'";

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,7 @@ enum status { Ok, Err, NotSupported };
 
 enum sync_type { NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3 };
 
-enum struct access_type: uint16_t {
+enum struct access_type : uint16_t {
     // operations
     READ = 0x0,
     WRITE = 0x1,
@@ -64,32 +64,23 @@ enum struct access_type: uint16_t {
     CODE = 0x2
 };
 
-inline
-access_type operator&(access_type a1, access_type a2){
+inline access_type operator&(access_type a1, access_type a2) {
     return static_cast<access_type>(static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2));
 }
 
-inline
-access_type operator&(access_type a1, uint16_t a2){
+inline access_type operator&(access_type a1, uint16_t a2) {
     return static_cast<access_type>(static_cast<uint16_t>(a1) & a2);
 }
 
-inline
-bool operator==(access_type a, uint16_t i){
-    return static_cast<uint16_t>(a)==i;
-}
+inline bool operator==(access_type a, uint16_t i) { return static_cast<uint16_t>(a) == i; }
 
-inline
-bool operator!=(access_type a, uint16_t i){
-    return static_cast<uint16_t>(a)!=i;
-}
+inline bool operator!=(access_type a, uint16_t i) { return static_cast<uint16_t>(a) != i; }
 
-inline
-bool operator&&(access_type a1, access_type a2){
+inline bool operator&&(access_type a1, access_type a2) {
     return (static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2));
 }
 
-enum struct address_type: uint16_t { LOGICAL, VIRTUAL, PHYSICAL };
+enum struct address_type : uint16_t { LOGICAL, VIRTUAL, PHYSICAL };
 
 class addr_t {
 public:
@@ -104,17 +95,17 @@ public:
     , space(space)
     , val(addr) {}
 
-    constexpr addr_t& operator=(uint64_t o) {
+    const addr_t &operator=(uint64_t o) {
         val = o;
         return *this;
     }
 
-    constexpr addr_t& operator=(const addr_t &o) {
+    const addr_t &operator=(const addr_t &o) {
         val = o.val;
         return *this;
     }
 
-    addr_t& operator++() { // prefix increment
+    addr_t &operator++() { // prefix increment
         val++;
         return *this;
     }
@@ -125,41 +116,32 @@ public:
         return ret;
     }
 
-    addr_t& operator--() {
+    addr_t &operator--() {
         val--;
         return *this;
     }
 
-    addr_t& operator&=(uint64_t m) {
+    addr_t &operator&=(uint64_t m) {
         val &= m;
         return *this;
     }
-
 };
 
-inline
-constexpr addr_t operator+(const addr_t& a, const addr_t &o) {
+inline addr_t operator+(const addr_t &a, const addr_t &o) {
     assert(a.type == o.type && a.space == o.space);
-    return addr_t{a.access, a.type, a.space, a.val+o.val};
+    return addr_t{a.access, a.type, a.space, a.val + o.val};
 }
 
-inline
-constexpr addr_t operator-(const addr_t& a, const addr_t &o) {
+inline addr_t operator-(const addr_t &a, const addr_t &o) {
     assert(a.type == o.type && a.space == o.space);
-    return addr_t{a.access, a.type, a.space, a.val-o.val};
+    return addr_t{a.access, a.type, a.space, a.val - o.val};
 }
 
-inline
-constexpr addr_t operator+(addr_t& a, uint64_t m) {
-    return addr_t{a.access, a.type, a.space, a.val+m};
-}
+inline addr_t operator+(addr_t &a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val + m}; }
 
-inline
-constexpr addr_t operator-(addr_t& a, uint64_t m) {
-    return addr_t{a.access, a.type, a.space, a.val-m};
-}
+inline addr_t operator-(addr_t &a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val - m}; }
 
-inline std::ostream &operator<<(std::ostream &os, const addr_t& op) {
+inline std::ostream &operator<<(std::ostream &os, const addr_t &op) {
     os << "[" << op.space << "]0x" << std::hex << op.val << std::dec;
     return os;
 }
@@ -172,7 +154,8 @@ public:
     : addr_t(acc_type, TYPE, space, v) {}
     constexpr typed_addr_t(access_type t, uint64_t v)
     : addr_t(t, TYPE, 0, v) {}
-    constexpr typed_addr_t(const addr_t& o): typed_addr_t(o.access, o.space, o.val) {}
+    constexpr typed_addr_t(const addr_t &o)
+    : typed_addr_t(o.access, o.space, o.val) {}
 };
 }
 

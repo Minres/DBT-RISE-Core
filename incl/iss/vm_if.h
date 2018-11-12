@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,8 +36,8 @@
 #define _VM_IF_H_
 
 #include "vm_types.h"
-#include <string>
 #include <memory>
+#include <string>
 
 namespace iss {
 // forward declaration
@@ -46,12 +46,16 @@ class vm_plugin;
 
 class vm_if { // @suppress("Class has a virtual method and non-virtual destructor")
 public:
-	/**
-	 * register a plugin to the virtual machine
-	 *
-	 * @param plugin reference to the plugin to be registered
-	 */
-	virtual void register_plugin(vm_plugin& plugin) = 0;
+    /**
+     * virtual destructor
+     */
+    virtual ~vm_if() {}
+    /**
+     * register a plugin to the virtual machine
+     *
+     * @param plugin reference to the plugin to be registered
+     */
+    virtual void register_plugin(vm_plugin &plugin) = 0;
     /**
      * get the underlying class of the core to be simulated
      *
@@ -64,7 +68,7 @@ public:
      * @param cycles number if instructions to be simulated
      * @return number of executed instructions
      */
-    virtual int start(int64_t cycles = -1, bool dump = false) = 0;
+    virtual int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false) = 0;
     /**
      * reset the core
      *

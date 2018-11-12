@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,14 +35,13 @@
 #ifndef _ARCH_IF_H_
 #define _ARCH_IF_H_
 
-#include "vm_types.h"
 #include "common.h"
+#include "vm_types.h"
 
-#include <gsl/span>
 #include <algorithm>
-#include <vector>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
+#include <vector>
 
 namespace iss {
 /**
@@ -57,9 +56,7 @@ public:
     const uint64_t addr;
 };
 
-namespace v1 {
-struct instrumentation_if;
-}
+inline namespace v1 { struct instrumentation_if; }
 /**
  * architecture interface
  */
@@ -102,7 +99,7 @@ public:
      * @param name name of th efile to load
      * @param type of file, implementation dependent
      */
-    virtual std::pair<uint64_t,bool> load_file(std::string name, int type = -1) = 0;
+    virtual std::pair<uint64_t, bool> load_file(std::string name, int type = -1) = 0;
 
     /**
      * notify the core about the execution phase (if needed)
@@ -131,7 +128,20 @@ public:
      * @param data pointer to the memory to read into
      * @return success or failure of access
      */
-    virtual iss::status read(const addr_t &addr, unsigned length, uint8_t *const data) = 0;
+    inline iss::status read(const addr_t &addr, const unsigned length, uint8_t *const data){
+        return read(addr.type, addr.access, addr.space, addr.val, length, data);
+    }
+    /**
+     * read from addresses
+     *
+     * @param addr address to read from, contains access type, address space and
+     * address
+     * @param length length of th edata to read
+     * @param data pointer to the memory to read into
+     * @return success or failure of access
+     */
+    virtual iss::status read(const address_type type, const access_type access, const uint32_t space,
+            const uint64_t addr, const unsigned length, uint8_t *const data) = 0;
     /**
      * write to addresses
      *
@@ -141,8 +151,21 @@ public:
      * @param data pointer to the memory to write from
      * @return success or failure of access
      */
-    virtual iss::status write(const addr_t &addr, unsigned length, const uint8_t *const data) = 0;
+    inline iss::status write(const addr_t &addr, const unsigned length, const uint8_t *const data){
+        return write(addr.type, addr.access, addr.space, addr.val, length, data);
+    }
     /**
+     * write to addresses
+     *
+     * @param addr address to read from, contains access type, address space and
+     * address
+     * @param length length of the data to write
+     * @param data pointer to the memory to write from
+     * @return success or failure of access
+     */
+    virtual iss::status write(const address_type type, const access_type access, const uint32_t space,
+            const uint64_t addr, const unsigned length, const uint8_t *const data) = 0;
+   /**
      * vm encountered a trap (exception, interrupt), process accordingly in core
      *
      * @param flags trap flags
@@ -177,7 +200,7 @@ public:
      * @return string containing the core status in text form
      */
     virtual void disass_output(uint64_t pc, const std::string instr) {
-        std::cout << "0x"<<std::setw(16)<<std::setfill('0')<<std::hex<<pc<<"\t\t"<<instr<<std::endl;
+        std::cout << "0x" << std::setw(16) << std::setfill('0') << std::hex << pc << "\t\t" << instr << std::endl;
     };
     /**
      * get the pointer to the instrumentation interface. In case there is no instrumentation
@@ -185,7 +208,7 @@ public:
      *
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
-    virtual v1::instrumentation_if* get_instrumentation_if() { return nullptr;};
+    virtual v1::instrumentation_if *get_instrumentation_if() { return nullptr; };
 };
 }
 

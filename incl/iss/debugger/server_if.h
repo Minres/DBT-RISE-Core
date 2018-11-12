@@ -136,10 +136,10 @@ public:
             mode.store(MODE_STOP, std::memory_order_release);
             last_bp = bp_handle;
         }
-        if(mode.load(std::memory_order_acquire) == MODE_STOP){
-            if( stop_callback){
+        if (mode.load(std::memory_order_acquire) == MODE_STOP) {
+            if (stop_callback) {
                 stop_callback(last_bp);
-                stop_callback=std::function<void(unsigned)>();
+                stop_callback = std::function<void(unsigned)>();
             }
             while (mode.load(std::memory_order_acquire) == MODE_STOP) {
                 syncronizer.executeNext();

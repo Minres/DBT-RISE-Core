@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, MINRES Technologies GmbH
+ * Copyright (C) 2017, 2018, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -68,19 +68,15 @@ public:
     int dec_4bytes(const char *in, uint32_t *val);
     int dec_8bytes(const char *in, uint64_t *val);
     int dec_uint32(const char **in, uint32_t *val, char break_char = 0);
-    int dec_uint32(const char *in, uint32_t *val, char break_char = 0) {
-        return dec_uint32(&in, val, break_char);
-    }
+    int dec_uint32(const char *in, uint32_t *val, char break_char = 0) { return dec_uint32(&in, val, break_char); }
     int dec_uint64(const char **in, uint64_t *val, char break_char = 0);
-    int dec_uint64(const char *in, uint64_t *val, char break_char = 0) {
-        return dec_uint64(&in, val, break_char);
-    }
+    int dec_uint64(const char *in, uint64_t *val, char break_char = 0) { return dec_uint64(&in, val, break_char); }
     void enc_byte(unsigned char val, std::string &out, size_t offset = 0);
     char enc_byte(unsigned char val, bool highNibble) { return highNibble ? hex[(val >> 4) & 0xf] : hex[val & 0xf]; }
 
 private:
     const char *hex = "0123456789abcdef";
-    void encode_str(std::stringstream &ss, const std::string& str);
+    void encode_str(std::stringstream &ss, const std::string &str);
 };
 
 } // namespace debugger

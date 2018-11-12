@@ -69,7 +69,6 @@ public:
 
     bool message_completed(std::vector<char> &buffer) override;
 
-
 protected:
     std::string check_packet(std::string &msg);
 
@@ -77,7 +76,7 @@ protected:
 
     void respond(const std::string msg) {
         last_msg = msg;
-        if(msg.size()>0){
+        if (msg.size() > 0) {
             // std::this_thread::sleep_for(std::chrono::milliseconds(2));
             CLOG(TRACE, connection) << "Processed message, responding with '" << msg << "'";
             conn_shptr->write_data(msg);
