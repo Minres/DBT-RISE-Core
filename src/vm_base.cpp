@@ -32,7 +32,7 @@
  ******************************************************************************/
 
 #include <iss/iss.h>
-#include <iss/vm_base.h>
+#include <iss/llvm/vm_base.h>
 #include <iss/vm_plugin.h>
 #include <util/logging.h>
 
@@ -40,12 +40,12 @@ namespace iss {
 namespace vm {
 
 using namespace std;
+namespace llvm {
 
 llvm::cl::opt<uint32_t> LikelyBranchWeight("likely-branch-weight", llvm::cl::Hidden, llvm::cl::init(64),
                                            llvm::cl::desc("Weight of the branch likely to be taken (default = 64)"));
 llvm::cl::opt<uint32_t> UnlikelyBranchWeight("unlikely-branch-weight", llvm::cl::Hidden, llvm::cl::init(4),
                                              llvm::cl::desc("Weight of the branch unlikely to be taken (default = 4)"));
-
 #define INT_TYPE(L) Type::getIntNTy(mod->getContext(), L)
 #define FLOAT_TYPE Type::getFloatTy(mod->getContext())
 #define DOUBLE_TYPE Type::getDoubleTy(mod->getContext())
@@ -93,6 +93,7 @@ void add_functions_2_module(Module *mod) {
     FDECL(pre_instr_sync, VOID_TYPE, THIS_PTR_TYPE);
     FDECL(notify_phase, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(32));
     FDECL(call_plugin, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64));
+}
 }
 }
 }

@@ -31,7 +31,7 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include <iss/jit/jit_helper.h>
+#include <iss/llvm/jit_helper.h>
 #include <iss/log_categories.h>
 #include <llvm/Support/Debug.h> //EnableDebugBuffering
 #include <llvm/Support/Error.h>
@@ -73,7 +73,7 @@ LLVMContext &getContext() {
 }
 
 namespace vm {
-namespace jit {
+namespace llvm {
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
                                        std::function<Function *(Module *)> &generator, bool dumpEnabled) {
@@ -83,7 +83,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     static unsigned i = 0;
     std::array<char, 32> s;
     sprintf(s.data(), "mcjit_module_#%X_", ++i);
-    auto mod = llvm::make_unique<Module>(s.data(), iss::getContext());
+    auto mod = make_unique<Module>(s.data(), iss::getContext());
     auto *f = generator(mod.get());
     assert(f != nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {

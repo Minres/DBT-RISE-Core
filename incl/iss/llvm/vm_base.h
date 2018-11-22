@@ -35,19 +35,18 @@
 #ifndef _VM_BASE_H_
 #define _VM_BASE_H_
 
-#include "arch/traits.h"
-#include "arch_if.h"
-#include "debugger/target_adapter_base.h"
-#include "debugger_if.h"
-#include "util/ities.h"
-#include "util/range_lut.h"
-#include "vm_if.h"
-#include "vm_plugin.h"
-#include <iss/jit/jit_helper.h>
-
+#include "jit_helper.h"
+#include <iss/arch/traits.h>
+#include <iss/arch_if.h>
+#include <iss/debugger/target_adapter_base.h>
+#include <iss/debugger_if.h>
+#include <util/ities.h>
+#include <util/range_lut.h>
+#include <iss/vm_if.h>
+#include <iss/vm_plugin.h>
 #include <util/logging.h>
 
-#include "llvm/IR/MDBuilder.h"
+#include <llvm/IR/MDBuilder.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
@@ -63,19 +62,21 @@
 namespace iss {
 
 namespace vm {
+namespace llvm {
+using namespace ::llvm;
 
-extern llvm::cl::opt<uint32_t> LikelyBranchWeight;
-extern llvm::cl::opt<uint32_t> UnlikelyBranchWeight;
+extern cl::opt<uint32_t> LikelyBranchWeight;
+extern cl::opt<uint32_t> UnlikelyBranchWeight;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
-void add_functions_2_module(llvm::Module *mod);
+void add_functions_2_module(Module *mod);
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
     struct plugin_entry {
         sync_type sync;
         vm_plugin &plugin;
-        llvm::Value *plugin_ptr;
+        Value *plugin_ptr;
     };
 
 public:
@@ -115,15 +116,15 @@ public:
                        get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
-            vm::continuation_e cont = CONT;
+            continuation_e cont = CONT;
             // struct to minimize the type size of the closure below to allow SSO
             struct {
                 vm_base *vm;
                 virt_addr_t &pc;
-                vm::continuation_e &cont;
+                continuation_e &cont;
             } param = {this, pc, cont};
-            std::function<llvm::Function *(llvm::Module *)> generator{[&param](llvm::Module *m) -> llvm::Function * {
-                llvm::Function *func;
+            std::function<Function *(Module *)> generator{[&param](Module *m) -> Function * {
+                Function *func;
                 param.vm->mod = m;
                 param.vm->setup_module(m);
                 std::tie(param.cont, func) = param.vm->disass(param.pc);
@@ -132,8 +133,8 @@ public:
                 return func;
             }};
             // explicit std::function to allow use as reference in call below
-            // std::function<llvm::Function*(llvm::Module*)> gen_ref(std::ref(generator));
-            jit::translation_block *last_tb = nullptr, *cur_tb = nullptr;
+            // std::function<Function*(Module*)> gen_ref(std::ref(generator));
+            translation_block *last_tb = nullptr, *cur_tb = nullptr;
             uint32_t last_branch = std::numeric_limits<uint32_t>::max();
             arch_if *const arch_if_ptr = static_cast<arch_if *>(&core);
             vm_if *const vm_if_ptr = static_cast<vm_if *>(this);
@@ -145,7 +146,7 @@ public:
                     auto it = this->func_map.find(pc_p.val);
                     if (it == this->func_map.end()) { // if not generate and compile it
                         auto res = func_map.insert(std::make_pair(
-                            pc_p.val, vm::jit::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
+                            pc_p.val, getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
                     cur_tb = &(it->second);
@@ -210,21 +211,21 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, llvm::Function *> disass(virt_addr_t &pc) {
+    std::tuple<continuation_e, Function *> disass(virt_addr_t &pc) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, this->core.v2p(pc));
         unsigned int num_inst = 0;
         // loaded_regs.clear();
         func = this->open_block_func(cur_pc_mark.second);
-        leave_blk = llvm::BasicBlock::Create(mod->getContext(), "leave", func);
+        leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
-        trap_blk = llvm::BasicBlock::Create(mod->getContext(), "trap", func);
+        trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
         gen_trap_behavior(trap_blk);
-        llvm::BasicBlock *bb = llvm::BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
+        BasicBlock *bb = BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
         builder.SetInsertPoint(bb);
         builder.CreateStore(this->gen_const(32, 0), get_reg_ptr(arch::traits<ARCH>::LAST_BRANCH), false);
-        vm::continuation_e cont = iss::vm::CONT;
+        continuation_e cont = CONT;
         try {
             while (cont == CONT && cur_blk < blk_size) {
                 builder.SetInsertPoint(bb);
@@ -255,16 +256,16 @@ protected:
         str += buf.data();
     }
 
-    virtual void setup_module(llvm::Module *m) { add_functions_2_module(m); }
+    virtual void setup_module(Module *m) { add_functions_2_module(m); }
 
-    virtual std::tuple<continuation_e, llvm::BasicBlock *>
-    gen_single_inst_behavior(virt_addr_t &pc_v, unsigned int &inst_cnt, llvm::BasicBlock *this_block) = 0;
+    virtual std::tuple<continuation_e, BasicBlock *>
+    gen_single_inst_behavior(virt_addr_t &pc_v, unsigned int &inst_cnt, BasicBlock *this_block) = 0;
 
-    virtual void gen_trap_behavior(llvm::BasicBlock *) = 0;
+    virtual void gen_trap_behavior(BasicBlock *) = 0;
 
-    virtual void gen_leave_behavior(llvm::BasicBlock *leave_blk) {
+    virtual void gen_leave_behavior(BasicBlock *leave_blk) {
         builder.SetInsertPoint(leave_blk);
-        llvm::Value *const pc_v = gen_get_reg(arch::traits<ARCH>::NEXT_PC);
+        Value *const pc_v = gen_get_reg(arch::traits<ARCH>::NEXT_PC);
         builder.CreateRet(pc_v);
     }
 
@@ -287,15 +288,15 @@ protected:
 
     void register_plugin(vm_plugin &plugin) {
         if (plugin.registration("1.0", *this)) {
-            llvm::Value *ptr = // this->builder.CreateIntToPtr(&plugin, get_type(8)->getPointerTo(0));
-                llvm::ConstantInt::get(
+            Value *ptr = // this->builder.CreateIntToPtr(&plugin, get_type(8)->getPointerTo(0));
+                ConstantInt::get(
                     getContext(),
-                    llvm::APInt(64, (uint64_t)&plugin)); // TODO: this is definitely non-portable and wrong
+                    APInt(64, (uint64_t)&plugin)); // TODO: this is definitely non-portable and wrong
             plugins.push_back(plugin_entry{plugin.get_sync(), plugin, ptr});
         }
     }
 
-    inline llvm::Type *get_type(unsigned width) {
+    inline Type *get_type(unsigned width) {
         assert(width > 0);
         if (width < 2)
             return builder.getInt1Ty();
@@ -311,68 +312,68 @@ protected:
         return builder.getInt64Ty();
     }
 
-    inline llvm::Value *adj_to64(llvm::Value *val) {
+    inline Value *adj_to64(Value *val) {
         return val->getType()->getScalarSizeInBits() == 64 ? val : builder.CreateZExt(val, builder.getInt64Ty());
     }
 
-    inline llvm::Value *gen_get_reg(reg_e r) {
-        std::vector<llvm::Value *> args{core_ptr, llvm::ConstantInt::get(getContext(), llvm::APInt(16, r))};
+    inline Value *gen_get_reg(reg_e r) {
+        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, r))};
         auto reg_size = arch::traits<ARCH>::reg_bit_width(r);
         auto ret = builder.CreateCall(mod->getFunction("get_reg"), args);
         return reg_size == 64 ? ret : builder.CreateTrunc(ret, get_type(reg_size));
     }
 
-    inline void gen_set_reg(reg_e r, llvm::Value *val) {
-        std::vector<llvm::Value *> args{core_ptr, llvm::ConstantInt::get(getContext(), llvm::APInt(16, r)),
+    inline void gen_set_reg(reg_e r, Value *val) {
+        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, r)),
                                         adj_to64(val)};
         builder.CreateCall(mod->getFunction("set_reg"), args);
     }
 
-    inline llvm::Value *gen_get_flag(sr_flag_e flag, const char *nm = "") {
-        std::vector<llvm::Value *> args{core_ptr, llvm::ConstantInt::get(getContext(), llvm::APInt(16, flag))};
-        llvm::Value *call = builder.CreateCall(mod->getFunction("get_flag"), args);
+    inline Value *gen_get_flag(sr_flag_e flag, const char *nm = "") {
+        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, flag))};
+        Value *call = builder.CreateCall(mod->getFunction("get_flag"), args);
         return builder.CreateTrunc(call, get_type(1));
     }
 
-    inline void gen_set_flag(sr_flag_e flag, llvm::Value *val) {
-        std::vector<llvm::Value *> args{core_ptr, llvm::ConstantInt::get(getContext(), llvm::APInt(16, flag)),
+    inline void gen_set_flag(sr_flag_e flag, Value *val) {
+        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, flag)),
                                         builder.CreateTrunc(val, get_type(1))};
         builder.CreateCall(mod->getFunction("set_flag"), args);
     }
 
-    inline void gen_update_flags(iss::arch_if::operations op, llvm::Value *oper1, llvm::Value *oper2) {
-        std::vector<llvm::Value *> args{core_ptr, llvm::ConstantInt::get(getContext(), llvm::APInt(16, op)),
+    inline void gen_update_flags(iss::arch_if::operations op, Value *oper1, Value *oper2) {
+        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, op)),
                                         oper1->getType()->getScalarSizeInBits() == 64
                                             ? oper1
-                                            : builder.CreateZExt(oper1, llvm::IntegerType::get(mod->getContext(), 64)),
+                                            : builder.CreateZExt(oper1, IntegerType::get(mod->getContext(), 64)),
                                         oper2->getType()->getScalarSizeInBits() == 64
                                             ? oper2
-                                            : builder.CreateZExt(oper2, llvm::IntegerType::get(mod->getContext(), 64))};
+                                            : builder.CreateZExt(oper2, IntegerType::get(mod->getContext(), 64))};
         builder.CreateCall(mod->getFunction("update_flags"), args);
     }
 
-    inline llvm::Value *gen_read_mem(mem_type_e type, uint64_t addr, uint32_t length, const char *nm = "") {
+    inline Value *gen_read_mem(mem_type_e type, uint64_t addr, uint32_t length, const char *nm = "") {
         return gen_read_mem(type, gen_const(64, addr), length, nm);
     }
 
-    inline llvm::Value *gen_read_mem(mem_type_e type, llvm::Value *addr, uint32_t length, const char *nm = "") {
-        auto *storage = builder.CreateAlloca(llvm::IntegerType::get(mod->getContext(), length * 8));
+    inline Value *gen_read_mem(mem_type_e type, Value *addr, uint32_t length, const char *nm = "") {
+        auto *storage = builder.CreateAlloca(IntegerType::get(mod->getContext(), length * 8));
         auto *storage_ptr = builder.CreateBitCast(storage, get_type(8)->getPointerTo(0));
-        std::vector<llvm::Value *> args{
+        std::vector<Value *> args{
             core_ptr,
-            llvm::ConstantInt::get(getContext(), llvm::APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
-            llvm::ConstantInt::get(getContext(), llvm::APInt(32, type)),
+            ConstantInt::get(getContext(), APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
+            ConstantInt::get(getContext(), APInt(32, type)),
             adj_to64(addr),
-            llvm::ConstantInt::get(getContext(), llvm::APInt(32, length)),
+            ConstantInt::get(getContext(), APInt(32, length)),
             storage_ptr};
         auto *call = builder.CreateCall(mod->getFunction("read_mem"), args);
-        call->setCallingConv(llvm::CallingConv::C);
+        call->setCallingConv(CallingConv::C);
         auto *icmp = builder.CreateICmpNE(call, gen_const(8, 0UL));
-        auto *label_cont = llvm::BasicBlock::Create(getContext(), "", func, this->leave_blk);
-        llvm::SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
+        auto *label_cont = BasicBlock::Create(getContext(), "", func, this->leave_blk);
+        SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
         Weights[1] = LikelyBranchWeight;
         this->builder.CreateCondBr(icmp, trap_blk, label_cont,
-                                   llvm::MDBuilder(this->mod->getContext()).createBranchWeights(Weights));
+                                   MDBuilder(this->mod->getContext()).createBranchWeights(Weights));
         builder.SetInsertPoint(label_cont);
         switch (length) {
         case 1:
@@ -385,82 +386,82 @@ protected:
         }
     }
 
-    inline void gen_write_mem(mem_type_e type, uint64_t addr, llvm::Value *val) {
-        gen_write_mem(type, llvm::ConstantInt::get(getContext(), llvm::APInt(64, addr)), val);
+    inline void gen_write_mem(mem_type_e type, uint64_t addr, Value *val) {
+        gen_write_mem(type, ConstantInt::get(getContext(), APInt(64, addr)), val);
     }
 
-    inline void gen_write_mem(mem_type_e type, llvm::Value *addr, llvm::Value *val) {
+    inline void gen_write_mem(mem_type_e type, Value *addr, Value *val) {
         uint32_t bitwidth = val->getType()->getIntegerBitWidth();
-        auto *storage = builder.CreateAlloca(llvm::IntegerType::get(mod->getContext(), bitwidth));
+        auto *storage = builder.CreateAlloca(IntegerType::get(mod->getContext(), bitwidth));
         builder.CreateStore(val, storage, false);
         auto *storage_ptr = builder.CreateBitCast(storage, get_type(8)->getPointerTo(0));
-        std::vector<llvm::Value *> args{
+        std::vector<Value *> args{
             core_ptr,
-            llvm::ConstantInt::get(getContext(), llvm::APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
-            llvm::ConstantInt::get(getContext(), llvm::APInt(32, type)),
+            ConstantInt::get(getContext(), APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
+            ConstantInt::get(getContext(), APInt(32, type)),
             adj_to64(addr),
-            llvm::ConstantInt::get(getContext(), llvm::APInt(32, bitwidth / 8)),
+            ConstantInt::get(getContext(), APInt(32, bitwidth / 8)),
             storage_ptr};
         auto *call = builder.CreateCall(mod->getFunction("write_mem"), args);
-        call->setCallingConv(llvm::CallingConv::C);
+        call->setCallingConv(CallingConv::C);
         auto *icmp = builder.CreateICmpNE(call, gen_const(8, 0UL));
-        auto *label_cont = llvm::BasicBlock::Create(getContext(), "", func, this->leave_blk);
-        llvm::SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
+        auto *label_cont = BasicBlock::Create(getContext(), "", func, this->leave_blk);
+        SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
         Weights[1] = LikelyBranchWeight;
         this->builder.CreateCondBr(icmp, trap_blk, label_cont,
-                                   llvm::MDBuilder(this->mod->getContext()).createBranchWeights(Weights));
+                                   MDBuilder(this->mod->getContext()).createBranchWeights(Weights));
         builder.SetInsertPoint(label_cont);
     }
 
-    inline llvm::Value *get_reg_ptr(unsigned i) {
-        return vm::vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_width(i));
+    inline Value *get_reg_ptr(unsigned i) {
+        return vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_width(i));
     }
 
-    inline llvm::Value *get_reg_ptr(unsigned i, unsigned size) {
+    inline Value *get_reg_ptr(unsigned i, unsigned size) {
         auto x = builder.CreateAdd(this->builder.CreatePtrToInt(regs_ptr, get_type(64)),
                                    this->gen_const(64U, arch::traits<ARCH>::reg_byte_offset(i)), "reg_offs_ptr");
         return this->builder.CreateIntToPtr(x, get_type(size)->getPointerTo(0));
     }
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
-    inline llvm::ConstantInt *gen_const(unsigned size, T val) const {
-        return llvm::ConstantInt::get(getContext(), llvm::APInt(size, val, true));
+    inline ConstantInt *gen_const(unsigned size, T val) const {
+        return ConstantInt::get(getContext(), APInt(size, val, true));
     }
 
     template <typename T, typename std::enable_if<!std::is_signed<T>::value>::type * = nullptr>
-    inline llvm::ConstantInt *gen_const(unsigned size, T val) const {
-        return llvm::ConstantInt::get(getContext(), llvm::APInt(size, (uint64_t)val, false));
+    inline ConstantInt *gen_const(unsigned size, T val) const {
+        return ConstantInt::get(getContext(), APInt(size, (uint64_t)val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
-    inline llvm::Value *gen_ext(T val, unsigned size) const {
-        return llvm::ConstantInt::get(getContext(), llvm::APInt(size, val, false));
+    inline Value *gen_ext(T val, unsigned size) const {
+        return ConstantInt::get(getContext(), APInt(size, val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
-    inline llvm::Value *gen_ext(T val, unsigned size) const {
-        return llvm::ConstantInt::get(getContext(), llvm::APInt(size, val, false));
+    inline Value *gen_ext(T val, unsigned size) const {
+        return ConstantInt::get(getContext(), APInt(size, val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
-    inline llvm::Value *gen_ext(T val, unsigned size) {
+    inline Value *gen_ext(T val, unsigned size) {
         return builder.CreateZExtOrTrunc(val, builder.getIntNTy(size));
     }
 
     template <typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
-    inline llvm::Value *gen_ext(T val, unsigned size, bool isSigned) const {
-        return llvm::ConstantInt::get(getContext(), llvm::APInt(size, val, isSigned));
+    inline Value *gen_ext(T val, unsigned size, bool isSigned) const {
+        return ConstantInt::get(getContext(), APInt(size, val, isSigned));
     }
 
     template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
-    inline llvm::Value *gen_ext(T val, unsigned size, bool isSigned) {
+    inline Value *gen_ext(T val, unsigned size, bool isSigned) {
         if (isSigned)
             return builder.CreateSExtOrTrunc(val, builder.getIntNTy(size));
         else
             return builder.CreateZExtOrTrunc(val, builder.getIntNTy(size));
     }
 
-    inline llvm::Value *gen_cond_assign(llvm::Value *cond, llvm::Value *t, llvm::Value *f) { // cond must be 1 or 0
+    inline Value *gen_cond_assign(Value *cond, Value *t, Value *f) { // cond must be 1 or 0
         using namespace llvm;
         Value *const f_mask =
             builder.CreateSub(builder.CreateZExt(cond, get_type(f->getType()->getPrimitiveSizeInBits())),
@@ -470,15 +471,15 @@ protected:
                                 builder.CreateAnd(f, f_mask)); // (t & ~t_mask) | (f & f_mask)
     }
 
-    inline void gen_cond_branch(llvm::Value *when, llvm::BasicBlock *then, llvm::BasicBlock *otherwise,
+    inline void gen_cond_branch(Value *when, BasicBlock *then, BasicBlock *otherwise,
                                 unsigned likelyBranch = 0) { // cond must be 1 or 0
-        llvm::SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
+        SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
         if (likelyBranch == 1)
             Weights[0] = LikelyBranchWeight;
         else if (likelyBranch == 2)
             Weights[1] = LikelyBranchWeight;
         this->builder.CreateCondBr(when, then, otherwise,
-                                   llvm::MDBuilder(this->mod->getContext()).createBranchWeights(Weights));
+                                   MDBuilder(this->mod->getContext()).createBranchWeights(Weights));
     }
 
     // NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3
@@ -498,35 +499,35 @@ protected:
             auto *trap_val = builder.CreateLoad(get_reg_ptr(arch::traits<ARCH>::PENDING_TRAP));
             builder.CreateStore(trap_val, get_reg_ptr(arch::traits<ARCH>::TRAP_STATE), false);
             if (debugging_enabled())
-                builder.CreateCall(mod->getFunction("pre_instr_sync"), std::vector<llvm::Value *>{vm_ptr});
+                builder.CreateCall(mod->getFunction("pre_instr_sync"), std::vector<Value *>{vm_ptr});
         }
         if ((s & sync_exec))
             builder.CreateCall(mod->getFunction("notify_phase"),
-                               std::vector<llvm::Value *>{core_ptr, gen_const(32, notifier_mapping[s])});
+                               std::vector<Value *>{core_ptr, gen_const(32, notifier_mapping[s])});
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
         for (plugin_entry e : plugins) {
             if (e.sync & s) {
-                builder.CreateCall(mod->getFunction("call_plugin"), std::vector<llvm::Value *>{
+                builder.CreateCall(mod->getFunction("call_plugin"), std::vector<Value *>{
                                                                         e.plugin_ptr, gen_const(64, iinfo.st.value),
                                                                     });
             }
         }
     }
 
-    virtual llvm::Function *open_block_func(phys_addr_t pc) {
+    virtual Function *open_block_func(phys_addr_t pc) {
         std::string name("block");
         GenerateUniqueName(name, pc.val);
-        std::vector<llvm::Type *> mainFuncTyArgs{llvm::Type::getInt8PtrTy(mod->getContext()),
-                                                 llvm::Type::getInt8PtrTy(mod->getContext()),
-                                                 llvm::Type::getInt8PtrTy(mod->getContext())};
-        llvm::Type *ret_t = get_type(get_reg_width(arch::traits<ARCH>::PC));
-        llvm::FunctionType *const mainFuncTy = llvm::FunctionType::get(ret_t, mainFuncTyArgs, false);
-        llvm::Function *f = llvm::Function::Create(mainFuncTy, llvm::GlobalValue::ExternalLinkage, name.c_str(), mod);
-        f->setCallingConv(llvm::CallingConv::C);
+        std::vector<Type *> mainFuncTyArgs{Type::getInt8PtrTy(mod->getContext()),
+                                                 Type::getInt8PtrTy(mod->getContext()),
+                                                 Type::getInt8PtrTy(mod->getContext())};
+        Type *ret_t = get_type(get_reg_width(arch::traits<ARCH>::PC));
+        FunctionType *const mainFuncTy = FunctionType::get(ret_t, mainFuncTyArgs, false);
+        Function *f = Function::Create(mainFuncTy, GlobalValue::ExternalLinkage, name.c_str(), mod);
+        f->setCallingConv(CallingConv::C);
         auto iter = f->arg_begin();
-        regs_ptr = llvm::dyn_cast<llvm::Value>(iter++);
-        core_ptr = llvm::dyn_cast<llvm::Value>(iter++);
-        vm_ptr = llvm::dyn_cast<llvm::Value>(iter++);
+        regs_ptr = dyn_cast<Value>(iter++);
+        core_ptr = dyn_cast<Value>(iter++);
+        vm_ptr = dyn_cast<Value>(iter++);
         regs_ptr->setName("regs_ptr");
         core_ptr->setName("core_ptr");
         vm_ptr->setName("vm_ptr");
@@ -538,17 +539,18 @@ protected:
     unsigned cluster_id = 0;
     uint8_t *regs_base_ptr;
     sync_type sync_exec;
-    std::unordered_map<uint64_t, jit::translation_block> func_map;
-    llvm::IRBuilder<> builder{getContext()};
+    std::unordered_map<uint64_t, translation_block> func_map;
+    IRBuilder<> builder{getContext()};
     // non-owning pointers
-    llvm::Module *mod;
-    llvm::Function *func;
-    llvm::Value *core_ptr = nullptr, *vm_ptr = nullptr, *regs_ptr = nullptr;
-    llvm::BasicBlock *leave_blk, *trap_blk;
-    // std::vector<llvm::Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
+    Module *mod;
+    Function *func;
+    Value *core_ptr = nullptr, *vm_ptr = nullptr, *regs_ptr = nullptr;
+    BasicBlock *leave_blk, *trap_blk;
+    // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
 };
+}
 }
 }
 
