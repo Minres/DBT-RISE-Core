@@ -95,13 +95,13 @@ public:
     arch_if *get_arch() override { return &core; };
 
     constexpr unsigned int get_reg_width(int idx) const {
-        return idx < 0 ? arch::traits<ARCH>::NUM_REGS : arch::traits<ARCH>::reg_bit_width((reg_e)idx);
+        return idx < 0 ? arch::traits<ARCH>::NUM_REGS : arch::traits<ARCH>::reg_bit_widths[(reg_e)idx];
     }
 
     template <typename T> inline T get_reg(unsigned r) {
         std::vector<uint8_t> res(sizeof(T), 0);
-        uint8_t *reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offset(r);
-        auto size = arch::traits<ARCH>::reg_bit_width(r) / 8;
+        uint8_t *reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
+        auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
         std::copy(reg_base, reg_base + size, res.data());
         return *reinterpret_cast<T *>(&res[0]);
     }
@@ -318,7 +318,7 @@ protected:
 
     inline Value *gen_get_reg(reg_e r) {
         std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, r))};
-        auto reg_size = arch::traits<ARCH>::reg_bit_width(r);
+        auto reg_size = arch::traits<ARCH>::reg_bit_widths[r];
         auto ret = builder.CreateCall(mod->getFunction("get_reg"), args);
         return reg_size == 64 ? ret : builder.CreateTrunc(ret, get_type(reg_size));
     }
@@ -414,12 +414,12 @@ protected:
     }
 
     inline Value *get_reg_ptr(unsigned i) {
-        return vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_width(i));
+        return vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_widths[i]);
     }
 
     inline Value *get_reg_ptr(unsigned i, unsigned size) {
         auto x = builder.CreateAdd(this->builder.CreatePtrToInt(regs_ptr, get_type(64)),
-                                   this->gen_const(64U, arch::traits<ARCH>::reg_byte_offset(i)), "reg_offs_ptr");
+                                   this->gen_const(64U, arch::traits<ARCH>::reg_byte_offsets[i]), "reg_offs_ptr");
         return this->builder.CreateIntToPtr(x, get_type(size)->getPointerTo(0));
     }
 
