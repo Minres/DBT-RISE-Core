@@ -160,7 +160,7 @@ public:
     }
 
 protected:
-    thread_syncronizer syncronizer;
+    util::thread_syncronizer syncronizer;
     std::atomic<mode_e> mode{MODE_STOP};
     std::atomic<uint64_t> cycles;
     unsigned last_bp;

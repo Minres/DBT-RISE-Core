@@ -69,20 +69,20 @@ class arch_if;
 class vm_if;
 
 namespace vm {
-namespace jit {
+namespace llvm {
 
 struct alignas(4 * sizeof(void *)) translation_block {
     uintptr_t f_ptr = 0;
     std::array<translation_block *, 2> cont;
-    llvm::ExecutionEngine *mod_eng;
+    ::llvm::ExecutionEngine *mod_eng;
     explicit translation_block(uintptr_t f_ptr_, std::array<translation_block *, 2> cont_,
-                               llvm::ExecutionEngine *mod_eng_)
+                               ::llvm::ExecutionEngine *mod_eng_)
     : f_ptr(f_ptr_)
     , cont(cont_)
     , mod_eng(mod_eng_) {}
 };
 
-using gen_func = std::function<llvm::Function *(llvm::Module *)>;
+using gen_func = std::function<::llvm::Function *(::llvm::Module *)>;
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
 }
