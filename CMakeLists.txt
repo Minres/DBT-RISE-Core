@@ -47,7 +47,7 @@ target_include_directories(${LIBRARY_NAME} PRIVATE ${LLVM_INCLUDE_DIRS})
 #set_target_properties(exe PROPERTIES LINK_FLAGS "My exe link flags")
 #target_link_options(${LIBRARY_NAME} BEFORE INTERFACE -Wl,-whole-archive INTERFACE -Wl,-no-whole-archive)
 
-target_link_libraries(${LIBRARY_NAME} PUBLIC scc)
+target_link_libraries(${LIBRARY_NAME} PRIVATE scc-util)
 
 # Set the build version. It will be used in the name of the lib, with corresponding
 # symlinks created. SOVERSION could also be specified for api version.
