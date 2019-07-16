@@ -55,11 +55,15 @@ using namespace llvm;
 using namespace logging;
 
 namespace iss {
-void init_jit(int argc, char *argv[]) {
+
+void init_jit(){
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
+}
 
+void init_jit_debug(int argc, const char * const argv[]) {
+    init_jit();
 #ifdef LLVM_DEBUG
     sys::PrintStackTraceOnErrorSignal(argv[0]);
     PrettyStackTraceProgram X(argc, argv);

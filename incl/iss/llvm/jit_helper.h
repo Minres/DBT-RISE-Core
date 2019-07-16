@@ -50,6 +50,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <string>
 
 namespace iss {
 /**
@@ -60,10 +61,15 @@ namespace iss {
 llvm::LLVMContext &getContext();
 /**
  * initialize the LLVM infrastructure
+ */
+void init_jit();
+
+/**
+ * initialize the LLVM infrastructure including stack trace pretty printer
  * @param argc the number of CLI arguments
  * @param argv the array of CLI arguments
  */
-void init_jit(int argc, char *argv[]);
+void init_jit_debug(int argc, const char * const argv[]);
 
 class arch_if;
 class vm_if;
