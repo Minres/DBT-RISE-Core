@@ -36,16 +36,16 @@
 #include <iss/vm_plugin.h>
 #include <util/logging.h>
 
-namespace iss {
-namespace vm {
-
 using namespace std;
+using namespace llvm;
+namespace iss {
+
 namespace llvm {
 
-llvm::cl::opt<uint32_t> LikelyBranchWeight("likely-branch-weight", llvm::cl::Hidden, llvm::cl::init(64),
-                                           llvm::cl::desc("Weight of the branch likely to be taken (default = 64)"));
-llvm::cl::opt<uint32_t> UnlikelyBranchWeight("unlikely-branch-weight", llvm::cl::Hidden, llvm::cl::init(4),
-                                             llvm::cl::desc("Weight of the branch unlikely to be taken (default = 4)"));
+cl::opt<uint32_t> LikelyBranchWeight("likely-branch-weight", cl::Hidden, cl::init(64),
+                                           cl::desc("Weight of the branch likely to be taken (default = 64)"));
+cl::opt<uint32_t> UnlikelyBranchWeight("unlikely-branch-weight", cl::Hidden, cl::init(4),
+                                             cl::desc("Weight of the branch unlikely to be taken (default = 4)"));
 #define INT_TYPE(L) Type::getIntNTy(mod->getContext(), L)
 #define FLOAT_TYPE Type::getFloatTy(mod->getContext())
 #define DOUBLE_TYPE Type::getDoubleTy(mod->getContext())
@@ -62,7 +62,7 @@ llvm::cl::opt<uint32_t> UnlikelyBranchWeight("unlikely-branch-weight", llvm::cl:
 
 #define FDECL(NAME, RET, ...)                                                                                          \
     std::vector<Type *> NAME##_args{__VA_ARGS__};                                                                      \
-    FunctionType *NAME##_type = llvm::FunctionType::get(RET, NAME##_args, false);                                      \
+    FunctionType *NAME##_type = FunctionType::get(RET, NAME##_args, false);                                      \
     mod->getOrInsertFunction(#NAME, NAME##_type);
 
 using namespace llvm;
@@ -96,7 +96,7 @@ void add_functions_2_module(Module *mod) {
 }
 }
 }
-}
+
 
 #include <iss/arch_if.h>
 #include <iss/iss.h>

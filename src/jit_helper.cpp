@@ -71,13 +71,12 @@ void init_jit_debug(int argc, const char * const argv[]) {
 #endif
 }
 
+namespace llvm {
+
 LLVMContext &getContext() {
     static LLVMContext context;
     return context;
 }
-
-namespace vm {
-namespace llvm {
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
                                        std::function<Function *(Module *)> &generator, bool dumpEnabled) {
@@ -87,7 +86,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     static unsigned i = 0;
     std::array<char, 32> s;
     sprintf(s.data(), "mcjit_module_#%X_", ++i);
-    auto mod = make_unique<Module>(s.data(), iss::getContext());
+    auto mod = make_unique<Module>(s.data(), getContext());
     auto *f = generator(mod.get());
     assert(f != nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
@@ -114,7 +113,6 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     if (!ee) throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
     return translation_block(ee->getFunctionAddress(f->getName()), {nullptr, nullptr}, ee);
-}
 }
 }
 }

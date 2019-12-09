@@ -61,7 +61,6 @@
 
 namespace iss {
 
-namespace vm {
 namespace llvm {
 using namespace ::llvm;
 
@@ -550,7 +549,6 @@ protected:
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
 };
-}
 }
 }
 

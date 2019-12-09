@@ -54,12 +54,6 @@
 
 namespace iss {
 /**
- * get the LLVM context
- * NOTE: this is a singleton and not threadsave
- * @return the cotext
- */
-llvm::LLVMContext &getContext();
-/**
  * initialize the LLVM infrastructure
  */
 void init_jit();
@@ -74,8 +68,14 @@ void init_jit_debug(int argc, const char * const argv[]);
 class arch_if;
 class vm_if;
 
-namespace vm {
 namespace llvm {
+
+/**
+ * get the LLVM context
+ * NOTE: this is a singleton and not threadsave
+ * @return the cotext
+ */
+::llvm::LLVMContext &getContext();
 
 struct alignas(4 * sizeof(void *)) translation_block {
     uintptr_t f_ptr = 0;
@@ -91,7 +91,6 @@ struct alignas(4 * sizeof(void *)) translation_block {
 using gen_func = std::function<::llvm::Function *(::llvm::Module *)>;
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
-}
 }
 }
 #endif /* _MCJITHELPER_H_ */
