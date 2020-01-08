@@ -27,76 +27,48 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  * Contributors:
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _MCJITHELPER_H_
-#define _MCJITHELPER_H_
-
-#include "llvm/ExecutionEngine/GenericValue.h"
-#include "llvm/IR/LegacyPassManager.h"
+#include <iss/tcc/jit_helper.h>
+#include <iss/log_categories.h>
+#include <fmt/format.h>
+#include <array>
 #include <iostream>
-#include <iss/arch/traits.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Module.h>
-#include <llvm/Support/Error.h>
-#include <sstream>
-
-#include "boost/variant.hpp"
 #include <memory>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
-#include <string>
+#include <fstream>
+
+using namespace llvm;
+using namespace logging;
 
 namespace iss {
-/**
- * get the LLVM context
- * NOTE: this is a singleton and not threadsave
- * @return the cotext
- */
-::llvm::LLVMContext &getContext();
-/**
- * initialize the LLVM infrastructure
- */
-void init_jit();
 
-/**
- * initialize the LLVM infrastructure including stack trace pretty printer
- * @param argc the number of CLI arguments
- * @param argv the array of CLI arguments
- */
-void init_jit_debug(int argc, const char * const argv[]);
+namespace vm {
+namespace tcc {
 
-class arch_if;
-class vm_if;
-
-namespace llvm {
-
-/**
- * get the LLVM context
- * NOTE: this is a singleton and not threadsave
- * @return the cotext
- */
-::llvm::LLVMContext &getContext();
-
-struct alignas(4 * sizeof(void *)) translation_block {
-    uintptr_t f_ptr = 0;
-    std::array<translation_block *, 2> cont;
-    ::llvm::ExecutionEngine *mod_eng;
-    explicit translation_block(uintptr_t f_ptr_, std::array<translation_block *, 2> cont_,
-                               ::llvm::ExecutionEngine *mod_eng_)
-    : f_ptr(f_ptr_)
-    , cont(cont_)
-    , mod_eng(mod_eng_) {}
-};
-
-using gen_func = std::function<::llvm::Function *(::llvm::Module *)>;
-
-translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled) {
+#ifndef NDEBUG
+    LOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
+#endif
+    static unsigned i = 0;
+    auto code = generator();
+    if (dumpEnabled) {
+        std::string name(fmt::format("tcc_jit_#%X.c", ++i));
+        std::ofstream os(name);
+        os<<code<<std::endl;
+    }
+    auto tcc = tcc_new(); assert(tcc);
+    tcc_set_output_type(tcc, TCC_OUTPUT_MEMORY);
+//    tcc_add_symbol(tcc, "add", add);
+//    tcc_add_symbol(tcc, "hello", hello);
+    /* relocate the code */
+    assert(tcc_relocate(tcc, TCC_RELOCATE_AUTO) >= 0);
+    /* get entry symbol */
+    auto func = tcc_get_symbol(tcc, "foo");
+    tcc_delete(tcc);
+    return translation_block(reinterpret_cast<uintptr_t>(func), {nullptr, nullptr});
 }
 }
-#endif /* _MCJITHELPER_H_ */
+}
+}

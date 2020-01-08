@@ -27,7 +27,8 @@ find_package(LLVM REQUIRED CONFIG)
 set(LIB_SOURCES
     src/dbgsrvbase.cpp
     src/gdb_session.cpp
-    src/jit_helper.cpp
+    src/llvm_jit_helper.cpp
+    src/tcc_jit_helper.cpp
     src/vm_base.cpp
     src/cmdhandler.cpp
     src/target_adapter_base.cpp
@@ -42,6 +43,8 @@ add_library(${LIBRARY_NAME} ${LIB_SOURCES})
 target_compile_definitions(${LIBRARY_NAME} PUBLIC ${LLVM_DEFINITIONS})
 target_include_directories(${LIBRARY_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/incl) 
 target_include_directories(${LIBRARY_NAME} PRIVATE ${LLVM_INCLUDE_DIRS}) 
+
+target_include_directories(${LIBRARY_NAME} PUBLIC /opt/shared/tcc/0.9.27/include) #FIXME: quick hack
 
 #set_target_properties(foo PROPERTIES LINK_FLAGS "My lib link flags")
 #set_target_properties(exe PROPERTIES LINK_FLAGS "My exe link flags")

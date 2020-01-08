@@ -40,8 +40,12 @@
 #include <memory>
 
 namespace iss {
-
+namespace llvm {
 template <typename ARCH> std::unique_ptr<iss::vm_if> create(ARCH *, unsigned short port = 0, bool dump = false);
+}
+namespace tcc {
+template <typename ARCH> std::unique_ptr<iss::vm_if> create(ARCH *, unsigned short port = 0, bool dump = false);
+}
 }
 
 #endif /* _ISS_H */
