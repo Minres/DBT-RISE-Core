@@ -24,6 +24,8 @@ endif()
 
 find_package(LLVM REQUIRED CONFIG)
 
+add_subdirectory(external)
+
 set(LIB_SOURCES
     src/dbgsrvbase.cpp
     src/gdb_session.cpp
