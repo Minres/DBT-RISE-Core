@@ -88,6 +88,7 @@ public:
     using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
 
     using dbg_if = iss::debugger_if;
+    using translation_block = iss::llvm::translation_block;
 
     constexpr static unsigned blk_size = 128; // std::numeric_limits<unsigned>::max();
 
@@ -145,7 +146,7 @@ public:
                     auto it = this->func_map.find(pc_p.val);
                     if (it == this->func_map.end()) { // if not generate and compile it
                         auto res = func_map.insert(std::make_pair(
-                            pc_p.val, getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
+                            pc_p.val, iss::llvm::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
                     cur_tb = &(it->second);
@@ -274,7 +275,7 @@ protected:
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
     , sync_exec(NO_SYNC)
-    , builder(getContext())
+    , builder(::iss::llvm::getContext())
     , mod(nullptr)
     , func(nullptr)
     , leave_blk(nullptr)
@@ -289,7 +290,7 @@ protected:
         if (plugin.registration("1.0", *this)) {
             Value *ptr = // this->builder.CreateIntToPtr(&plugin, get_type(8)->getPointerTo(0));
                 ConstantInt::get(
-                    getContext(),
+                    ::iss::llvm::getContext(),
                     APInt(64, (uint64_t)&plugin)); // TODO: this is definitely non-portable and wrong
             plugins.push_back(plugin_entry{plugin.get_sync(), plugin, ptr});
         }
@@ -316,32 +317,32 @@ protected:
     }
 
     inline Value *gen_get_reg(reg_e r) {
-        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, r))};
+        std::vector<Value *> args{core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, r))};
         auto reg_size = arch::traits<ARCH>::reg_bit_widths[r];
         auto ret = builder.CreateCall(mod->getFunction("get_reg"), args);
         return reg_size == 64 ? ret : builder.CreateTrunc(ret, get_type(reg_size));
     }
 
     inline void gen_set_reg(reg_e r, Value *val) {
-        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, r)),
+        std::vector<Value *> args{core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, r)),
                                         adj_to64(val)};
         builder.CreateCall(mod->getFunction("set_reg"), args);
     }
 
     inline Value *gen_get_flag(sr_flag_e flag, const char *nm = "") {
-        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, flag))};
+        std::vector<Value *> args{core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, flag))};
         Value *call = builder.CreateCall(mod->getFunction("get_flag"), args);
         return builder.CreateTrunc(call, get_type(1));
     }
 
     inline void gen_set_flag(sr_flag_e flag, Value *val) {
-        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, flag)),
+        std::vector<Value *> args{core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, flag)),
                                         builder.CreateTrunc(val, get_type(1))};
         builder.CreateCall(mod->getFunction("set_flag"), args);
     }
 
     inline void gen_update_flags(iss::arch_if::operations op, Value *oper1, Value *oper2) {
-        std::vector<Value *> args{core_ptr, ConstantInt::get(getContext(), APInt(16, op)),
+        std::vector<Value *> args{core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, op)),
                                         oper1->getType()->getScalarSizeInBits() == 64
                                             ? oper1
                                             : builder.CreateZExt(oper1, IntegerType::get(mod->getContext(), 64)),
@@ -360,15 +361,15 @@ protected:
         auto *storage_ptr = builder.CreateBitCast(storage, get_type(8)->getPointerTo(0));
         std::vector<Value *> args{
             core_ptr,
-            ConstantInt::get(getContext(), APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
-            ConstantInt::get(getContext(), APInt(32, type)),
+            ConstantInt::get(::iss::llvm::getContext(), APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
+            ConstantInt::get(::iss::llvm::getContext(), APInt(32, type)),
             adj_to64(addr),
-            ConstantInt::get(getContext(), APInt(32, length)),
+            ConstantInt::get(::iss::llvm::getContext(), APInt(32, length)),
             storage_ptr};
         auto *call = builder.CreateCall(mod->getFunction("read_mem"), args);
         call->setCallingConv(CallingConv::C);
         auto *icmp = builder.CreateICmpNE(call, gen_const(8, 0UL));
-        auto *label_cont = BasicBlock::Create(getContext(), "", func, this->leave_blk);
+        auto *label_cont = BasicBlock::Create(::iss::llvm::getContext(), "", func, this->leave_blk);
         SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
         Weights[1] = LikelyBranchWeight;
         this->builder.CreateCondBr(icmp, trap_blk, label_cont,
@@ -386,7 +387,7 @@ protected:
     }
 
     inline void gen_write_mem(mem_type_e type, uint64_t addr, Value *val) {
-        gen_write_mem(type, ConstantInt::get(getContext(), APInt(64, addr)), val);
+        gen_write_mem(type, ConstantInt::get(::iss::llvm::getContext(), APInt(64, addr)), val);
     }
 
     inline void gen_write_mem(mem_type_e type, Value *addr, Value *val) {
@@ -396,15 +397,15 @@ protected:
         auto *storage_ptr = builder.CreateBitCast(storage, get_type(8)->getPointerTo(0));
         std::vector<Value *> args{
             core_ptr,
-            ConstantInt::get(getContext(), APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
-            ConstantInt::get(getContext(), APInt(32, type)),
+            ConstantInt::get(::iss::llvm::getContext(), APInt(32, static_cast<uint16_t>(iss::address_type::VIRTUAL))),
+            ConstantInt::get(::iss::llvm::getContext(), APInt(32, type)),
             adj_to64(addr),
-            ConstantInt::get(getContext(), APInt(32, bitwidth / 8)),
+            ConstantInt::get(::iss::llvm::getContext(), APInt(32, bitwidth / 8)),
             storage_ptr};
         auto *call = builder.CreateCall(mod->getFunction("write_mem"), args);
         call->setCallingConv(CallingConv::C);
         auto *icmp = builder.CreateICmpNE(call, gen_const(8, 0UL));
-        auto *label_cont = BasicBlock::Create(getContext(), "", func, this->leave_blk);
+        auto *label_cont = BasicBlock::Create(::iss::llvm::getContext(), "", func, this->leave_blk);
         SmallVector<uint32_t, 4> Weights(2, UnlikelyBranchWeight);
         Weights[1] = LikelyBranchWeight;
         this->builder.CreateCondBr(icmp, trap_blk, label_cont,
@@ -424,22 +425,22 @@ protected:
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
     inline ConstantInt *gen_const(unsigned size, T val) const {
-        return ConstantInt::get(getContext(), APInt(size, val, true));
+        return ConstantInt::get(::iss::llvm::getContext(), APInt(size, val, true));
     }
 
     template <typename T, typename std::enable_if<!std::is_signed<T>::value>::type * = nullptr>
     inline ConstantInt *gen_const(unsigned size, T val) const {
-        return ConstantInt::get(getContext(), APInt(size, (uint64_t)val, false));
+        return ConstantInt::get(::iss::llvm::getContext(), APInt(size, (uint64_t)val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
     inline Value *gen_ext(T val, unsigned size) const {
-        return ConstantInt::get(getContext(), APInt(size, val, false));
+        return ConstantInt::get(::iss::llvm::getContext(), APInt(size, val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
     inline Value *gen_ext(T val, unsigned size) const {
-        return ConstantInt::get(getContext(), APInt(size, val, false));
+        return ConstantInt::get(::iss::llvm::getContext(), APInt(size, val, false));
     }
 
     template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
@@ -449,7 +450,7 @@ protected:
 
     template <typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
     inline Value *gen_ext(T val, unsigned size, bool isSigned) const {
-        return ConstantInt::get(getContext(), APInt(size, val, isSigned));
+        return ConstantInt::get(::iss::llvm::getContext(), APInt(size, val, isSigned));
     }
 
     template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
@@ -539,7 +540,7 @@ protected:
     uint8_t *regs_base_ptr;
     sync_type sync_exec;
     std::unordered_map<uint64_t, translation_block> func_map;
-    IRBuilder<> builder{getContext()};
+    IRBuilder<> builder{iss::llvm::getContext()};
     // non-owning pointers
     Module *mod;
     Function *func;
@@ -550,6 +551,5 @@ protected:
     std::vector<plugin_entry> plugins;
 };
 }
-}
-
+} // namespace iss
 #endif /* _VM_BASE_H_ */

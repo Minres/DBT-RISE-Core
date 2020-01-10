@@ -36,11 +36,11 @@
 #include <iss/vm_plugin.h>
 #include <util/logging.h>
 
-using namespace std;
-using namespace llvm;
 namespace iss {
-
 namespace llvm {
+
+using namespace std;
+using namespace ::llvm;
 
 cl::opt<uint32_t> LikelyBranchWeight("likely-branch-weight", cl::Hidden, cl::init(64),
                                            cl::desc("Weight of the branch likely to be taken (default = 64)"));

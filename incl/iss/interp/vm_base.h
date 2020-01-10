@@ -35,7 +35,6 @@
 #ifndef _VM_BASE_H_
 #define _VM_BASE_H_
 
-#include "jit_helper.h"
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
@@ -53,10 +52,10 @@
 #include <stack>
 #include <utility>
 #include <vector>
+#include <type_traits>
 
 namespace iss {
 
-namespace vm {
 namespace interp {
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
@@ -67,13 +66,14 @@ template <typename ARCH> class vm_base : public debugger_if, public vm_if {
         vm_plugin &plugin;
     };
 public:
-    using reg_e = typename arch::traits<ARCH>::reg_e;
-    using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e;
+    using reg_e       = typename arch::traits<ARCH>::reg_e;
+    using sr_flag_e   = typename arch::traits<ARCH>::sreg_flag_e;
     using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t;
     using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t;
-    using addr_t = typename arch::traits<ARCH>::addr_t;
+    using addr_t      = typename arch::traits<ARCH>::addr_t;
+    using reg_t       = typename arch::traits<ARCH>::reg_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
-    using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
+    using mem_type_e  = typename arch::traits<ARCH>::mem_type_e;
 
     using dbg_if = iss::debugger_if;
 
@@ -85,24 +85,28 @@ public:
         return idx < 0 ? arch::traits<ARCH>::NUM_REGS : arch::traits<ARCH>::reg_bit_widths[(reg_e)idx];
     }
 
-    template <typename T> inline T get_reg(unsigned r) {
-        std::array<uint8_t, sizeof(T)> res(0);
+    template <typename T> inline T get_reg_val(unsigned r) {
+        std::array<uint8_t, sizeof(T)> res;
         uint8_t *reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
         auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
         std::copy(reg_base, reg_base + size, res.data());
         return *reinterpret_cast<T *>(&res[0]);
     }
 
+    template <typename T = reg_t> inline T& get_reg(unsigned r){
+        return *reinterpret_cast<T*>(regs_base_ptr+arch::traits<ARCH>::reg_byte_offsets[r]);
+    }
+
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false) override {
         int error = 0;
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
-        virt_addr_t pc(iss::access_type::FETCH, 0, get_reg<typename addr_t>(arch::traits<ARCH>::PC));
+        virt_addr_t pc(iss::access_type::FETCH, 0, get_reg<addr_t>(arch::traits<ARCH>::PC));
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
-            while (!core.should_stop() && core.get_icount() < icount) {
-                pc = execute_single_inst(pc);
-            }
+            execute_inst(pc, [this, icount]()->bool{
+                return !core.should_stop() && core.get_icount() < icount;
+            });
         } catch (simulation_stopped &e) {
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if (e.state != 1) error = e.state;
@@ -129,7 +133,7 @@ public:
     }
 
 protected:
-    virt_addr_t execute_single_inst(virt_addr_t pc) = 0;
+    virtual virt_addr_t execute_inst(virt_addr_t start, std::function<bool(void)> pred) = 0;
 
     explicit vm_base(ARCH &core, unsigned core_id = 0, unsigned cluster_id = 0)
     : core(core)
@@ -153,6 +157,56 @@ protected:
     const std::array<const iss::arch_if::exec_phase, 4> notifier_mapping = {
         {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
 
+    inline void do_sync(sync_type s, unsigned inst_id) {
+        if (s == PRE_SYNC) {
+            // update icount
+            auto& icnt = get_reg<uint64_t>(arch::traits<ARCH>::ICOUNT);
+            icnt++;
+            // set PC
+            auto& next_pc = get_reg<addr_t>(arch::traits<ARCH>::NEXT_PC);
+            auto& pc = get_reg<addr_t>(arch::traits<ARCH>::PC);
+            pc=next_pc;
+            // copy over trap state
+            auto& pending_trap = get_reg<uint32_t>(arch::traits<ARCH>::PENDING_TRAP);
+            auto& trap_state = get_reg<uint32_t>(arch::traits<ARCH>::TRAP_STATE);
+            trap_state=pending_trap;
+            if (debugging_enabled())
+                tgt_adapter->check_continue(pc); //pre_instr_sync();
+        }
+        if ((s & sync_exec))
+            core.notify_phase(notifier_mapping[s]);
+        iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
+        for (plugin_entry e : plugins) {
+            if (e.sync & s)
+                e.plugin.callback(iinfo.st.value);
+        }
+    }
+
+    template<typename DT, typename AT>
+    inline DT read_mem(mem_type_e type, AT addr) {
+        DT val;
+        this->core.read(iss::address_type::VIRTUAL, access_type::READ, type,
+                static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)),
+                sizeof(DT),reinterpret_cast<uint8_t*>(&val));
+        return val;
+    }
+
+    template<typename AT, typename DT>
+    inline void write_mem(mem_type_e type, AT addr, DT val) {
+        this->core.write(iss::address_type::VIRTUAL, access_type::WRITE, type,
+                static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)),
+                sizeof(DT), reinterpret_cast<uint8_t*>(&val));
+    }
+
+    template<typename TT, typename ST>
+    inline TT sext(ST val){
+        return static_cast<TT>(static_cast<typename std::make_signed<ST>::type>(val));
+    }
+
+    template<typename TT, typename ST>
+    inline TT zext(ST val){
+        return static_cast<TT>(static_cast<typename std::make_unsigned<ST>::type>(val));
+    }
 
     ARCH &core;
     unsigned core_id = 0;
@@ -164,7 +218,6 @@ protected:
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
 };
-}
 }
 }
 

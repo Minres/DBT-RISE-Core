@@ -56,9 +56,7 @@
 
 namespace iss {
 
-namespace vm {
 namespace tcc {
-using namespace ::llvm;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
@@ -123,7 +121,7 @@ public:
             } param = {this, pc, cont};
             //translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
 
-            iss::vm::tcc::gen_func generator{[&param]() -> std::string {
+            iss::tcc::gen_func generator{[&param]() -> std::string {
                 std::string code;
                 std::tie(param.cont, code) = param.vm->disass(param.pc);
                 param.vm->mod = nullptr;
@@ -254,7 +252,7 @@ protected:
         str += buf.data();
     }
 
-    virtual void setup_module(Module *m) {}
+    virtual void setup_module(std::string m) {}
 
     virtual std::tuple<continuation_e>
     gen_single_inst_behavior(virt_addr_t &pc_v, unsigned int &inst_cnt, std::ostringstream& os) = 0;
@@ -398,7 +396,7 @@ protected:
         }
     }
 
-    virtual Function *open_block_func(phys_addr_t pc) {
+    virtual void *open_block_func(phys_addr_t pc) {
         std::string name("block");
         GenerateUniqueName(name, pc.val);
         return nullptr;
@@ -412,15 +410,14 @@ protected:
     std::unordered_map<uint64_t, translation_block> func_map;
     TCCBuilder builder{};
     // non-owning pointers
-    Module *mod;
-    Function *func;
+    void *mod;
+    void *func;
     Value *core_ptr = nullptr, *vm_ptr = nullptr, *regs_ptr = nullptr;
     BasicBlock *leave_blk, *trap_blk;
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
 };
-}
 }
 }
 

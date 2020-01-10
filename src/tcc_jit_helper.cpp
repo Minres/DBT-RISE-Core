@@ -44,7 +44,6 @@ using namespace logging;
 
 namespace iss {
 
-namespace vm {
 namespace tcc {
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled) {
@@ -71,4 +70,4 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
 }
 }
 }
-}
+
