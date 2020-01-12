@@ -67,8 +67,6 @@ elseif(${TCC_NATIVE_TARGET} STREQUAL "arm")
 	set(SRC_FILES        ${SRC_FILES} arm64-gen.c arm64-link.c)
 endif()
 
-
-message("TARGET ARCH set to ${TCC_NATIVE_TARGET}")
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/tinycc/config.h
     COMMAND sh ./configure
