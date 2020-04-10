@@ -384,7 +384,7 @@ protected:
     const std::array<const iss::arch_if::exec_phase, 4> notifier_mapping = {
         {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
 
-    inline void gen_sync(sync_type s, unsigned inst_id) {
+    inline void gen_sync(std::ostringstream& os, sync_type s, unsigned inst_id) {
         if (s == PRE_SYNC) {
             // update icount
         }
@@ -394,6 +394,7 @@ protected:
             if (e.sync & s) {
             }
         }
+        os<< "\n";
     }
 
     virtual void *open_block_func(phys_addr_t pc) {
