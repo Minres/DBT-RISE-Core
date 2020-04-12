@@ -65,7 +65,7 @@ struct alignas(4 * sizeof(void *)) translation_block {
     {}
 };
 
-using gen_func = std::function<std::string(void)>;
+using gen_func = std::function<std::tuple<std::string, std::string>(void)>;
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
 }
