@@ -59,10 +59,36 @@ namespace tcc {
 struct alignas(4 * sizeof(void *)) translation_block {
     uintptr_t f_ptr = 0;
     std::array<translation_block *, 2> cont;
-    explicit translation_block(uintptr_t f_ptr_, std::array<translation_block *, 2> cont_)
-    : f_ptr(f_ptr_)
+    void* f_mem;
+
+    explicit translation_block(void* f_ptr_, std::array<translation_block *, 2> cont_, void* mem_ptr = nullptr )
+    : f_ptr(reinterpret_cast<uintptr_t>(f_ptr_))
     , cont(cont_)
+    , f_mem(mem_ptr)
     {}
+
+    translation_block() = delete;
+
+    translation_block(translation_block const&) = delete;
+
+    translation_block& operator=(translation_block const& other) = delete;
+
+    translation_block(translation_block && o){
+        f_ptr=o.f_ptr,o.f_ptr=0;
+        cont=o.cont; o.cont[0]=nullptr; o.cont[1]=nullptr;
+        f_mem=o.f_mem; o.f_mem=nullptr;
+    }
+
+    translation_block& operator=(translation_block && o){
+        f_ptr=o.f_ptr,o.f_ptr=0;
+        cont=o.cont; o.cont[0]=nullptr; o.cont[1]=nullptr;
+        f_mem=o.f_mem; o.f_mem=nullptr;
+        return *this;
+    }
+
+    ~translation_block(){
+        free(f_mem);
+    }
 };
 
 using gen_func = std::function<std::tuple<std::string, std::string>(void)>;

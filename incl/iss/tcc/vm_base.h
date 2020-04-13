@@ -198,6 +198,7 @@ public:
     }
 
 protected:
+    enum class ICmpInst {ICMP_UGT, ICMP_ULT, ICMP_UGE, ICMP_ULE, ICMP_EQ, ICMP_NE, ICMP_SGT, ICMP_SLT, ICMP_SGE, ICMP_SLE};
     struct translation_unit {
         template <typename S, typename... Args>
         inline void operator()(const S& format_str, Args&&... args) {
@@ -208,6 +209,250 @@ protected:
         std::string fname;
         std::vector<std::string> lines{};
         std::array<bool, arch::traits<ARCH>::NEXT_PC+5> defined_regs{false};
+        inline std::string add_reg_ptr(std::string const& name, unsigned reg_num){
+            return fmt::format("  uint{0}_t* {2} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
+                    arch::traits<ARCH>::reg_bit_widths[reg_num],
+                    arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
+        }
+
+        std::string finish(){
+            std::ostringstream os;
+            // generate prologue
+            os<<"#include <stdint.h>\n";
+            os<<"#include <stdbool.h>\n";
+            os<<"extern uint8_t read_mem1(void*, uint32_t, uint32_t, uint64_t);\n";
+            os<<"extern void write_mem1(void*, uint32_t, uint32_t, uint64_t, uint8_t);\n";
+            os<<"extern uint16_t read_mem2(void*, uint32_t, uint32_t, uint64_t);\n";
+            os<<"extern void write_mem2(void*, uint32_t, uint32_t, uint64_t, uint16_t);\n";
+            os<<"extern uint32_t read_mem4(void*, uint32_t, uint32_t, uint64_t);\n";
+            os<<"extern void write_mem4(void*, uint32_t, uint32_t, uint64_t, uint32_t);\n";
+            os<<"extern uint64_t read_mem8(void*, uint32_t, uint32_t, uint64_t);\n";
+            os<<"extern void write_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t);\n";
+            os<<"extern uint64_t enter_trap(void*, uint64_t, uint64_t);\n";
+            os<<"extern uint64_t leave_trap(void*, uint64_t);\n";
+            os<<"extern void wait(void*, uint64_t);\n";
+            os<<"extern void print_string(void*, char*);\n";
+            os<<"extern void print_disass(void*, uint64_t, char*);\n";
+            os<<"extern void pre_instr_sync(void*);\n";
+            os<<"extern void notify_phase(void*, uint32_t);\n";
+            os<<"extern void call_plugin(void*, uint64_t) ;\n";
+            //os<<fmt::format("typedef uint{}_t reg_t;\n", arch::traits<ARCH>::XLEN);
+            os<<fmt::format("uint64_t {}(uint8_t* regs_ptr, void* core_ptr, void* vm_ptr) __attribute__ ((regnum(3)))  {{\n", fname);
+            os<<add_reg_ptr("pc", arch::traits<ARCH>::PC);
+            os<<add_reg_ptr("next_pc", arch::traits<ARCH>::NEXT_PC);
+            os<<add_reg_ptr("trap_state", arch::traits<ARCH>::TRAP_STATE);
+            os<<add_reg_ptr("pending_trap", arch::traits<ARCH>::PENDING_TRAP);
+            os<<add_reg_ptr("icount", arch::traits<ARCH>::ICOUNT);
+
+            for(size_t i=0; i<arch::traits<ARCH>::NUM_REGS; ++i){
+                if(defined_regs[i]){
+                    os<<fmt::format("  uint{0}_t* reg{2:02d} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
+                                    arch::traits<ARCH>::reg_bit_widths[i],
+                                    arch::traits<ARCH>::reg_byte_offsets[i], i);
+                }
+            }
+            if(defined_regs[arch::traits<ARCH>::LAST_BRANCH]){
+                os<<fmt::format("  uint{0}_t* reg{2:02d} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
+                                arch::traits<ARCH>::reg_bit_widths[arch::traits<ARCH>::LAST_BRANCH],
+                                arch::traits<ARCH>::reg_byte_offsets[arch::traits<ARCH>::LAST_BRANCH], arch::traits<ARCH>::LAST_BRANCH);
+            }
+            // add generated code
+            std::copy(lines.begin(), lines.end(), std::ostream_iterator<std::string>(os, "\n"));
+            // and the epilogue
+            os<<"}";
+            return os.str();
+        }
+
+        void open_scope() {
+            lines.push_back("  {");
+        }
+
+        void close_scope() {
+            lines.push_back("  }");
+        }
+
+        template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
+        inline std::string gen_const(unsigned size, T val) const {
+            return fmt::format("((int{}_t){})", size, val);
+        }
+
+        template <typename T, typename std::enable_if<!std::is_signed<T>::value>::type * = nullptr>
+        inline std::string gen_const(unsigned size, T val) const {
+            return fmt::format("((uint{}_t){})", size, val);
+        }
+
+        template <typename T>
+        inline std::string gen_ext(T val, unsigned size, bool isSigned) const {
+            if (isSigned)
+                return fmt::format("((int{}_t){})", size, val);
+            else
+                return fmt::format("((uint{}_t){})", size, val);
+        }
+
+        inline std::string create_assignment(std::string const& name, std::string const& val, unsigned width){
+            if(width==1){
+                return fmt::format("  bool {} = {};", name, val);
+            } else{
+                return fmt::format("  uint{}_t {} = {};", width, name, val);
+            }
+        }
+
+        inline std::string create_store(std::string const& val, unsigned reg_num){
+            switch(reg_num){
+            case arch::traits<ARCH>::NEXT_PC:
+                return fmt::format("  *next_pc = {};", val);
+            case arch::traits<ARCH>::PC:
+                return fmt::format("  *pc = {};", val);
+            default:
+                defined_regs[reg_num]=true;
+                return fmt::format("  *reg{:02d} = {};", reg_num, val);
+            }
+        }
+
+        inline std::string create_load(unsigned reg_num, unsigned nesting_lvl){
+            switch(reg_num){
+            case arch::traits<ARCH>::NEXT_PC:
+                return "(*next_pc)";
+            case arch::traits<ARCH>::PC:
+                return "(*pc)";
+            default:
+                defined_regs[reg_num]=true;
+                return fmt::format("(*reg{:02d})", reg_num);
+            }
+        }
+
+        inline std::string create_add(std::string const & left, std::string const & right){
+            return fmt::format("({}) + ({})", left, right);
+        }
+
+        inline std::string create_sub(std::string const & left, std::string const & right){
+            return fmt::format("({}) - ({})", left, right);
+        }
+
+        inline std::string create_and(std::string const & left, std::string const & right){
+            return fmt::format("({}) & ({})", left, right);
+        }
+
+        inline std::string create_or(std::string const & left, std::string const & right){
+            return fmt::format("({}) | ({})", left, right);
+        }
+
+        inline std::string create_xor(std::string const & left, std::string const & right){
+            return fmt::format("({}) ^ ({})", left, right);
+        }
+
+        inline std::string create_b_and(std::string const & left, std::string const & right){
+            return fmt::format("({}) && ({})", left, right);
+        }
+
+        inline std::string create_b_or(std::string const & left, std::string const & right){
+            return fmt::format("({}) || ({})", left, right);
+        }
+
+        inline std::string create_not(std::string const & left){
+            return fmt::format("~({})", left);
+        }
+
+        inline std::string create_neg(std::string const & left){
+            return fmt::format("!({})", left);
+        }
+
+        inline std::string create_shl(std::string const & val,std::string const & shift){
+            return fmt::format("({})<<({})", val, shift);
+        }
+
+        inline std::string create_lshr(std::string const & val,std::string const & shift){
+            return fmt::format("((uint32_t){})<<({})", val, shift);
+        }
+
+        inline std::string create_ashr(std::string const & val,std::string const & shift){
+            return fmt::format("((uint32_t){})<<({})", val, shift);
+        }
+
+        inline std::string create_choose(std::string const & cond, std::string const & left, std::string const & right){
+            return fmt::format("({})?({}) : ({})", cond, left, right);
+        }
+
+        inline std::string create_icmp(ICmpInst inst, std::string const& left, std::string const& right){
+            switch(inst){
+            case ICmpInst::ICMP_SGT:
+            case ICmpInst::ICMP_UGT:
+                return fmt::format("{} > {}", left, right);
+            case ICmpInst::ICMP_SLT:
+            case ICmpInst::ICMP_ULT:
+                return fmt::format("{} < {}", left, right);
+            case ICmpInst::ICMP_SGE:
+            case ICmpInst::ICMP_UGE:
+                return fmt::format("{} >= {}", left, right);
+            case ICmpInst::ICMP_SLE:
+            case ICmpInst::ICMP_ULE:
+                return fmt::format("{} <= {}", left, right);
+            case ICmpInst::ICMP_EQ: return fmt::format("{} == {}", left, right);
+            case ICmpInst::ICMP_NE: return fmt::format("{} != {}", left, right);
+            }
+            return "";
+        }
+
+        inline std::string create_zext_or_trunc(std::string const& val,unsigned width){
+            return fmt::format("(uint{}_t)({})", width, val);
+        }
+
+        inline std::string create_trunc(std::string const& val,unsigned width){
+            return fmt::format("(int{}_t)({})", width, val);
+        }
+
+        inline std::string create_read_mem(mem_type_e type, uint64_t addr, uint32_t size) {
+            switch(size){
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+                return fmt::format("read_mem{}(core_ptr, {}, {}, {})", size, iss::address_type::VIRTUAL, type, addr);
+            default:
+                assert(false && "Unsupported mem read length");
+                return "";
+            }
+        }
+
+        inline std::string create_read_mem(mem_type_e type, std::string const& addr, uint32_t size) {
+            switch(size){
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+                return fmt::format("read_mem{}(core_ptr, {}, {}, {})", size, iss::address_type::VIRTUAL, type, addr);
+            default:
+                assert(false && "Unsupported mem read length");
+                return "";
+            }
+        }
+
+        template<typename T>
+        inline std::string  create_write_mem(mem_type_e type, uint64_t addr, T val) {
+            switch(sizeof(T)){
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+                return fmt::format("  write_mem{}(core_ptr, {}, {}, {}, {});", sizeof(T), iss::address_type::VIRTUAL, type, addr, val);
+            default:
+                assert(false && "Unsupported mem read length");
+                return "";
+            }
+        }
+
+        inline std::string  create_write_mem(mem_type_e type, std::string const& addr, std::string val, unsigned size) {
+            switch(size){
+            case 1:
+            case 2:
+            case 4:
+            case 8:
+                return fmt::format("  write_mem{}(core_ptr, {}, {}, {}, {});", size, iss::address_type::VIRTUAL, type, addr, val);
+            default:
+                assert(false && "Unsupported mem read length");
+                return "";
+            }
+        }
     };
 
     std::tuple<continuation_e, std::string, std::string> disass(virt_addr_t &pc) {
@@ -226,12 +471,12 @@ protected:
             const phys_addr_t end_pc(this->core.v2p(--cur_pc));
             assert(cur_pc_mark.first.val <= cur_pc.val);
             close_block_func(tu);
-            return std::make_tuple(cont, tu.fname, finish_tu(tu));
+            return std::make_tuple(cont, tu.fname, tu.finish());
         } catch (trap_access &ta) {
             const phys_addr_t end_pc(this->core.v2p(--cur_pc));
             if (cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
                 close_block_func(tu);
-               return std::make_tuple(cont, tu.fname, finish_tu(tu));
+               return std::make_tuple(cont, tu.fname, tu.finish());
             } else // re-throw if it was the first instruction
                 throw ta;
         }
@@ -260,33 +505,11 @@ protected:
 
     void register_plugin(vm_plugin &plugin) {
         if (plugin.registration("1.0", *this)) {
-//            Value *ptr = // this->builder.CreateIntToPtr(&plugin, get_type(8)->getPointerTo(0));
-//                ConstantInt::get(
-//                    getContext(),
-//                    APInt(64, (uint64_t)&plugin)); // TODO: this is definitely non-portable and wrong
-            plugins.push_back(plugin_entry{plugin.get_sync(), plugin, nullptr});
+            plugins.push_back(plugin_entry{plugin.get_sync(), plugin, &plugin});
         }
     }
 
-    inline void *gen_read_mem(mem_type_e type, uint64_t addr, uint32_t length, const char *nm = "") {
-        return nullptr;
-    }
-
-    inline void *gen_read_mem(mem_type_e type, void *addr, uint32_t length, const char *nm = "") {
-        return nullptr;
-    }
-
-    inline void gen_write_mem(mem_type_e type, uint64_t addr, void *val) {
-    }
-
-    inline void gen_write_mem(mem_type_e type, void *addr, void *val) {
-    }
-
     inline void *get_reg_ptr(unsigned i) {
-        return vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_widths[i]);
-    }
-
-    inline void *get_reg_ptr(unsigned i, unsigned size) {
         return regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[i];
     }
 
@@ -312,52 +535,6 @@ protected:
         }
     }
 
-    inline std::string add_reg_ptr(std::string const& name, unsigned reg_num){
-        return fmt::format("  uint{0}_t* {2} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
-                arch::traits<ARCH>::reg_bit_widths[reg_num],
-                arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
-
-    }
-    std::string finish_tu(translation_unit& tu){
-        std::ostringstream os;
-        // generate prologue
-        os<<"#include <stdint.h>\n";
-        os<<"extern uint8_t fetch(void*, uint32_t, uint32_t, uint64_t, uint32_t, uint8_t*);\n";
-        os<<"extern uint8_t fetch_dbg(void*, uint32_t, uint32_t, uint64_t, uint32_t, uint8_t*);\n";
-        os<<"extern uint8_t read_mem(void*, uint32_t, uint32_t, uint64_t, uint32_t, uint8_t*);\n";
-        os<<"extern uint8_t write_mem(void*, uint32_t, uint32_t, uint64_t, uint32_t, uint8_t*);\n";
-        os<<"extern uint8_t read_mem_dbg(void*, uint32_t, uint32_t, uint64_t, uint32_t, uint8_t*);\n";
-        os<<"extern uint8_t write_mem_dbg(void*, uint32_t, uint32_t, uint64_t, uint32_t, uint8_t*);\n";
-        os<<"extern uint64_t enter_trap(void*, uint64_t, uint64_t);\n";
-        os<<"extern uint64_t leave_trap(void*, uint64_t);\n";
-        os<<"extern void wait(void*, uint64_t);\n";
-        os<<"extern void print_string(void*, char*);\n";
-        os<<"extern void print_disass(void*, uint64_t, char*);\n";
-        os<<"extern void pre_instr_sync(void*);\n";
-        os<<"extern void notify_phase(void*, uint32_t);\n";
-        os<<"extern void call_plugin(void*, uint64_t) ;\n";
-        //os<<fmt::format("typedef uint{}_t reg_t;\n", arch::traits<ARCH>::XLEN);
-        os<<fmt::format("uint64_t {}(uint8_t* regs_ptr, void* core_ptr, void* vm_ptr) __attribute__ ((regnum(3)))  {{\n", tu.fname);
-        os<<add_reg_ptr("pc", arch::traits<ARCH>::PC);
-        os<<add_reg_ptr("next_pc", arch::traits<ARCH>::NEXT_PC);
-        os<<add_reg_ptr("trap_state", arch::traits<ARCH>::TRAP_STATE);
-        os<<add_reg_ptr("pending_trap", arch::traits<ARCH>::PENDING_TRAP);
-        os<<add_reg_ptr("icount", arch::traits<ARCH>::ICOUNT);
-
-        for(size_t i=0; i<arch::traits<ARCH>::NUM_REGS; ++i){
-            if(tu.defined_regs[i]){
-                os<<fmt::format("  uint{0}_t* reg{2:02d} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
-                                arch::traits<ARCH>::reg_bit_widths[i],
-                                arch::traits<ARCH>::reg_byte_offsets[i], i);
-            }
-        }
-        // add generated code
-        std::copy(tu.lines.begin(), tu.lines.end(), std::ostream_iterator<std::string>(os, "\n"));
-        // and the epilogue
-        os<<"}";
-        return os.str();
-
-    }
     void open_block_func(translation_unit& tu, phys_addr_t pc) {
         tu.fname = fmt::format("tcc_jit_{:#x}", pc.val);
     }

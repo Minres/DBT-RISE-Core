@@ -66,11 +66,14 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
 //    tcc_add_symbol(tcc, "hello", hello);
     /* relocate the code */
     assert(tcc_compile_string(tcc, std::get<1>(res).c_str())>=0);
-    assert(tcc_relocate(tcc, TCC_RELOCATE_AUTO) >= 0);
+    int size = tcc_relocate(tcc, nullptr);
+    assert(size>0);
+    auto* fmem = malloc(size);
+    assert(tcc_relocate(tcc, fmem)>=0);
     /* get entry symbol */
     auto func = tcc_get_symbol(tcc, std::get<0>(res).c_str());
     tcc_delete(tcc);
-    return translation_block(reinterpret_cast<uintptr_t>(func), {nullptr, nullptr});
+    return translation_block(func, {nullptr, nullptr}, fmem);
 }
 }
 }

@@ -159,4 +159,43 @@ void notify_phase(arch_if_ptr_t iface, uint32_t phase) {
 void call_plugin(vm_plugin_ptr_t iface, uint64_t instr_info) {
     iface->callback(instr_info_t(instr_info));
 }
+
+uint8_t read_mem1(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr) {
+    uint8_t buf;
+    iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 1, &buf);
+    return buf;
+}
+
+uint16_t read_mem2(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr) {
+    uint16_t buf;
+    iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 2, reinterpret_cast<uint8_t*>(&buf));
+    return buf;
+}
+
+uint32_t read_mem4(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr) {
+    uint32_t buf;
+    iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 4, reinterpret_cast<uint8_t*>(&buf));
+    return buf;
+}
+
+
+uint64_t read_mem8(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr) {
+    uint64_t buf;
+    iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 8, reinterpret_cast<uint8_t*>(&buf));
+    return buf;
+}
+
+void write_mem1(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t data) {
+    iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 1, reinterpret_cast<uint8_t*>(&data));
+}
+
+void write_mem2(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint16_t data) {
+    iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 2, reinterpret_cast<uint8_t*>(&data));
+}
+void write_mem4(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t data) {
+    iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 4, reinterpret_cast<uint8_t*>(&data));
+}
+void write_mem8(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint64_t data) {
+    iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 8, reinterpret_cast<uint8_t*>(&data));
+}
 }
