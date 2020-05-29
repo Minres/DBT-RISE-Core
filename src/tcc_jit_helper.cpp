@@ -44,7 +44,6 @@ using namespace logging;
 
 namespace iss {
 
-namespace vm {
 namespace tcc {
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled) {
@@ -52,23 +51,30 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
     LOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
-    auto code = generator();
+    auto res = generator();
     if (dumpEnabled) {
-        std::string name(fmt::format("tcc_jit_#%X.c", ++i));
-        std::ofstream os(name);
-        os<<code<<std::endl;
+        std::string name(fmt::format("tcc_jit_{}.c", ++i));
+        std::ofstream ofs(name);
+        ofs<<std::get<1>(res)<<std::endl;
     }
     auto tcc = tcc_new(); assert(tcc);
     tcc_set_output_type(tcc, TCC_OUTPUT_MEMORY);
+    tcc_set_options(tcc, "-fno-common");
+    tcc_set_options(tcc, "-w");
+//    tcc_set_options(tcc, "-g");
 //    tcc_add_symbol(tcc, "add", add);
 //    tcc_add_symbol(tcc, "hello", hello);
     /* relocate the code */
-    assert(tcc_relocate(tcc, TCC_RELOCATE_AUTO) >= 0);
+    assert(tcc_compile_string(tcc, std::get<1>(res).c_str())>=0);
+    int size = tcc_relocate(tcc, nullptr);
+    assert(size>0);
+    auto* fmem = malloc(size);
+    assert(tcc_relocate(tcc, fmem)>=0);
     /* get entry symbol */
-    auto func = tcc_get_symbol(tcc, "foo");
+    auto func = tcc_get_symbol(tcc, std::get<0>(res).c_str());
     tcc_delete(tcc);
-    return translation_block(reinterpret_cast<uintptr_t>(func), {nullptr, nullptr});
+    return translation_block(func, {nullptr, nullptr}, fmem);
 }
 }
 }
-}
+

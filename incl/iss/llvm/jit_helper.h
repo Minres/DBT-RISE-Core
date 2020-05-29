@@ -54,12 +54,6 @@
 
 namespace iss {
 /**
- * get the LLVM context
- * NOTE: this is a singleton and not threadsave
- * @return the cotext
- */
-::llvm::LLVMContext &getContext();
-/**
  * initialize the LLVM infrastructure
  */
 void init_jit();

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.12)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../cmake) # main (top) cmake dir
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake) # project specific cmake dir
 
@@ -24,8 +24,6 @@ endif()
 
 find_package(LLVM REQUIRED CONFIG)
 
-add_subdirectory(external)
-
 set(LIB_SOURCES
     src/dbgsrvbase.cpp
     src/gdb_session.cpp
@@ -46,12 +44,10 @@ target_compile_definitions(${LIBRARY_NAME} PUBLIC ${LLVM_DEFINITIONS})
 target_include_directories(${LIBRARY_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/incl) 
 target_include_directories(${LIBRARY_NAME} PRIVATE ${LLVM_INCLUDE_DIRS}) 
 
-target_include_directories(${LIBRARY_NAME} PUBLIC /opt/shared/tcc/0.9.27/include) #FIXME: quick hack
-
 #set_target_properties(foo PROPERTIES LINK_FLAGS "My lib link flags")
 #set_target_properties(exe PROPERTIES LINK_FLAGS "My exe link flags")
 #target_link_options(${LIBRARY_NAME} BEFORE INTERFACE -Wl,-whole-archive INTERFACE -Wl,-no-whole-archive)
-
+target_link_libraries(${LIBRARY_NAME} PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt) # tcc 
 target_link_libraries(${LIBRARY_NAME} PRIVATE scc-util)
 
 # Set the build version. It will be used in the name of the lib, with corresponding

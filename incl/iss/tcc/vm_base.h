@@ -40,6 +40,7 @@
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
 #include <iss/debugger_if.h>
+#include <iss/tcc/code_builder.h>
 #include <util/ities.h>
 #include <util/range_lut.h>
 #include <iss/vm_if.h>
@@ -56,26 +57,15 @@
 
 namespace iss {
 
-namespace vm {
 namespace tcc {
-using namespace ::llvm;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
-    struct BasicBlock {
-
-    };
-    struct TCCBuilder {
-
-    };
-    using Value = void;
-    using ConstantInt = void;
-    using Type = void;
     struct plugin_entry {
         sync_type sync;
         vm_plugin &plugin;
-        Value *plugin_ptr; //FIXME: hack
+        void *plugin_ptr; //FIXME: hack
     };
 public:
     using reg_e = typename arch::traits<ARCH>::reg_e;
@@ -85,7 +75,7 @@ public:
     using addr_t = typename arch::traits<ARCH>::addr_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
     using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
-
+    using tu_builder = typename iss::tcc::code_builder<ARCH>;
     using dbg_if = iss::debugger_if;
 
     constexpr static unsigned blk_size = 128; // std::numeric_limits<unsigned>::max();
@@ -123,12 +113,13 @@ public:
             } param = {this, pc, cont};
             //translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
 
-            iss::vm::tcc::gen_func generator{[&param]() -> std::string {
+            iss::tcc::gen_func generator{[&param]() -> std::tuple<std::string, std::string> {
+                std::string fname;
                 std::string code;
-                std::tie(param.cont, code) = param.vm->disass(param.pc);
+                std::tie(param.cont, fname, code) = param.vm->disass(param.pc);
                 param.vm->mod = nullptr;
                 param.vm->func = nullptr;
-                return code;
+                return std::make_tuple(fname, code);
             }};
             // explicit std::function to allow use as reference in call below
             // std::function<Function*(Module*)> gen_ref(std::ref(generator));
@@ -181,7 +172,9 @@ public:
                 LOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
 #endif
             }
-        } catch (simulation_stopped &e) {
+            LOG(INFO) << "ISS execution finished";
+            error = core.stop_code() > 1? core.stop_code():0;
+       } catch (simulation_stopped &e) {
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if (e.state != 1) error = e.state;
         } catch (decoding_error &e) {
@@ -208,61 +201,39 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, std::string> disass(virt_addr_t &pc) {
-        std::string dummy_ret;
+    std::tuple<continuation_e, std::string, std::string> disass(virt_addr_t &pc) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, this->core.v2p(pc));
         unsigned int num_inst = 0;
-        // loaded_regs.clear();
-        func = this->open_block_func(cur_pc_mark.second);
-//        leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
-//        gen_leave_behavior(leave_blk);
-//        trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
-//        gen_trap_behavior(trap_blk);
-//        BasicBlock *bb = BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
-//        builder.SetInsertPoint(bb);
-//        builder.CreateStore(this->gen_const(32, 0), get_reg_ptr(arch::traits<ARCH>::LAST_BRANCH), false);
+        tu_builder tu;
+        open_block_func(tu, cur_pc_mark.second);
         continuation_e cont = CONT;
         try {
             while (cont == CONT && cur_blk < blk_size) {
-//                builder.SetInsertPoint(bb);
-//                std::tie(cont, bb) = gen_single_inst_behavior(cur_pc, num_inst, bb);
-//                cur_blk++;
+                std::tie(cont) = gen_single_inst_behavior(cur_pc, num_inst, tu);
+                cur_blk++;
             }
-//            if (bb != nullptr) {
-//                builder.SetInsertPoint(bb);
-//                builder.CreateBr(leave_blk);
-//            }
             const phys_addr_t end_pc(this->core.v2p(--cur_pc));
             assert(cur_pc_mark.first.val <= cur_pc.val);
-            return std::make_tuple(cont, dummy_ret);
+            close_block_func(tu);
+            return std::make_tuple(cont, tu.fname, tu.finish());
         } catch (trap_access &ta) {
             const phys_addr_t end_pc(this->core.v2p(--cur_pc));
             if (cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
-//                builder.SetInsertPoint(bb);
-//                builder.CreateBr(leave_blk);
-                return std::make_tuple(cont, dummy_ret);
+                close_block_func(tu);
+               return std::make_tuple(cont, tu.fname, tu.finish());
             } else // re-throw if it was the first instruction
                 throw ta;
         }
     }
 
-    void GenerateUniqueName(std::string &str, uint64_t mod) const {
-        std::array<char, 21> buf;
-        ::snprintf(buf.data(), buf.size(), "@0x%016lX_", mod);
-        str += buf.data();
-    }
-
-    virtual void setup_module(Module *m) {}
+    virtual void setup_module(std::string m) {}
 
     virtual std::tuple<continuation_e>
-    gen_single_inst_behavior(virt_addr_t &pc_v, unsigned int &inst_cnt, std::ostringstream& os) = 0;
+    gen_single_inst_behavior(virt_addr_t &pc_v, unsigned int &inst_cnt, tu_builder& tu) = 0;
 
-    virtual void gen_trap_behavior(std::ostringstream& os) = 0;
-
-    virtual void gen_leave_behavior(std::ostringstream& os) {
-    }
+    virtual void gen_trap_behavior(tu_builder& tu) = 0;
 
     explicit vm_base(ARCH &core, unsigned core_id = 0, unsigned cluster_id = 0)
     : core(core)
@@ -270,11 +241,8 @@ protected:
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
     , sync_exec(NO_SYNC)
-    , builder()
     , mod(nullptr)
     , func(nullptr)
-    , leave_blk(nullptr)
-    , trap_blk(nullptr)
     , tgt_adapter(nullptr) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
     }
@@ -283,125 +251,43 @@ protected:
 
     void register_plugin(vm_plugin &plugin) {
         if (plugin.registration("1.0", *this)) {
-//            Value *ptr = // this->builder.CreateIntToPtr(&plugin, get_type(8)->getPointerTo(0));
-//                ConstantInt::get(
-//                    getContext(),
-//                    APInt(64, (uint64_t)&plugin)); // TODO: this is definitely non-portable and wrong
-            plugins.push_back(plugin_entry{plugin.get_sync(), plugin, nullptr});
+            plugins.push_back(plugin_entry{plugin.get_sync(), plugin, &plugin});
         }
     }
 
-    inline Type *get_type(unsigned width) {
-        assert(width > 0);
-        return nullptr;
-    }
-
-    inline Value *adj_to64(Value *val) {
-        return nullptr;
-    }
-
-    inline Value *gen_get_reg(reg_e r) {
-        return nullptr;
-    }
-
-    inline void gen_set_reg(reg_e r, Value *val) {
-    }
-
-    inline Value *gen_get_flag(sr_flag_e flag, const char *nm = "") {
-        return nullptr;
-    }
-
-    inline void gen_set_flag(sr_flag_e flag, Value *val) {
-    }
-
-    inline void gen_update_flags(iss::arch_if::operations op, Value *oper1, Value *oper2) {
-    }
-
-    inline Value *gen_read_mem(mem_type_e type, uint64_t addr, uint32_t length, const char *nm = "") {
-        return nullptr;
-    }
-
-    inline Value *gen_read_mem(mem_type_e type, Value *addr, uint32_t length, const char *nm = "") {
-        return nullptr;
-    }
-
-    inline void gen_write_mem(mem_type_e type, uint64_t addr, Value *val) {
-    }
-
-    inline void gen_write_mem(mem_type_e type, Value *addr, Value *val) {
-    }
-
-    inline Value *get_reg_ptr(unsigned i) {
-        return nullptr;
-    }
-
-    inline Value *get_reg_ptr(unsigned i, unsigned size) {
-        return nullptr;
-    }
-
-    template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
-    inline ConstantInt *gen_const(unsigned size, T val) const {
-        return nullptr;
-    }
-
-    template <typename T, typename std::enable_if<!std::is_signed<T>::value>::type * = nullptr>
-    inline ConstantInt *gen_const(unsigned size, T val) const {
-        return nullptr;
-    }
-
-    template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type * = nullptr>
-    inline Value *gen_ext(T val, unsigned size) const {
-        return nullptr;
-    }
-
-    template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
-    inline Value *gen_ext(T val, unsigned size) const {
-        return nullptr;
-    }
-
-    template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
-    inline Value *gen_ext(T val, unsigned size) {
-        return nullptr;
-    }
-
-    template <typename T, typename std::enable_if<std::is_integral<T>::value>::type * = nullptr>
-    inline Value *gen_ext(T val, unsigned size, bool isSigned) const {
-        return nullptr;
-    }
-
-    template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type * = nullptr>
-    inline Value *gen_ext(T val, unsigned size, bool isSigned) {
-        return nullptr;
-    }
-
-    inline Value *gen_cond_assign(Value *cond, Value *t, Value *f) { // cond must be 1 or 0
-        return nullptr;
-    }
-
-    inline void gen_cond_branch(Value *when, BasicBlock *then, BasicBlock *otherwise,
-                                unsigned likelyBranch = 0) { // cond must be 1 or 0
+    inline void *get_reg_ptr(unsigned i) {
+        return regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[i];
     }
 
     // NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3
     const std::array<const iss::arch_if::exec_phase, 4> notifier_mapping = {
         {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
 
-    inline void gen_sync(sync_type s, unsigned inst_id) {
+    inline void gen_sync(tu_builder& tu, sync_type s, unsigned inst_id) {
         if (s == PRE_SYNC) {
             // update icount
+            tu("(*icount)++;");
+            tu("*pc=*next_pc;");
+            tu("*trap_state=*pending_trap;");
+            if (debugging_enabled())
+                tu("pre_instr_sync(vm_ptr);");
         }
         if ((s & sync_exec))
+            tu("notify_phase(core_ptr, {});", notifier_mapping[s]);
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
         for (plugin_entry e : plugins) {
-            if (e.sync & s) {
-            }
+            if (e.sync & s)
+                tu("call_plugin((void*){}, (uint64_t){})", e.plugin_ptr, iinfo.st.value);
         }
     }
 
-    virtual Function *open_block_func(phys_addr_t pc) {
-        std::string name("block");
-        GenerateUniqueName(name, pc.val);
-        return nullptr;
+    void open_block_func(tu_builder& tu, phys_addr_t pc) {
+        tu.fname = fmt::format("tcc_jit_{:#x}", pc.val);
+    }
+
+    void close_block_func(tu_builder& tu){
+        tu("return *next_pc;");
+        gen_trap_behavior(tu);
     }
 
     ARCH &core;
@@ -410,17 +296,13 @@ protected:
     uint8_t *regs_base_ptr;
     sync_type sync_exec;
     std::unordered_map<uint64_t, translation_block> func_map;
-    TCCBuilder builder{};
     // non-owning pointers
-    Module *mod;
-    Function *func;
-    Value *core_ptr = nullptr, *vm_ptr = nullptr, *regs_ptr = nullptr;
-    BasicBlock *leave_blk, *trap_blk;
+    void *mod;
+    void *func;
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
 };
-}
 }
 }
 
