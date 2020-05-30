@@ -54,6 +54,14 @@
 #include <vector>
 #include <type_traits>
 
+using int128_t  = __int128;
+using uint128_t = unsigned __int128;
+template<> struct std::make_unsigned<__int128> { typedef unsigned __int128 type; };
+template<> class std::__make_unsigned_selector<__int128 unsigned, false, false> {
+public:
+    typedef unsigned __int128 __type;
+};
+
 namespace iss {
 
 namespace interp {
@@ -205,6 +213,11 @@ protected:
 
     template<typename TT, typename ST>
     inline TT zext(ST val){
+        return static_cast<TT>(static_cast<typename std::make_unsigned<ST>::type>(val));
+    }
+
+    template<typename TT, typename ST>
+    inline TT trunc(ST val){
         return static_cast<TT>(static_cast<typename std::make_unsigned<ST>::type>(val));
     }
 
