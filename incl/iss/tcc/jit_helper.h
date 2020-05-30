@@ -32,15 +32,14 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _MCJITHELPER_H_
-#define _MCJITHELPER_H_
+#ifndef _TCCJITHELPER_H_
+#define _TCCJITHELPER_H_
 
-#include "llvm/ExecutionEngine/GenericValue.h"
-#include "llvm/IR/LegacyPassManager.h"
 #include <iostream>
 #include <iss/arch/traits.h>
 #include <libtcc.h>
 #include <sstream>
+#include <functional>
 
 #include "boost/variant.hpp"
 #include <memory>

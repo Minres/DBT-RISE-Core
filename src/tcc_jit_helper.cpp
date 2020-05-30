@@ -39,7 +39,6 @@
 #include <memory>
 #include <fstream>
 
-using namespace llvm;
 using namespace logging;
 
 namespace iss {
