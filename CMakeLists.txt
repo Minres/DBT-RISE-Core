@@ -19,6 +19,7 @@ endif()
 set(LIB_SOURCES
     src/dbgsrvbase.cpp
     src/gdb_session.cpp
+    src/vm_base.cpp
     src/tcc_jit_helper.cpp
     src/cmdhandler.cpp
     src/target_adapter_base.cpp

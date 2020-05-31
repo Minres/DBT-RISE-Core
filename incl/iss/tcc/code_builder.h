@@ -14,7 +14,7 @@ struct value {
     void set_signed(bool v){if(v) type|=0x100; else type&=0xff;}
     unsigned size() const { return type&0xff;}
     void set_size(unsigned s){ type = (type&0xff00)+(s&0xff);}
-    value(std::string const& s, unsigned size, bool sig):str(s), type((sig?0x100:0)+(size&0xff)){}
+    value(std::string const& s, unsigned size, bool sig = false):str(s), type((sig?0x100:0)+(size&0xff)){}
     value() = delete;
     value(value const&) = default;
     value(value&&) = default;
@@ -70,6 +70,33 @@ struct code_builder {
         os<<"extern void pre_instr_sync(void*);\n";
         os<<"extern void notify_phase(void*, uint32_t);\n";
         os<<"extern void call_plugin(void*, uint64_t) ;\n";
+        os<<"extern uint32_t fget_flags();\n";
+        os<<"extern uint32_t fadd_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
+        os<<"extern uint32_t fsub_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
+        os<<"extern uint32_t fmul_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
+        os<<"extern uint32_t fdiv_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
+        os<<"extern uint32_t fsqrt_s(uint32_t v1, uint8_t mode);\n";
+        os<<"extern uint32_t fcmp_s(uint32_t v1, uint32_t v2, uint32_t op) ;\n";
+        os<<"extern uint32_t fcvt_s(uint32_t v1, uint32_t op, uint8_t mode);\n";
+        os<<"extern uint32_t fmadd_s(uint32_t v1, uint32_t v2, uint32_t v3, uint32_t op, uint8_t mode);\n";
+        os<<"extern uint32_t fsel_s(uint32_t v1, uint32_t v2, uint32_t op);\n";
+        os<<"extern uint32_t fclass_s( uint32_t v1 );\n";
+        os<<"extern uint32_t fconv_d2f(uint64_t v1, uint8_t mode);\n";
+        os<<"extern uint64_t fconv_f2d(uint32_t v1, uint8_t mode);\n";
+        os<<"extern uint64_t fadd_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
+        os<<"extern uint64_t fsub_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
+        os<<"extern uint64_t fmul_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
+        os<<"extern uint64_t fdiv_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
+        os<<"extern uint64_t fsqrt_d(uint64_t v1, uint8_t mode);\n";
+        os<<"extern uint64_t fcmp_d(uint64_t v1, uint64_t v2, uint32_t op);\n";
+        os<<"extern uint64_t fcvt_d(uint64_t v1, uint32_t op, uint8_t mode);\n";
+        os<<"extern uint64_t fmadd_d(uint64_t v1, uint64_t v2, uint64_t v3, uint32_t op, uint8_t mode);\n";
+        os<<"extern uint64_t fsel_d(uint64_t v1, uint64_t v2, uint32_t op) ;\n";
+        os<<"extern uint64_t fclass_d(uint64_t v1  );\n";
+        os<<"extern uint64_t fcvt_32_64(uint32_t v1, uint32_t op, uint8_t mode);\n";
+        os<<"extern uint32_t fcvt_64_32(uint64_t v1, uint32_t op, uint8_t mode);\n";
+        os<<"extern uint32_t unbox_s(uint64_t v);\n";
+
         //os<<fmt::format("typedef uint{}_t reg_t;\n", arch::traits<ARCH>::XLEN);
         os<<fmt::format("uint64_t {}(uint8_t* regs_ptr, void* core_ptr, void* vm_ptr) __attribute__ ((regnum(3)))  {{\n", fname);
         os<<add_reg_ptr("pc", arch::traits<ARCH>::PC);
@@ -107,12 +134,12 @@ struct code_builder {
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type* = nullptr>
     inline value constant(T val, unsigned size) const {
-        return value(fmt::format("{}", val), sizeof(T)*4, true);
+        return value(fmt::format("{}", val), size/*of(T)*4*/, true);
     }
 
     template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type* = nullptr>
     inline value constant(T val, unsigned size) const {
-        return value(fmt::format("{}U", val), sizeof(T)*4, false);
+        return value(fmt::format("{}U", val), size/*of(T)*4*/, false);
     }
 
 
@@ -134,7 +161,11 @@ struct code_builder {
                     return value(fmt::format("(uint{}_t)({})", size, val), size, false);
                 }
             else
-                return val;
+                if(val.size() != size){
+                    return value(fmt::format("(uint{}_t)({})", size, val), size, false);
+                } else {
+                    return val;
+                }
         } else {
             if(!val.is_signed())
                 if( val.size() != size){
@@ -143,11 +174,15 @@ struct code_builder {
                     return value(fmt::format("(int{}_t)({})", size, val), size, true);
                 }
             else
-                return val;
+                if(val.size() != size){
+                    return value(fmt::format("(int{}_t)({})", size, val), size, false);
+                } else {
+                    return val;
+                }
         }
     }
 
-    inline value assignment(std::string const& name, value const& val, unsigned width = 0){
+    inline value assignment(std::string const& name, value const& val, unsigned width){
         if(width==0) width=val.size();
         if(width==1){
             lines.push_back(fmt::format("bool {} = {};", name, val));
@@ -156,6 +191,10 @@ struct code_builder {
             lines.push_back(fmt::format(val.is_signed()?"int{}_t {} = {};":"uint{}_t {} = {};",  width, name, val));
             return value(name, width, val.is_signed());
         }
+    }
+
+    inline value assignment(value const& val, unsigned width){
+        return assignment(fmt::format("tmp{}", lines.size()), val, width);
     }
 
     inline value store(value const& val, unsigned reg_num){
@@ -217,7 +256,7 @@ struct code_builder {
     }
 
     inline value mul(value const & left, value const & right){
-        return value(fmt::format("({}) * ({})", left, right), left.size()+right.size(),
+        return value(fmt::format("({}) * ({})", left, right), std::max(left.size(), right.size()),
                 left.is_signed() && right.is_signed());
     }
 
@@ -232,14 +271,12 @@ struct code_builder {
     }
 
     inline value srem(value const & left, value const & right){
-        //TODO: implement
-        return value(fmt::format("({}) / ({})", left, right), std::max(left.size(), right.size()),
+        return value(fmt::format("({}) % ({})", left, right), std::max(left.size(), right.size()),
                 left.is_signed() && right.is_signed());
     }
 
     inline value urem(value const & left, value const & right){
-        //TODO: implement
-        return value(fmt::format("({}) / ({})", left, right), std::max(left.size(), right.size()),
+        return value(fmt::format("({}) % ({})", left, right), std::max(left.size(), right.size()),
                 left.is_signed() && right.is_signed());
     }
 
@@ -275,7 +312,7 @@ struct code_builder {
     }
 
     inline value neg(value const & left){
-        return value(fmt::format("-({})", left), 1, false);
+        return value(fmt::format("-({})", left), left.size(), false);
     }
 
     inline value shl(value const & val,value const & shift){
@@ -403,25 +440,25 @@ struct code_builder {
         }
     }
 
-    template <typename Arg, typename... Args>
-    inline value callf(std::string const& fn, Arg v1, Args... vals){
-        return {fmt::format("{}({},{},{},{},{})", fn, collect_args(vals...)), v1.size(), v1.is_signed()};
+    inline value callf(std::string const& fn){
+        return {fmt::format("{}()", fn), 32, false};
     }
 
     inline value callf(std::string const& fn, value v1){
         return {fmt::format("{}({})", fn, v1), v1.size(), v1.is_signed()};
     }
 
-    inline value callf(std::string const& fn){
-        return {fmt::format("{}()", fn), 32, false};
+    template <typename Arg, typename... Args>
+    inline value callf(std::string const& fn, Arg const& v1, Args const&... vals){
+        return {fmt::format("{}({})", fn, collect_args(v1, vals...)), v1.size(), v1.is_signed()};
     }
 
-    inline std::string collect_args(value v) {
+    inline std::string collect_args(value const& v) {
         return v.str;
     }
 
     template <typename Arg, typename... Args>
-    inline std::string collect_args(Arg&& arg, Args&&... args) {
+    inline std::string collect_args(Arg const& arg, Args const&... args) {
         return fmt::format("{}, {}", arg, collect_args(args...));
     }
 };
@@ -440,6 +477,6 @@ struct fmt::formatter<iss::tcc::value>
 
     template<typename FormatContext>
     auto format(iss::tcc::value const& value, FormatContext& ctx) -> decltype(ctx.out()){
-        return fmt::format_to(ctx.out(), "{}", value);
+        return fmt::format_to(ctx.out(), "{}", value.str);
     }
 };
