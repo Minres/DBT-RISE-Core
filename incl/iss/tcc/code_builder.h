@@ -54,14 +54,14 @@ struct code_builder {
         // generate prologue
         os<<"#include <stdint.h>\n";
         os<<"#include <stdbool.h>\n";
-        os<<"extern uint8_t read_mem1(void*, uint32_t, uint32_t, uint64_t);\n";
-        os<<"extern void write_mem1(void*, uint32_t, uint32_t, uint64_t, uint8_t);\n";
-        os<<"extern uint16_t read_mem2(void*, uint32_t, uint32_t, uint64_t);\n";
-        os<<"extern void write_mem2(void*, uint32_t, uint32_t, uint64_t, uint16_t);\n";
-        os<<"extern uint32_t read_mem4(void*, uint32_t, uint32_t, uint64_t);\n";
-        os<<"extern void write_mem4(void*, uint32_t, uint32_t, uint64_t, uint32_t);\n";
-        os<<"extern uint64_t read_mem8(void*, uint32_t, uint32_t, uint64_t);\n";
-        os<<"extern void write_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t);\n";
+        os<<"extern int read_mem1(void*, uint32_t, uint32_t, uint64_t, uint8_t*);\n";
+        os<<"extern int write_mem1(void*, uint32_t, uint32_t, uint64_t, uint8_t);\n";
+        os<<"extern int read_mem2(void*, uint32_t, uint32_t, uint64_t, uint16_t*);\n";
+        os<<"extern int write_mem2(void*, uint32_t, uint32_t, uint64_t, uint16_t);\n";
+        os<<"extern int read_mem4(void*, uint32_t, uint32_t, uint64_t, uint32_t*);\n";
+        os<<"extern int write_mem4(void*, uint32_t, uint32_t, uint64_t, uint32_t);\n";
+        os<<"extern int read_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t*);\n";
+        os<<"extern int write_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t);\n";
         os<<"extern uint64_t enter_trap(void*, uint64_t, uint64_t);\n";
         os<<"extern uint64_t leave_trap(void*, uint64_t);\n";
         os<<"extern void wait(void*, uint64_t);\n";
@@ -396,15 +396,18 @@ struct code_builder {
         case 8:
         case 16:
         case 32:
-        case 64:
+        case 64:{
+            auto id=lines.size();
+            lines.push_back(fmt::format("uint{}_t rd_{};", size, id));
             if(addr.is_signed()){
-                lines.push_back(fmt::format("uint{}_t rd_{} = read_mem{}(core_ptr, {}, {}, {});",
-                        size, lines.size(), size/8, iss::address_type::VIRTUAL, type, zext_or_trunc(addr, 64)));
-                return value(fmt::format("rd_{}", lines.size()-1), size, false);
+                lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
+                        size/8, iss::address_type::VIRTUAL, type, zext_or_trunc(addr, 64), id));
+                return value(fmt::format("rd_{}", id), size, false);
             } else
-                lines.push_back(fmt::format("uint{}_t rd_{} = read_mem{}(core_ptr, {}, {}, {});",
-                        size, lines.size(), size/8, iss::address_type::VIRTUAL, type, addr));
-                return value(fmt::format("rd_{}", lines.size()-1), size, false);
+                lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
+                        size/8, iss::address_type::VIRTUAL, type, addr, id));
+                return value(fmt::format("rd_{}", id), size, false);
+        }
        default:
             assert(false && "Unsupported mem read length");
             return value("", 0, false);
@@ -417,10 +420,10 @@ struct code_builder {
         case 16:
         case 32:
         case 64:
-            lines.push_back(fmt::format("write_mem{}(core_ptr, {}, {}, {}, {});", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
+            lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
             break;
         default:
-            assert(false && "Unsupported mem read length");
+            assert(false && "Unsupported mem write length");
         }
     }
 
@@ -431,9 +434,9 @@ struct code_builder {
         case 32:
         case 64:
             if(addr.is_signed())
-                lines.push_back(fmt::format("write_mem{}(core_ptr, {}, {}, {}, {});", val.size()/8, iss::address_type::VIRTUAL, type, zext_or_trunc(addr, 64), val));
+                lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, zext_or_trunc(addr, 64), val));
             else
-                lines.push_back(fmt::format("write_mem{}(core_ptr, {}, {}, {}, {});", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
+                lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
             break;
         default:
             assert(false && "Unsupported mem read length");
