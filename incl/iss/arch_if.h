@@ -124,7 +124,7 @@ public:
      *
      * @param addr address to read from, contains access type, address space and
      * address
-     * @param length length of th edata to read
+     * @param length length of the data to read
      * @param data pointer to the memory to read into
      * @return success or failure of access
      */
@@ -136,7 +136,7 @@ public:
      *
      * @param addr address to read from, contains access type, address space and
      * address
-     * @param length length of th edata to read
+     * @param length length of the data to read
      * @param data pointer to the memory to read into
      * @return success or failure of access
      */
