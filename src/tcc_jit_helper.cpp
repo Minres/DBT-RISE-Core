@@ -38,6 +38,7 @@
 #include <iostream>
 #include <memory>
 #include <fstream>
+#include <stdexcept>
 
 using namespace logging;
 
@@ -56,19 +57,20 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
         std::ofstream ofs(name);
         ofs<<std::get<1>(res)<<std::endl;
     }
-    auto tcc = tcc_new(); assert(tcc);
+    auto tcc = tcc_new();
+    if(!tcc) throw std::runtime_error("could not create TCC instance");
     tcc_set_output_type(tcc, TCC_OUTPUT_MEMORY);
     tcc_set_options(tcc, "-fno-common");
     tcc_set_options(tcc, "-w");
 //    tcc_set_options(tcc, "-g");
-//    tcc_add_symbol(tcc, "add", add);
-//    tcc_add_symbol(tcc, "hello", hello);
     /* relocate the code */
-    assert(tcc_compile_string(tcc, std::get<1>(res).c_str())>=0);
+    auto result=tcc_compile_string(tcc, std::get<1>(res).c_str());
+    if(result) throw std::runtime_error("could not compile translated code");
     int size = tcc_relocate(tcc, nullptr);
-    assert(size>0);
+    if(!size) throw std::runtime_error("TCC did not return reasonable code size");
     auto* fmem = malloc(size);
-    assert(tcc_relocate(tcc, fmem)>=0);
+    result=tcc_relocate(tcc, fmem);
+    if(result) throw std::runtime_error("could not relocate compiled code");
     /* get entry symbol */
     auto func = tcc_get_symbol(tcc, std::get<0>(res).c_str());
     tcc_delete(tcc);
