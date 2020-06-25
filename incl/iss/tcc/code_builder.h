@@ -9,6 +9,8 @@ namespace iss {
 namespace tcc {
 enum class ICmpInst {ICMP_UGT, ICMP_ULT, ICMP_UGE, ICMP_ULE, ICMP_EQ, ICMP_NE, ICMP_SGT, ICMP_SLT, ICMP_SGE, ICMP_SLE};
 
+std::ostream& write_prologue(std::ostream& );
+
 struct value {
     bool is_signed() const { return type&0x100;}
     void set_signed(bool v){if(v) type|=0x100; else type&=0xff;}
@@ -52,52 +54,7 @@ struct code_builder {
     std::string finish(){
         std::ostringstream os;
         // generate prologue
-        os<<"#include <stdint.h>\n";
-        os<<"#include <stdbool.h>\n";
-        os<<"extern int read_mem1(void*, uint32_t, uint32_t, uint64_t, uint8_t*);\n";
-        os<<"extern int write_mem1(void*, uint32_t, uint32_t, uint64_t, uint8_t);\n";
-        os<<"extern int read_mem2(void*, uint32_t, uint32_t, uint64_t, uint16_t*);\n";
-        os<<"extern int write_mem2(void*, uint32_t, uint32_t, uint64_t, uint16_t);\n";
-        os<<"extern int read_mem4(void*, uint32_t, uint32_t, uint64_t, uint32_t*);\n";
-        os<<"extern int write_mem4(void*, uint32_t, uint32_t, uint64_t, uint32_t);\n";
-        os<<"extern int read_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t*);\n";
-        os<<"extern int write_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t);\n";
-        os<<"extern uint64_t enter_trap(void*, uint64_t, uint64_t);\n";
-        os<<"extern uint64_t leave_trap(void*, uint64_t);\n";
-        os<<"extern void wait(void*, uint64_t);\n";
-        os<<"extern void print_string(void*, char*);\n";
-        os<<"extern void print_disass(void*, uint64_t, char*);\n";
-        os<<"extern void pre_instr_sync(void*);\n";
-        os<<"extern void notify_phase(void*, uint32_t);\n";
-        os<<"extern void call_plugin(void*, uint64_t) ;\n";
-        os<<"extern uint32_t fget_flags();\n";
-        os<<"extern uint32_t fadd_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
-        os<<"extern uint32_t fsub_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
-        os<<"extern uint32_t fmul_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
-        os<<"extern uint32_t fdiv_s(uint32_t v1, uint32_t v2, uint8_t mode);\n";
-        os<<"extern uint32_t fsqrt_s(uint32_t v1, uint8_t mode);\n";
-        os<<"extern uint32_t fcmp_s(uint32_t v1, uint32_t v2, uint32_t op) ;\n";
-        os<<"extern uint32_t fcvt_s(uint32_t v1, uint32_t op, uint8_t mode);\n";
-        os<<"extern uint32_t fmadd_s(uint32_t v1, uint32_t v2, uint32_t v3, uint32_t op, uint8_t mode);\n";
-        os<<"extern uint32_t fsel_s(uint32_t v1, uint32_t v2, uint32_t op);\n";
-        os<<"extern uint32_t fclass_s( uint32_t v1 );\n";
-        os<<"extern uint32_t fconv_d2f(uint64_t v1, uint8_t mode);\n";
-        os<<"extern uint64_t fconv_f2d(uint32_t v1, uint8_t mode);\n";
-        os<<"extern uint64_t fadd_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
-        os<<"extern uint64_t fsub_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
-        os<<"extern uint64_t fmul_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
-        os<<"extern uint64_t fdiv_d(uint64_t v1, uint64_t v2, uint8_t mode);\n";
-        os<<"extern uint64_t fsqrt_d(uint64_t v1, uint8_t mode);\n";
-        os<<"extern uint64_t fcmp_d(uint64_t v1, uint64_t v2, uint32_t op);\n";
-        os<<"extern uint64_t fcvt_d(uint64_t v1, uint32_t op, uint8_t mode);\n";
-        os<<"extern uint64_t fmadd_d(uint64_t v1, uint64_t v2, uint64_t v3, uint32_t op, uint8_t mode);\n";
-        os<<"extern uint64_t fsel_d(uint64_t v1, uint64_t v2, uint32_t op) ;\n";
-        os<<"extern uint64_t fclass_d(uint64_t v1  );\n";
-        os<<"extern uint64_t fcvt_32_64(uint32_t v1, uint32_t op, uint8_t mode);\n";
-        os<<"extern uint32_t fcvt_64_32(uint64_t v1, uint32_t op, uint8_t mode);\n";
-        os<<"extern uint32_t unbox_s(uint64_t v);\n";
-
-        //os<<fmt::format("typedef uint{}_t reg_t;\n", arch::traits<ARCH>::XLEN);
+        write_prologue(os);
         os<<fmt::format("uint64_t {}(uint8_t* regs_ptr, void* core_ptr, void* vm_ptr) __attribute__ ((regnum(3)))  {{\n", fname);
         os<<add_reg_ptr("pc", arch::traits<ARCH>::PC);
         os<<add_reg_ptr("next_pc", arch::traits<ARCH>::NEXT_PC);
