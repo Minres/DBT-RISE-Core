@@ -4,8 +4,6 @@ project("dbt-core" VERSION 1.0.0)
 
 include(GNUInstallDirs)
 
-set(Boost_NO_BOOST_CMAKE ON) #  Don't do a find_package in config mode before searching for a regular boost install.
-set(BOOST_ROOT ${CONAN_BOOST_ROOT})
 find_package(Boost 1.70 COMPONENTS thread REQUIRED)
 
 if(WITH_LLVM)
