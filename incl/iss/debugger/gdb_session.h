@@ -36,12 +36,14 @@
 #define _GDB_SESSION_H_
 
 #include <boost/asio.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/bind.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
 #include <iss/debugger/serialized_connection.h>
 #include <thread>
+#include <functional>
 
 #include "cmdhandler.h"
 #include "serialized_connection.h"
@@ -55,7 +57,7 @@ using boost::asio::ip::tcp;
 
 class gdb_session : public connection<std::string, std::string>::async_listener {
 public:
-    gdb_session(server_if *server_, boost::asio::io_service &io_service);
+    gdb_session(server_if *server_, boost::asio::io_context &io_service);
 
     virtual ~gdb_session() = default;
 

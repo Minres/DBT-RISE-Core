@@ -120,7 +120,7 @@ protected:
     const char start_char = '$';
 };
 
-gdb_session::gdb_session(server_if *server_, boost::asio::io_service &io_service)
+gdb_session::gdb_session(server_if *server_, boost::asio::io_context &io_service)
 : stop_callback([this](unsigned handle) {
     gdb_resp_msg resp;
     resp << (handle > 0 ? "S05" : "S02");

@@ -37,6 +37,7 @@
 
 #include "server_base.h"
 #include <boost/asio.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/thread.hpp>
 #include <sys/time.h>
 #include <util/logging.h>
@@ -79,7 +80,7 @@ protected:
     , acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)) {
         // Create a pool of threads to run all of the io_services.
         std::size_t thread_pool_size_ = 2;
-        work_ctrl = new boost::asio::io_service::work(io_service);
+        work_ctrl = new boost::asio::io_context::work(io_service);
         boost::thread::hardware_concurrency();
         for (std::size_t i = 0; i < thread_pool_size_; ++i) {
             threads.create_thread([this]() -> void { io_service.run(); });
@@ -88,21 +89,22 @@ protected:
     };
 
     void createNewSession() {
-        boost::shared_ptr<SESSION> new_session(new SESSION(this, acceptor.get_io_service()));
-        acceptor.async_accept(new_session->socket(), boost::bind(&server<SESSION>::handle_accept, this,
-                                                                 boost::asio::placeholders::error, new_session));
+        boost::shared_ptr<SESSION> new_session(new SESSION(this, io_service));
+        acceptor.async_accept(new_session->socket(),
+                boost::bind(&server<SESSION>::handle_accept, this, new_session,
+                  boost::asio::placeholders::error));
     }
 
     void shutDown() {
         // request shutdown of simulation
         server_base::shutdown();
         // stop the io acceptor
-        acceptor.get_io_service().stop();
+        io_service.stop();
     }
 
 private:
     /// Handle completion of a accept operation by starting a session.
-    void handle_accept(const boost::system::error_code &e, boost::shared_ptr<SESSION> session) {
+    void handle_accept(boost::shared_ptr<SESSION> session, const boost::system::error_code &e) {
         if (!e) {
             // Start an accept operation for a new connection. If it finishes create a
             // new session
@@ -115,7 +117,7 @@ private:
         }
     }
     // server related members
-    boost::asio::io_service io_service;
+    boost::asio::io_context io_service;
     boost::asio::io_service::work *work_ctrl;
     boost::asio::ip::tcp::acceptor acceptor;
     boost::thread_group threads;

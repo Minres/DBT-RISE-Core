@@ -36,6 +36,7 @@
 #define _SERIALIZED_CONNECTION_H_
 
 #include <boost/asio.hpp>
+#include <boost/asio/io_context.hpp>
 
 #ifdef USE_TEXT
 #include <boost/archive/text_iarchive.hpp>
@@ -286,7 +287,7 @@ public:
         virtual bool message_completed(std::vector<char> &buffer) { return true; };
     };
     /// Constructor.
-    connection(boost::asio::io_service &io_service)
+    connection(boost::asio::io_context &io_service)
     : socket_(io_service) {}
     /// Get the underlying socket. Used for making a connection or for accepting
     /// an incoming connection.

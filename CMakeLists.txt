@@ -4,7 +4,9 @@ project("dbt-core" VERSION 1.0.0)
 
 include(GNUInstallDirs)
 
-find_package(Boost COMPONENTS thread REQUIRED)
+set(Boost_NO_BOOST_CMAKE ON) #  Don't do a find_package in config mode before searching for a regular boost install.
+set(BOOST_ROOT ${CONAN_BOOST_ROOT})
+find_package(Boost 1.70 COMPONENTS thread REQUIRED)
 
 if(WITH_LLVM)
 	if(DEFINED ENV{LLVM_HOME})
@@ -32,6 +34,7 @@ if(WITH_LLVM)
 	target_include_directories(dbt-core PRIVATE ${LLVM_INCLUDE_DIRS}) 
 endif()
 target_include_directories(dbt-core PUBLIC ${PROJECT_SOURCE_DIR}/incl) 
+target_include_directories(dbt-core PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_libraries(dbt-core PRIVATE scc-util)
 target_link_libraries(dbt-core PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt ${Boost_LIBRARIES} ${CMAKE_DL_LIBS})
 set_target_properties(dbt-core PROPERTIES
