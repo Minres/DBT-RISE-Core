@@ -51,6 +51,19 @@
 #include <iostream>
 #include <memory>
 
+
+#include <llvm/InitializePasses.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/ExecutionEngine/SectionMemoryManager.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/raw_ostream.h>
+
 using namespace llvm;
 using namespace logging;
 
@@ -98,6 +111,23 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
         mod->print(os, nullptr, false, true);
         os.flush();
     }
+
+    mod->setTargetTriple(sys::getProcessTriple());
+
+    PassBuilder passBuilder;
+    ModuleAnalysisManager moduleAnalysisManager;
+    passBuilder.registerModuleAnalyses(moduleAnalysisManager);
+    CGSCCAnalysisManager cGSCCAnalysisManager;
+    passBuilder.registerCGSCCAnalyses(cGSCCAnalysisManager);
+    FunctionAnalysisManager functionAnalysisManager;
+    passBuilder.registerFunctionAnalyses(functionAnalysisManager);
+    LoopAnalysisManager loopAnalysisManager;
+    passBuilder.registerLoopAnalyses(loopAnalysisManager);
+    passBuilder.crossRegisterProxies(loopAnalysisManager, functionAnalysisManager, cGSCCAnalysisManager, moduleAnalysisManager);
+
+    ModulePassManager modulePassManager = passBuilder.buildPerModuleDefaultPipeline(PassBuilder::OptimizationLevel::O3);
+    modulePassManager.run(*mod, moduleAnalysisManager);
+
     std::string ErrStr;
     EngineBuilder eeb(std::move(mod)); // eeb and ee take ownership of module
     eeb.setUseOrcMCJITReplacement(true);
@@ -108,7 +138,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     ExecutionEngine *ee = eeb.setEngineKind(EngineKind::JIT)
                               .setTargetOptions(to)
                               .setErrorStr(&ErrStr)
-                              .setOptLevel(CodeGenOpt::None)
+                              .setOptLevel(CodeGenOpt::Aggressive)
                               .create();
     if (!ee) throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
