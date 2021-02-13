@@ -26,15 +26,19 @@ set(LIB_SOURCES
     src/encoderdecoder.cpp
 )
 
-add_library(dbt-core ${LIB_SOURCES})
+add_library(dbt-core STATIC ${LIB_SOURCES})
 if(WITH_LLVM)
 	target_compile_definitions(dbt-core PUBLIC ${LLVM_DEFINITIONS})
 	target_include_directories(dbt-core PRIVATE ${LLVM_INCLUDE_DIRS}) 
 endif()
 target_include_directories(dbt-core PUBLIC ${PROJECT_SOURCE_DIR}/incl) 
 target_include_directories(dbt-core PUBLIC ${Boost_INCLUDE_DIRS})
-target_link_libraries(dbt-core PRIVATE scc-util)
-target_link_libraries(dbt-core PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt ${Boost_LIBRARIES} ${CMAKE_DL_LIBS})
+if(TARGET CONAN_PKG::scc)
+    target_link_libraries(dbt-core PUBLIC CONAN_PKG::scc)
+else()  
+    target_link_libraries(dbt-core PUBLIC scc-util)
+endif()
+target_link_libraries(dbt-core PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt ${CMAKE_DL_LIBS})
 set_target_properties(dbt-core PROPERTIES
   VERSION ${PROJECT_VERSION}
   FRAMEWORK FALSE
