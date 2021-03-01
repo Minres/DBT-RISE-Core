@@ -35,7 +35,7 @@
 #ifndef _ARCH_IF_H_
 #define _ARCH_IF_H_
 
-#include "common.h"
+#include <dbt_rise_common.h>
 #include "vm_types.h"
 
 #include <algorithm>

@@ -32,8 +32,8 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _ISS_DEFINITIONS_H_
-#define _ISS_DEFINITIONS_H_
+#ifndef _ISS_DBT_RISE_COMMON_H_
+#define _ISS_DBT_RISE_COMMON_H_
 
 #if defined(__cplusplus) && (__cplusplus >= 201402L)
 #define DEPRECATED [[deprecated]]
@@ -46,4 +46,4 @@
 #define DEPRECATED
 #endif
 
-#endif /* DBT_CORE_INCL_ISS_DEFINITIONS_H_ */
+#endif /* _ISS_DBT_RISE_COMMON_H_ */
