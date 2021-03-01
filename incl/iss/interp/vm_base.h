@@ -186,7 +186,7 @@ protected:
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
         for (plugin_entry e : plugins) {
             if (e.sync & s)
-                e.plugin.callback(iinfo.st.value);
+                e.plugin.callback(iinfo.storage.val, ex_info);
         }
     }
 
@@ -230,6 +230,7 @@ protected:
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
+    exec_info ex_info;
 };
 }
 }

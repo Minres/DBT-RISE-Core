@@ -55,6 +55,9 @@ instr_info_t(uint64_t cluster_id, uint64_t core_id, uint64_t instr_id, uint64_t 
 }
 END_BF_DECL();
 
+struct exec_info {
+    bool branch_taken{false};
+};
 class vm_plugin { // @suppress("Class has a virtual method and non-virtual destructor")
 public:
     virtual ~vm_plugin() {}
@@ -63,7 +66,7 @@ public:
 
     virtual sync_type get_sync() = 0;
 
-    virtual void callback(instr_info_t instr_info) = 0;
+    virtual void callback(instr_info_t instr_info, exec_info const&) = 0;
 };
 }
 

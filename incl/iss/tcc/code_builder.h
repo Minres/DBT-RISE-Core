@@ -69,11 +69,11 @@ struct code_builder {
                                 arch::traits<ARCH>::reg_byte_offsets[i], i);
             }
         }
-        if(defined_regs[arch::traits<ARCH>::LAST_BRANCH]){
-            os<<fmt::format("  uint{0}_t* reg{2:02d} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
-                            arch::traits<ARCH>::reg_bit_widths[arch::traits<ARCH>::LAST_BRANCH],
-                            arch::traits<ARCH>::reg_byte_offsets[arch::traits<ARCH>::LAST_BRANCH], arch::traits<ARCH>::LAST_BRANCH);
-        }
+//        if(defined_regs[arch::traits<ARCH>::LAST_BRANCH]){
+//            os<<fmt::format("  uint{0}_t* reg{2:02d} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
+//                            arch::traits<ARCH>::reg_bit_widths[arch::traits<ARCH>::LAST_BRANCH],
+//                            arch::traits<ARCH>::reg_byte_offsets[arch::traits<ARCH>::LAST_BRANCH], arch::traits<ARCH>::LAST_BRANCH);
+//        }
         // add generated code
         std::copy(lines.begin(), lines.end(), std::ostream_iterator<std::string>(os, "\n"));
         // and the epilogue
