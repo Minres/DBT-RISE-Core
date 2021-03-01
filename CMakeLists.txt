@@ -4,7 +4,7 @@ project("dbt-core" VERSION 1.0.0)
 
 include(GNUInstallDirs)
 
-find_package(Boost 1.70 COMPONENTS thread REQUIRED)
+find_package(Boost COMPONENTS thread REQUIRED)
 
 if(WITH_LLVM)
 	if(DEFINED ENV{LLVM_HOME})
