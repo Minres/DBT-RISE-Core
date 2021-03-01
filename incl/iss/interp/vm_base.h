@@ -186,7 +186,7 @@ protected:
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
         for (plugin_entry e : plugins) {
             if (e.sync & s)
-                e.plugin.callback(iinfo.storage.val, ex_info);
+                e.plugin.callback(iinfo.backing.val, ex_info);
         }
     }
 

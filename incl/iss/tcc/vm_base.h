@@ -277,7 +277,7 @@ protected:
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
         for (plugin_entry e : plugins) {
             if (e.sync & s)
-                tu("call_plugin((void*){}, (uint64_t){})", e.plugin_ptr, iinfo.storage.val);
+                tu("call_plugin((void*){}, (uint64_t){})", e.plugin_ptr, iinfo.backing.val);
         }
     }
 
