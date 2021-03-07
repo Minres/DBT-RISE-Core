@@ -46,6 +46,16 @@ enum status { Ok, Err, NotSupported };
 
 enum sync_type { NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3 };
 
+inline sync_type operator |(sync_type a, sync_type b) {
+    return static_cast<sync_type>(static_cast<int>(a) | static_cast<int>(b));
+}
+
+inline sync_type operator &(sync_type a, sync_type b) {
+    return static_cast<sync_type>(static_cast<int>(a) & static_cast<int>(b));
+}
+
+inline sync_type& operator |=(sync_type& a, sync_type b){ return a = a | b; }
+
 enum struct access_type : uint16_t {
     // operations
     READ = 0x0,

@@ -112,7 +112,7 @@ public:
         virt_addr_t pc(iss::access_type::FETCH, 0, get_reg<addr_t>(arch::traits<ARCH>::PC));
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
-            execute_inst(pc, [this, icount]()->bool{
+            execute_inst(pc, [this, icount](virt_addr_t pc)->bool{
                 return !core.should_stop() && core.get_icount() < icount;
             });
         } catch (simulation_stopped &e) {
@@ -141,7 +141,7 @@ public:
     }
 
 protected:
-    virtual virt_addr_t execute_inst(virt_addr_t start, std::function<bool(void)> pred) = 0;
+    virtual virt_addr_t execute_inst(virt_addr_t start, std::function<bool(virt_addr_t&)> pred) = 0;
 
     explicit vm_base(ARCH &core, unsigned core_id = 0, unsigned cluster_id = 0)
     : core(core)
@@ -157,7 +157,9 @@ protected:
 
     void register_plugin(vm_plugin &plugin) {
         if (plugin.registration("1.0", *this)) {
-            plugins.push_back(plugin_entry{plugin.get_sync(), plugin});
+            auto sync = plugin.get_sync();
+            plugins.push_back(plugin_entry{sync, plugin});
+            sync_exec |= sync;
         }
     }
 
@@ -168,8 +170,8 @@ protected:
     inline void do_sync(sync_type s, unsigned inst_id) {
         if (s == PRE_SYNC) {
             // update icount
-            auto& icnt = get_reg<uint64_t>(arch::traits<ARCH>::ICOUNT);
-            icnt++;
+            get_reg<uint64_t>(arch::traits<ARCH>::ICOUNT)++;
+            ex_info.branch_taken=false;
             // set PC
             auto& next_pc = get_reg<addr_t>(arch::traits<ARCH>::NEXT_PC);
             auto& pc = get_reg<addr_t>(arch::traits<ARCH>::PC);
