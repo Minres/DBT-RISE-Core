@@ -44,6 +44,19 @@ namespace iss {
 class arch_if;
 class vm_plugin;
 
+enum class finish_cond_e {
+    NONE = 0,
+    JUMP_TO_SELF=1,
+    COUNT_LIMIT=2
+};
+
+inline finish_cond_e operator|(finish_cond_e a, finish_cond_e b){
+    return static_cast<finish_cond_e>(static_cast<int>(a)|static_cast<int>(b));
+}
+inline finish_cond_e operator&(finish_cond_e a, finish_cond_e b){
+    return static_cast<finish_cond_e>(static_cast<int>(a)&static_cast<int>(b));
+}
+
 class vm_if { // @suppress("Class has a virtual method and non-virtual destructor")
 public:
     /**
@@ -65,10 +78,25 @@ public:
     /**
      * start the simulation
      *
-     * @param cycles number if instructions to be simulated
+     * @param cond conditions to stop execution
+     * @param dump intermediat code if any
      * @return number of executed instructions
      */
-    virtual int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false) = 0;
+    inline
+    int start(finish_cond_e cond, bool dump = false) {
+        return start(std::numeric_limits<uint64_t>::max(), dump, cond);
+    }
+    /**
+     * start the simulation
+     *
+     * @param icount number if instructions to be simulated
+     * @param dump intermediat code if any
+     * @param cond conditions to stop execution
+     * @return number of executed instructions
+     */
+
+    virtual int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
+            finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) = 0;
     /**
      * reset the core
      *

@@ -104,17 +104,15 @@ public:
     template <typename T = reg_t> inline T& get_reg(unsigned r){
         return *reinterpret_cast<T*>(regs_base_ptr+arch::traits<ARCH>::reg_byte_offsets[r]);
     }
-
-    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false) override {
+    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
+                finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::FETCH, 0, get_reg<addr_t>(arch::traits<ARCH>::PC));
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
-            execute_inst(pc, [this, icount](virt_addr_t pc)->bool{
-                return !core.should_stop() && core.get_icount() < icount;
-            });
+            execute_inst(cond, pc, icount);
         } catch (simulation_stopped &e) {
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if (e.state != 1) error = e.state;
@@ -141,7 +139,7 @@ public:
     }
 
 protected:
-    virtual virt_addr_t execute_inst(virt_addr_t start, std::function<bool(virt_addr_t&)> pred) = 0;
+    virtual virt_addr_t execute_inst(finish_cond_e cond, virt_addr_t start, uint64_t icount_limit) = 0;
 
     explicit vm_base(ARCH &core, unsigned core_id = 0, unsigned cluster_id = 0)
     : core(core)
