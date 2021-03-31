@@ -60,7 +60,7 @@ const unsigned CORE_ID = 0;
 
 void cmd_handler::attach() {}
 
-std::string cmd_handler::search_memory(const std::string in_buf) {
+std::string cmd_handler::search_memory(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     uint64_t addr;
     uint32_t pattern;
@@ -85,7 +85,7 @@ std::string cmd_handler::search_memory(const std::string in_buf) {
     return std::string("E01");
 }
 
-std::string cmd_handler::threads(const std::string in_buf) {
+std::string cmd_handler::threads(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
 
     rp_thread_ref ref;
@@ -112,7 +112,7 @@ std::string cmd_handler::threads(const std::string in_buf) {
     }
 }
 
-std::string cmd_handler::read_registers(const std::string in_buf) {
+std::string cmd_handler::read_registers(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
     size_t len;
@@ -127,7 +127,7 @@ std::string cmd_handler::read_registers(const std::string in_buf) {
         return "E00";
 }
 
-std::string cmd_handler::write_registers(const std::string in_buf) {
+std::string cmd_handler::write_registers(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     size_t len;
 
@@ -139,7 +139,7 @@ std::string cmd_handler::write_registers(const std::string in_buf) {
         return to_string(t->write_registers(data));
 }
 
-std::string cmd_handler::read_single_register(const std::string in_buf) {
+std::string cmd_handler::read_single_register(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     unsigned int reg_no;
     //    uint64_t avail=std::numeric_limits<uint64_t>::max();
@@ -166,7 +166,7 @@ std::string cmd_handler::read_single_register(const std::string in_buf) {
     return "";
 }
 
-std::string cmd_handler::write_single_register(const std::string in_buf) {
+std::string cmd_handler::write_single_register(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     unsigned int reg_no;
     /* Write a single register. Format: 'PNN=XXXXX' */
@@ -176,7 +176,7 @@ std::string cmd_handler::write_single_register(const std::string in_buf) {
     return to_string(t->write_single_register(reg_no, data));
 }
 
-std::string cmd_handler::read_memory(const std::string in_buf) {
+std::string cmd_handler::read_memory(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
     size_t len;
@@ -205,7 +205,7 @@ std::string cmd_handler::read_memory(const std::string in_buf) {
     return "";
 }
 
-std::string cmd_handler::write_memory(const std::string in_buf) {
+std::string cmd_handler::write_memory(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     size_t cp;
     /* Write memory format: 'mAA..A,LL..LL:XX..XX' */
@@ -222,7 +222,7 @@ std::string cmd_handler::write_memory(const std::string in_buf) {
     return to_string(t->write_mem(addr, data));
 }
 
-std::string cmd_handler::running(const std::string in_buf, bool blocking, bool vCont) {
+std::string cmd_handler::running(std::string const& in_buf, bool blocking, bool vCont) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__ << "(" << in_buf << ")";
     auto step = false;
     uint32_t sig{TARGET_SIGNAL0};
@@ -298,7 +298,7 @@ std::string cmd_handler::running(const std::string in_buf, bool blocking, bool v
         return "OK";
 }
 
-int cmd_handler::kill(const std::string in_buf, std::string &out_buf) {
+int cmd_handler::kill(std::string const& in_buf, std::string &out_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
 
@@ -350,7 +350,7 @@ int cmd_handler::kill(const std::string in_buf, std::string &out_buf) {
     return 1;
 }
 
-std::string cmd_handler::thread_alive(const std::string in_buf) {
+std::string cmd_handler::thread_alive(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
     bool alive;
@@ -374,7 +374,7 @@ std::string cmd_handler::thread_alive(const std::string in_buf) {
     return "E01";
 }
 
-int cmd_handler::restart_target(const std::string in_buf, std::string &out_buf) {
+int cmd_handler::restart_target(std::string const& in_buf, std::string &out_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
 
@@ -394,7 +394,7 @@ int cmd_handler::restart_target(const std::string in_buf, std::string &out_buf) 
     return 1;
 }
 
-std::string cmd_handler::detach(const std::string in_buf) {
+std::string cmd_handler::detach(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
 
@@ -417,7 +417,7 @@ std::string cmd_handler::detach(const std::string in_buf) {
     return "";
 }
 
-std::string cmd_handler::query(const std::string in_buf) {
+std::string cmd_handler::query(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
     rp_thread_ref ref;
@@ -545,7 +545,7 @@ std::string cmd_handler::query(const std::string in_buf) {
     if (strncmp(in_buf.c_str() + 1, "Rcmd,", 5) == 0) {
         /* Remote command */
         std::stringstream ss;
-        auto ret = rcmd(in_buf.c_str() + 6, rp_console_output, [&ss](const std::string &str) -> void { ss << str; });
+        auto ret = rcmd(in_buf.c_str() + 6, rp_console_output, [&ss](std::string const& str) -> void { ss << str; });
         if (ret == iss::Ok && ss.str().size() > 0)
             return ss.str();
         else
@@ -650,7 +650,7 @@ std::string cmd_handler::query(const std::string in_buf) {
     return "";
 }
 
-std::string cmd_handler::set(const std::string in_buf) {
+std::string cmd_handler::set(std::string const& in_buf) {
     if (in_buf.find("QPassSignals:", 0) == 0) {
         /* Passing signals not supported */
         return ("");
@@ -663,7 +663,7 @@ std::string cmd_handler::set(const std::string in_buf) {
     return "";
 }
 
-std::string cmd_handler::breakpoint(const std::string in_buf) {
+std::string cmd_handler::breakpoint(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     uint64_t addr;
     unsigned int len;
@@ -842,7 +842,7 @@ int cmd_handler::rcmd(const char *const in_buf, out_func of, data_func df) {
     return iss::Err;
 }
 
-boost::optional<std::string> cmd_handler::handle_extended(const std::string in_buf) {
+boost::optional<std::string> cmd_handler::handle_extended(std::string const& in_buf) {
     if (in_buf.find("vCtrlC", 0) == 0) {
         t->stop();
         return boost::optional<std::string>{"OK"};

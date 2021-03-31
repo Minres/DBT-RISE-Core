@@ -96,24 +96,24 @@ public:
 
     void attach();
 
-    std::string search_memory(const std::string in_buf);
-    std::string threads(const std::string in_buf);
-    std::string read_registers(const std::string in_buf);
-    std::string write_registers(const std::string in_buf);
-    std::string read_single_register(const std::string in_buf);
-    std::string write_single_register(const std::string in_buf);
-    std::string read_memory(const std::string in_buf);
-    std::string write_memory(const std::string in_buf);
-    std::string running(const std::string in_buf, bool blocking = true, bool vCont = false);
-    int kill(const std::string in_buf, std::string &out_buf);
-    std::string thread_alive(const std::string in_buf);
+    std::string search_memory(std::string const& in_buf);
+    std::string threads(std::string const& in_buf);
+    std::string read_registers(std::string const& in_buf);
+    std::string write_registers(std::string const& in_buf);
+    std::string read_single_register(std::string const& in_buf);
+    std::string write_single_register(std::string const& in_buf);
+    std::string read_memory(std::string const& in_buf);
+    std::string write_memory(std::string const& in_buf);
+    std::string running(std::string const& in_buf, bool blocking = true, bool vCont = false);
+    int kill(std::string const& in_buf, std::string &out_buf);
+    std::string thread_alive(std::string const& in_buf);
     void interrupt_target();
-    int restart_target(const std::string in_buf, std::string &out_buf);
-    std::string detach(const std::string in_buf);
-    std::string query(const std::string in_buf);
-    std::string set(const std::string in_buf);
-    boost::optional<std::string> handle_extended(const std::string in_buf);
-    std::string breakpoint(const std::string in_buf);
+    int restart_target(std::string const& in_buf, std::string &out_buf);
+    std::string detach(std::string const& in_buf);
+    std::string query(std::string const& in_buf);
+    std::string set(std::string const& in_buf);
+    boost::optional<std::string> handle_extended(std::string const& in_buf);
+    std::string breakpoint(std::string const& in_buf);
     int rcmd(const char *const in_buf, out_func of, data_func df);
     // TODO: change calls
     int rcmd_help(int argc, char *argv[], out_func of, data_func df);
