@@ -51,7 +51,7 @@ public:
         if (get() != NULL) {
             LOG(FATAL) << "server already initialized";
         }
-        LOG(DEBUG) << "starting server";
+        LOG(DEBUG) << "starting server listening on port "<<port;
         get(new server<SESSION>(vm, port));
     }
 

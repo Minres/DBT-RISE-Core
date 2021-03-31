@@ -46,6 +46,7 @@ class packet_parse_error : public std::exception {};
 }
 using namespace iss::debugger;
 using namespace std;
+using boost::asio::ip::tcp;
 
 const int THREAD_ID = 1;
 const int CORE_ID = 0;

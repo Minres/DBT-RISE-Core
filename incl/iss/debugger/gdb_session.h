@@ -76,13 +76,11 @@ protected:
 
     void parse_n_execute(std::string &msg);
 
-    void respond(const std::string msg) {
+    void respond(std::string const& msg) {
         last_msg = msg;
-        if (msg.size() > 0) {
-            // std::this_thread::sleep_for(std::chrono::milliseconds(2));
-            CLOG(TRACE, connection) << "Processed message, responding with '" << msg << "'";
-            conn_shptr->write_data(msg);
-        }
+        // std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        CLOG(TRACE, connection) << "Processed message, responding with '" << msg << "'";
+        conn_shptr->write_data(msg);
         // conn_shptr->async_write(msg);
         conn_shptr->async_read();
     }
