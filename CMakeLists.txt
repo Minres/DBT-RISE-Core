@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project("dbt-core" VERSION 1.0.0)
+project(dbt-core VERSION 1.0.0)
 
 include(GNUInstallDirs)
 
