@@ -49,7 +49,7 @@ typedef boost::archive::text_iarchive iarchive_type;
 using oarchive_type = boost::archive::binary_oarchive;
 using iarchive_type = boost::archive::binary_iarchive;
 #endif
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/tuple/tuple.hpp>

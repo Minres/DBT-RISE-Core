@@ -37,7 +37,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <iostream>
