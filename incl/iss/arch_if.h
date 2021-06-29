@@ -179,7 +179,7 @@ public:
      * @param addr address where the trap enountered
      * @return new (virtual) address to continue from
      */
-    virtual uint64_t enter_trap(uint64_t flags, uint64_t addr) { return 0; }
+    virtual uint64_t enter_trap(uint64_t flags, uint64_t addr, uint64_t instr) { return 0; }
     /**
      * vm decoded the instruction to return from trap (exception, interrupt),
      * process accordingly in core

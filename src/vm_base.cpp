@@ -72,8 +72,8 @@ uint8_t write_mem_dbg(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, u
     return iface->write((address_type)addr_type, access_type::DEBUG_WRITE, (uint16_t)space, addr, length, data);
 }
 
-uint64_t enter_trap(arch_if_ptr_t iface, uint64_t flags, uint64_t addr) {
-    return iface->enter_trap(flags, addr);
+uint64_t enter_trap(arch_if_ptr_t iface, uint64_t flags, uint64_t addr, uint64_t instr) {
+    return iface->enter_trap(flags, addr, instr);
 }
 
 uint64_t leave_trap(arch_if_ptr_t iface, uint64_t flags) { return iface->leave_trap(flags); }

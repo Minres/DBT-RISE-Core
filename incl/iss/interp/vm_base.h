@@ -167,19 +167,9 @@ protected:
 
     inline void do_sync(sync_type s, unsigned inst_id) {
         if (s == PRE_SYNC) {
-            // update icount
-            get_reg<uint64_t>(arch::traits<ARCH>::ICOUNT)++;
             ex_info.branch_taken=false;
-            // set PC
-            auto& next_pc = get_reg<addr_t>(arch::traits<ARCH>::NEXT_PC);
-            auto& pc = get_reg<addr_t>(arch::traits<ARCH>::PC);
-            pc=next_pc;
-            // copy over trap state
-            auto& pending_trap = get_reg<uint32_t>(arch::traits<ARCH>::PENDING_TRAP);
-            auto& trap_state = get_reg<uint32_t>(arch::traits<ARCH>::TRAP_STATE);
-            trap_state=pending_trap;
             if (debugging_enabled())
-                tgt_adapter->check_continue(pc); //pre_instr_sync();
+                tgt_adapter->check_continue(get_reg<addr_t>(arch::traits<ARCH>::PC)); //pre_instr_sync();
         }
         if ((s & sync_exec))
             core.notify_phase(notifier_mapping[s]);

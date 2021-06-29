@@ -92,7 +92,7 @@ std::ostream& write_prologue(std::ostream& os){
     os<<"extern int write_mem4(void*, uint32_t, uint32_t, uint64_t, uint32_t);\n";
     os<<"extern int read_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t*);\n";
     os<<"extern int write_mem8(void*, uint32_t, uint32_t, uint64_t, uint64_t);\n";
-    os<<"extern uint64_t enter_trap(void*, uint64_t, uint64_t);\n";
+    os<<"extern uint64_t enter_trap(void*, uint64_t, uint64_t, uint64_t);\n";
     os<<"extern uint64_t leave_trap(void*, uint64_t);\n";
     os<<"extern void wait(void*, uint64_t);\n";
     os<<"extern void print_string(void*, char*);\n";
