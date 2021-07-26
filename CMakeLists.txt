@@ -38,7 +38,13 @@ if(TARGET CONAN_PKG::scc)
 else()  
     target_link_libraries(dbt-core PUBLIC scc-util)
 endif()
-target_link_libraries(dbt-core PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt ${CMAKE_DL_LIBS})
+if(TARGET CONAN_PKG::tcc)
+	target_link_libraries(dbt-core PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt)
+elseif(TARGET tcc::tcc )
+    target_link_libraries(dbt-core PUBLIC tcc::tcc  fmt::fmt)
+else()
+	message(FATAL_ERROR "No TCC library found, maybe a find_package() call is missing")
+endif()
 set_target_properties(dbt-core PROPERTIES
   VERSION ${PROJECT_VERSION}
   FRAMEWORK FALSE
