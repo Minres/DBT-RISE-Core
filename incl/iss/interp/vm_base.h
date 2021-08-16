@@ -56,11 +56,13 @@
 
 using int128_t  = __int128;
 using uint128_t = unsigned __int128;
-template<> struct std::make_unsigned<__int128> { typedef unsigned __int128 type; };
-template<> class std::__make_unsigned_selector<__int128 unsigned, false, false> {
+namespace std {
+template<> struct make_unsigned<__int128> { typedef unsigned __int128 type; };
+template<> class __make_unsigned_selector<__int128 unsigned, false, false> {
 public:
     typedef unsigned __int128 __type;
 };
+}
 
 namespace iss {
 

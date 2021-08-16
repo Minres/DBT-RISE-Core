@@ -26,42 +26,50 @@ set(LIB_SOURCES
     src/encoderdecoder.cpp
 )
 
-add_library(dbt-core STATIC ${LIB_SOURCES})
+add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
 if(WITH_LLVM)
-	target_compile_definitions(dbt-core PUBLIC ${LLVM_DEFINITIONS})
-	target_include_directories(dbt-core PRIVATE ${LLVM_INCLUDE_DIRS}) 
+	target_compile_definitions(${PROJECT_NAME} PUBLIC ${LLVM_DEFINITIONS})
+	target_include_directories(${PROJECT_NAME} PRIVATE ${LLVM_INCLUDE_DIRS}) 
 endif()
-target_include_directories(dbt-core PUBLIC ${PROJECT_SOURCE_DIR}/incl)
+target_include_directories(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCE_DIR}/incl)
 if(TARGET Boost::thread)
-    target_link_libraries(dbt-core PUBLIC Boost::thread)
+    target_link_libraries(${PROJECT_NAME} PUBLIC Boost::thread)
 else() 
-    target_include_directories(dbt-core PUBLIC ${Boost_INCLUDE_DIRS})
-    target_link_libraries(dbt-core PUBLIC ${Boost_thread_LIBRARY})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${Boost_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_thread_LIBRARY})
 endif()
 if(TARGET CONAN_PKG::scc)
-    target_link_libraries(dbt-core PUBLIC CONAN_PKG::scc)
+    target_link_libraries(${PROJECT_NAME} PUBLIC CONAN_PKG::scc)
 else()  
-    target_link_libraries(dbt-core PUBLIC scc-util)
+    target_link_libraries(${PROJECT_NAME} PUBLIC scc-util)
 endif()
 if(TARGET CONAN_PKG::tcc)
-	target_link_libraries(dbt-core PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt)
+	target_link_libraries(${PROJECT_NAME} PUBLIC CONAN_PKG::tcc CONAN_PKG::fmt)
 elseif(TARGET tcc::tcc )
-    target_link_libraries(dbt-core PUBLIC tcc::tcc  fmt::fmt)
+    target_link_libraries(${PROJECT_NAME} PUBLIC tcc::tcc  fmt::fmt)
 else()
 	message(FATAL_ERROR "No TCC library found, maybe a find_package() call is missing")
 endif()
-set_target_properties(dbt-core PROPERTIES
+
+set(LIB_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/incl/dbt_rise_common.h)
+set_target_properties(${PROJECT_NAME} PROPERTIES
   VERSION ${PROJECT_VERSION}
   FRAMEWORK FALSE
   PUBLIC_HEADER "${LIB_HEADERS}"
 )
 
-install(TARGETS dbt-core
-  EXPORT ${PROJECT_NAME}Targets            # for downstream dependencies
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs   # static lib
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libs   # binaries
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs   # shared lib
-  FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs # for mac
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT devel   # headers for mac (note the different component -> different package)
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}                # headers
+install(TARGETS ${PROJECT_NAME} COMPONENT ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}Targets                         # for downstream dependencies
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
+  FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}         # for mac
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # headers for mac (note the different component -> different package)
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}      # headers
 )
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/incl/iss COMPONENT ${PROJECT_NAME}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # target directory
+        FILES_MATCHING # install only matched files
+        PATTERN "*.h" # select header files
+        )
