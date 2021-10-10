@@ -42,6 +42,12 @@
 #include <sstream>
 #include <stdexcept>
 
+#ifdef _MSC_VER
+// not #if defined(_WIN32) || defined(_WIN64) because we have strncasecmp in mingw
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
+#endif
+
 using namespace iss::debugger;
 using namespace boost;
 
@@ -107,7 +113,7 @@ std::string cmd_handler::threads(std::string const& in_buf) {
         if (!encdec.dec_uint64(&in, &ref.val, '\0')) return "E00";
         return to_string(t->set_gen_thread(ref));
     default:
-        CLOG(ERROR, connection) << __FUNCTION__ << ": Bad H command";
+        CLOG(ERR, connection) << __FUNCTION__ << ": Bad H command";
         return "";
     }
 }
@@ -216,9 +222,8 @@ std::string cmd_handler::write_memory(std::string const& in_buf) {
     int ret = encdec.dec_mem(&in_buf[1], &addr, &len);
     if (!ret || len > MAX_DATABYTES) return "E00";
 
-    size_t len1;
     std::vector<uint8_t> data = encdec.dec_data(&in_buf[cp + 1]);
-    if (!ret || len != len1) return "E00";
+    if (!ret || len != data.size()) return "E00";
     return to_string(t->write_mem(addr, data));
 }
 
@@ -334,7 +339,7 @@ int cmd_handler::kill(std::string const& in_buf, std::string &out_buf) {
 
     if (ret != iss::Ok) {
         /* There is no point in continuing */
-        CLOG(ERROR, connection) << __FUNCTION__ << ": unable to restart target";
+        CLOG(ERR, connection) << __FUNCTION__ << ": unable to restart target";
         out_buf = "E00";
         //        rp_putpkt(out_buf);
         //        dbg_sock_close();
@@ -386,7 +391,7 @@ int cmd_handler::restart_target(std::string const& in_buf, std::string &out_buf)
     /* Let us do our best to restart the system */
     if ((ret = s.reset(CORE_ID)) != iss::Ok) {
         /* There is no point to continuing */
-        CLOG(ERROR, connection) << __FUNCTION__ << ": unable to restart target";
+        CLOG(ERR, connection) << __FUNCTION__ << ": unable to restart target";
         out_buf = "E00";
         CLOG(INFO, connection) << __FUNCTION__ << ": will wait for a new connection";
         return -1;
@@ -427,7 +432,7 @@ std::string cmd_handler::query(std::string const& in_buf) {
     uint64_t addr;
 
     if (in_buf.size() == 1) {
-        CLOG(ERROR, connection) << __FUNCTION__ << ": bad 'q' command received";
+        CLOG(ERR, connection) << __FUNCTION__ << ": bad 'q' command received";
         return "";
     }
     if (strncmp(in_buf.c_str() + 1, "Attached", 8) == 0) {
@@ -710,7 +715,7 @@ int cmd_handler::rcmd_help(int argc, char *argv[], out_func of, data_func df) {
     std::vector<target_adapter_if::custom_command> cc = t->custom_commands();
     for (i = 0; i < cc.size(); i++) {
 #ifdef WIN32
-        sprintf(buf2, "%-10s %s\n", t->custom_commands[i].name, t->custom_commands[i].help);
+        sprintf(buf2, "%-10s %s\n", cc[i].name, cc[i].help);
 #else
         snprintf(buf2, 1000, "%-10s %s\n", cc[i].name, cc[i].help);
 #endif
@@ -756,9 +761,9 @@ int cmd_handler::rcmd_set(int argc, char *argv[], out_func of, data_func df) {
     else if (strcmp("1", argv[2]) == 0 || strcasecmp("FATAL", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::FATAL;
     else if (strcmp("2", argv[2]) == 0 || strcasecmp("ERROR", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::ERROR;
+        LOGGER(DEFAULT)::reporting_level() = logging::ERR;
     else if (strcmp("3", argv[2]) == 0 || strcasecmp("WARNING", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::WARNING;
+        LOGGER(DEFAULT)::reporting_level() = logging::WARN;
     else if (strcmp("4", argv[2]) == 0 || strcasecmp("INFO", argv[2]) == 0)
         LOGGER(DEFAULT)::reporting_level() = logging::INFO;
     else if (strcmp("5", argv[2]) == 0 || strcasecmp("DEBUG", argv[2]) == 0)
