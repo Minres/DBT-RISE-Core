@@ -39,7 +39,7 @@
 #include <boost/asio.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/thread.hpp>
-#include <sys/time.h>
+#include <ctime>
 #include <util/logging.h>
 
 namespace iss {
@@ -113,7 +113,7 @@ private:
             // An error occurred. Log it and return. Since we are not starting a new
             // accept operation the io_service will run out of work to do and the
             // thread will exit.
-            LOG(ERROR) << e.message();
+            LOG(ERR) << e.message();
         }
     }
     // server related members
