@@ -28,6 +28,7 @@ set(LIB_SOURCES
     src/cmdhandler.cpp
     src/target_adapter_base.cpp
     src/encoderdecoder.cpp
+    src/loader.cpp
 )
 if(WITH_TCC)
     list(APPEND LIB_SOURCES src/tcc_jit_helper.cpp)
@@ -103,3 +104,20 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/incl/iss COMPONENT ${PROJECT_NAME}
         FILES_MATCHING # install only matched files
         PATTERN "*.h" # select header files
         )
+###############################################################################
+#
+###############################################################################
+find_package(lua QUIET)
+if(TARGET lua::lua)
+	project(lua-plugin)
+	find_package(Boost REQUIRED)
+	if(NOT Boost_FOUND)
+	  message(FATAL_ERROR "Boost NOT Found !")
+	endif()
+	add_library(lua SHARED src/lua_plugin.cpp)
+	target_include_directories(lua PRIVATE ${PROJECT_SOURCE_DIR}/incl)
+	target_include_directories(lua PRIVATE ${Boost_INCLUDE_DIRS})
+	target_link_libraries(lua PRIVATE scc-util)
+	target_link_libraries(lua PRIVATE lua::lua)	
+endif()	
+        
