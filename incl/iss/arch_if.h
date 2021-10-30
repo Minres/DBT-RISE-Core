@@ -114,11 +114,6 @@ public:
      */
     virtual uint8_t *get_regs_base_ptr() = 0;
 
-    DEPRECATED virtual void get_reg(short idx, std::vector<uint8_t> &value){};
-    DEPRECATED virtual void set_reg(short idx, const std::vector<uint8_t> &value){};
-    DEPRECATED virtual bool get_flag(int flag) { return false; };
-    DEPRECATED virtual void set_flag(int flag, bool value){};
-    DEPRECATED virtual void update_flags(operations op, uint64_t opr1, uint64_t opr2){};
     /**
      * read from addresses
      *
