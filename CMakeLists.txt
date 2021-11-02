@@ -81,6 +81,7 @@ elseif(TARGET fmt::fmt)
 else()
     message(FATAL_ERROR "No FMT library found, maybe a find_package() call is missing")
 endif()
+target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 
 set(LIB_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/incl/dbt_rise_common.h)
 set_target_properties(${PROJECT_NAME} PROPERTIES
