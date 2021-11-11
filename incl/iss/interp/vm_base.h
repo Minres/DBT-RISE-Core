@@ -54,6 +54,7 @@
 #include <vector>
 #include <type_traits>
 
+#ifndef _MSC_VER
 using int128_t  = __int128;
 using uint128_t = unsigned __int128;
 namespace std {
@@ -63,6 +64,7 @@ public:
     typedef unsigned __int128 __type;
 };
 }
+#endif
 
 namespace iss {
 
@@ -119,7 +121,7 @@ public:
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if (e.state != 1) error = e.state;
         } catch (decoding_error &e) {
-            LOG(ERROR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
+            LOG(ERR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
             error = -1;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
@@ -175,7 +177,7 @@ protected:
         }
         if ((s & sync_exec))
             core.notify_phase(notifier_mapping[s]);
-        iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
+        iss::instr_info_t iinfo{cluster_id, core_id, inst_id, static_cast<unsigned>(s)};
         for (plugin_entry e : plugins) {
             if (e.sync & s)
                 e.plugin.callback(iinfo.backing.val, ex_info);

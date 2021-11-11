@@ -46,7 +46,7 @@ BF_FIELD(cluster_id, 56, 8)
 BF_FIELD(core_id, 40, 16)
 BF_FIELD(instr_id, 24, 16)
 BF_FIELD(phase_id, 16, 8)
-instr_info_t(uint64_t cluster_id, uint64_t core_id, uint64_t instr_id, uint64_t phase_id)
+instr_info_t(unsigned cluster_id, unsigned core_id, unsigned instr_id, unsigned phase_id)
 : instr_info_t() {
     this->cluster_id = cluster_id & std::numeric_limits<uint8_t>::max();
     this->core_id = core_id & std::numeric_limits<uint16_t>::max();

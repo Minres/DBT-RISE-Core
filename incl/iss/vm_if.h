@@ -125,7 +125,7 @@ public:
     void setDisassEnabled(bool enable) { disass_enabled = enable; }
 
 protected:
-    bool disass_enabled;
+    bool disass_enabled{false};
 };
 /**
  * exception class signaling an error while decoding an instruction

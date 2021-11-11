@@ -31,13 +31,15 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
+// clang-format off
+#include <iss/debugger/gdb_session.h>
 #include <algorithm>
 #include <exception>
 #include <iomanip>
 #include <iostream>
-#include <iss/debugger/gdb_session.h>
 #include <string>
 #include <util/logging.h>
+// clang-format on
 
 namespace iss {
 namespace debugger {
@@ -147,7 +149,7 @@ void gdb_session::send_completed(const boost::system::error_code &e) {
     if (!e) {
         conn_shptr->async_read();
     } else {
-        LOG(ERROR) << e.message() << "(" << e << ")";
+        LOG(ERR) << e.message() << "(" << e << ")";
     }
 }
 
@@ -168,12 +170,12 @@ bool gdb_session::message_completed(std::vector<char> &buffer) {
 
 void gdb_session::receive_completed(const boost::system::error_code &e, std::string *msg) {
     if (e.value() == 2) {
-        CLOG(WARNING, connection) << "Client closed connection (" << e.message() << ")";
+        CLOG(WARN, connection) << "Client closed connection (" << e.message() << ")";
         // TODO: cleanup settings like: server.remove_breakpoint(CORE_ID, 0);
         handler.t->close();
         return;
     } else if (e) {
-        CLOG(ERROR, connection) << "Communication error (" << e.message() << ")";
+        CLOG(ERR, connection) << "Communication error (" << e.message() << ")";
         handler.t->close();
         return;
     }
@@ -218,7 +220,7 @@ void gdb_session::parse_n_execute(std::string &data) {
             } else {
                 /* Some GDBs will accept any response as a good one. Let us bark in the
                  * log at least */
-                CLOG(ERROR, connection) << __FUNCTION__ << ": extended operations required, but not supported";
+                CLOG(ERR, connection) << __FUNCTION__ << ": extended operations required, but not supported";
             }
             break;
         case '?':
@@ -297,9 +299,9 @@ void gdb_session::parse_n_execute(std::string &data) {
         }
         respond(resp);
     } catch (boost::system::system_error const &e1) {
-        CLOG(ERROR, connection) << "Caught boost error " << e1.what();
+        CLOG(ERR, connection) << "Caught boost error " << e1.what();
     } catch (std::exception const &e2) {
-        CLOG(ERROR, connection) << "Caught std::exception (" << typeid(e2).name() << "): " << e2.what();
+        CLOG(ERR, connection) << "Caught std::exception (" << typeid(e2).name() << "): " << e2.what();
     }
 }
 
