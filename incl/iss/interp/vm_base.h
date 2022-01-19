@@ -135,7 +135,7 @@ public:
 
     void reset() override { core.reset(); }
 
-    void reset(uint64_t address) { core.reset(address); }
+    void reset(uint64_t address) override { core.reset(address); }
 
     void pre_instr_sync() override {
         uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
@@ -157,7 +157,7 @@ protected:
 
     ~vm_base() override { delete tgt_adapter; }
 
-    void register_plugin(vm_plugin &plugin) {
+    void register_plugin(vm_plugin &plugin) override {
         if (plugin.registration("1.0", *this)) {
             auto sync = plugin.get_sync();
             plugins.push_back(plugin_entry{sync, plugin});

@@ -292,7 +292,7 @@ std::string encoder_decoder::enc_process_query_response(unsigned int mask, const
         case MASKBIT_EXISTS:
             /* Encode Length */
             /* and Encode value */
-            ss << "01" << (info->exists) ? '1' : '0';
+            ss << "01" << ((info->exists) ? '1' : '0');
             break;
         case MASKBIT_DISPLAY:
             /* Encode length */
@@ -337,7 +337,7 @@ std::string encoder_decoder::enc_list_query_response(size_t count, int done, con
     ss << "qM";
     enc_byte(count, enc_buf);
     ss << enc_buf[0] << enc_buf[1];
-    ss << (done) ? '1' : '0';
+    ss << ((done) ? '1' : '0');
     ss << std::setw(16) << std::setfill('0') << std::hex << arg.val;
 
     /* Encode found */

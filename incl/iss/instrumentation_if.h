@@ -42,7 +42,7 @@ namespace iss {
 
 inline namespace v1 {}
 
-namespace v1 {
+inline namespace v1 {
 struct instrumentation_if {
 
     virtual ~instrumentation_if(){};
