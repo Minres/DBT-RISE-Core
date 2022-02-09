@@ -66,6 +66,18 @@ struct instrumentation_if {
      */
     virtual uint64_t get_next_pc() = 0;
     /**
+     * Retrieve the current value of the program counter of the next instruction
+     *
+     * @return the value of the next PC
+     */
+    virtual uint64_t get_instr_count() = 0;
+    /**
+     * Retrieve the current value of the program counter of the next instruction
+     *
+     * @return the value of the next PC
+     */
+    virtual uint64_t get_total_cycles() = 0;
+    /**
      * update the cycle count (default is 1) of the last executed instruction
      *
      * @param cycles

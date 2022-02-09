@@ -128,7 +128,8 @@ public:
                                                               // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        LOG(INFO) << "Executed " << core.get_icount() << " instructions during " << millis
+        auto instr_if = core.get_instrumentation_if();
+        LOG(INFO) << "Executed " << instr_if->get_instr_count() << " instructions in "<<instr_if->get_total_cycles() <<" cycles during " << millis
                   << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
         return error;
     }
