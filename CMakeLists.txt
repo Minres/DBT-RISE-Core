@@ -9,7 +9,7 @@ find_package(tcc QUIET)
 if(tcc_FOUND)
     set(WITH_TCC ON)
 endif()
-find_package(fmt)
+find_package(fmt QUIET)
 
 if(WITH_LLVM)
 	if(DEFINED ENV{LLVM_HOME})

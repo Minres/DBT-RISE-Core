@@ -89,8 +89,8 @@ public:
     /**
      * start the simulation
      *
-     * @param icount number if instructions to be simulated
-     * @param dump intermediat code if any
+     * @param icount number of instructions to be simulated
+     * @param dump intermediate code if any
      * @param cond conditions to stop execution
      * @return number of executed instructions
      */

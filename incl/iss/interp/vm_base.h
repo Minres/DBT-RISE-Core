@@ -128,14 +128,15 @@ public:
                                                               // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        LOG(INFO) << "Executed " << core.get_icount() << " instructions during " << millis
+        auto instr_if = core.get_instrumentation_if();
+        LOG(INFO) << "Executed " << instr_if->get_instr_count() << " instructions in "<<instr_if->get_total_cycles() <<" cycles during " << millis
                   << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
         return error;
     }
 
     void reset() override { core.reset(); }
 
-    void reset(uint64_t address) { core.reset(address); }
+    void reset(uint64_t address) override { core.reset(address); }
 
     void pre_instr_sync() override {
         uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
@@ -157,7 +158,7 @@ protected:
 
     ~vm_base() override { delete tgt_adapter; }
 
-    void register_plugin(vm_plugin &plugin) {
+    void register_plugin(vm_plugin &plugin) override {
         if (plugin.registration("1.0", *this)) {
             auto sync = plugin.get_sync();
             plugins.push_back(plugin_entry{sync, plugin});
