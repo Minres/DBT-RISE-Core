@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(dbt-core VERSION 1.0.0)
+project(dbt-rise-core VERSION 1.0.0)
 
 include(GNUInstallDirs)
 
@@ -8,7 +8,10 @@ find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(tcc QUIET)
 if(tcc_FOUND)
     set(WITH_TCC ON)
+else(TARGET CONAN_PKG::tcc)
+	set(WITH_TCC ON)  
 endif()
+
 find_package(fmt QUIET)
 
 if(WITH_LLVM)
