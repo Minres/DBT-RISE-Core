@@ -96,7 +96,8 @@ public:
 
     using func_ptr = uint64_t (*)(uint8_t *, void *, void *);
 
-    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false) override {
+    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
+            finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
@@ -166,7 +167,7 @@ public:
                         }
                     }
                 } catch (trap_access &ta) {
-                    pc.val = core.enter_trap(ta.id, ta.addr);
+                    pc.val = core.enter_trap(ta.id, ta.addr, 0);
                 }
 #ifndef NDEBUG
                 LOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
@@ -178,7 +179,7 @@ public:
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if (e.state != 1) error = e.state;
         } catch (decoding_error &e) {
-            LOG(ERROR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
+            LOG(ERR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
             error = -1;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
