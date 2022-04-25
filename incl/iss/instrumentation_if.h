@@ -66,6 +66,12 @@ struct instrumentation_if {
      */
     virtual uint64_t get_next_pc() = 0;
     /**
+     * Retrieve the current instruction word being processed
+     *
+     * @return the value of the next PC
+     */
+    virtual uint64_t get_instr_word() = 0;
+    /**
      * Retrieve the current value of the program counter of the next instruction
      *
      * @return the value of the next PC
@@ -83,6 +89,7 @@ struct instrumentation_if {
      * @param cycles
      */
     virtual void set_curr_instr_cycles(unsigned cycles) = 0;
+
 };
 }
 
