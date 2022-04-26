@@ -74,9 +74,15 @@ struct instrumentation_if {
     /**
      * Retrieve the current value of the program counter of the next instruction
      *
-     * @return the value of the next PC
+     * @return the binary value of the current instruction
      */
     virtual uint64_t get_instr_count() = 0;
+    /**
+     * Retrieve the pending traps of the ISS if there are any
+     *
+     * @return the pending traps
+     */
+    virtual uint64_t get_pendig_traps() = 0;
     /**
      * Retrieve the current value of the program counter of the next instruction
      *
