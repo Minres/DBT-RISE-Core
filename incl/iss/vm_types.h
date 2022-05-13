@@ -90,6 +90,22 @@ inline bool operator&&(access_type a1, access_type a2) {
     return (static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2));
 }
 
+inline bool is_debug(access_type a){
+    return (a&access_type::DEBUG)==access_type::DEBUG;
+}
+
+inline bool is_fetch(access_type a){
+    return (a&access_type::FETCH)==access_type::FETCH;
+}
+
+inline bool is_read(access_type a){
+    return (a&access_type::READ)==access_type::READ;
+}
+
+inline bool is_write(access_type a){
+    return (a&access_type::WRITE)==access_type::WRITE;
+}
+
 enum struct address_type : uint16_t { LOGICAL, VIRTUAL, PHYSICAL };
 
 class addr_t {
