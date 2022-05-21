@@ -31,7 +31,7 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include "iss/debugger/encoderdecoder.h"
+#include "encoderdecoder.h"
 
 #include <iomanip>
 #include <sstream>

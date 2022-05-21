@@ -31,7 +31,7 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include <iss/llvm/jit_helper.h>
+#include "jit_helper.h"
 #include <iss/log_categories.h>
 #include <llvm/Support/Debug.h> //EnableDebugBuffering
 #include <llvm/Support/Error.h>

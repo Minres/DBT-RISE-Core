@@ -31,7 +31,7 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include <iss/debugger/target_adapter_base.h>
+#include "target_adapter_base.h"
 
 using namespace iss::debugger;
 

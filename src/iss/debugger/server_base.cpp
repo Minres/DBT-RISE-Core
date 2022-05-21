@@ -33,7 +33,7 @@
 
 // switch off warning C4996: 'std::copy': Function call with parameters that may
 // be unsafe
-#include "iss/debugger/server_base.h"
+#include "server_base.h"
 #include <functional>
 #include <future>
 #include <iss/debugger_if.h>

@@ -32,7 +32,7 @@
  ******************************************************************************/
 
 #include <iss/iss.h>
-#include <iss/llvm/vm_base.h>
+#include "vm_base.h"
 #include <iss/vm_plugin.h>
 #include <util/logging.h>
 

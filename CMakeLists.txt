@@ -25,19 +25,23 @@ if(WITH_LLVM)
 endif()
 
 set(LIB_SOURCES
-    src/dbgsrvbase.cpp
-    src/gdb_session.cpp
-    src/vm_base.cpp
-    src/cmdhandler.cpp
-    src/target_adapter_base.cpp
-    src/encoderdecoder.cpp
-    src/loader.cpp
+	src/iss/debugger/gdb_session.cpp
+	src/iss/debugger/encoderdecoder.cpp
+	src/iss/debugger/target_adapter_base.cpp
+	src/iss/debugger/cmdhandler.cpp
+	src/iss/debugger/server_base.cpp
+	src/iss/vm_base.cpp
+	src/iss/plugin/loader.cpp
 )
+if(WITH_LLVM)
+    list(APPEND LIB_SOURCES src/iss/llvm/jit_helper.cpp src/iss/llvm/vm_base.cpp)
+endif()
 if(WITH_TCC)
-    list(APPEND LIB_SOURCES src/tcc_jit_helper.cpp)
+    list(APPEND LIB_SOURCES src/iss/tcc/jit_helper.cpp)
 endif()
 
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
+	target_include_directories(${PROJECT_NAME} PUBLIC src) 
 if (MSVC)
     target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
 endif()
@@ -86,7 +90,7 @@ else()
 endif()
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 
-set(LIB_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/incl/dbt_rise_common.h)
+set(LIB_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt_rise_common.h)
 set_target_properties(${PROJECT_NAME} PROPERTIES
   VERSION ${PROJECT_VERSION}
   FRAMEWORK FALSE
@@ -103,7 +107,7 @@ install(TARGETS ${PROJECT_NAME} COMPONENT ${PROJECT_NAME}
   INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}      # headers
 )
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/incl/iss COMPONENT ${PROJECT_NAME}
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/iss COMPONENT ${PROJECT_NAME}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # target directory
         FILES_MATCHING # install only matched files
         PATTERN "*.h" # select header files

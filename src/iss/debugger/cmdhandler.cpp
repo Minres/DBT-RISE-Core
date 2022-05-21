@@ -32,9 +32,9 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include "iss/debugger/cmdhandler.h"
-#include "iss/log_categories.h"
-#include "util/ities.h"
+#include "cmdhandler.h"
+#include <iss/log_categories.h>
+#include <util/ities.h>
 
 #include <boost/tokenizer.hpp>
 #include <cstdarg>
