@@ -53,7 +53,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <iss/plugin/loader.h>
+#include "loader.h"
 
 using namespace iss::plugin;
 std::unordered_map<std::string, std::shared_ptr<loader::plugin_data>> loader::_cache;

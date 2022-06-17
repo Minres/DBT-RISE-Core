@@ -194,7 +194,7 @@ protected:
         return val;
     }
 
-    template<typename AT, typename DT>
+    template<typename DT, typename AT>
     inline void write_mem(mem_type_e type, AT addr, DT val) {
         this->core.write(iss::address_type::VIRTUAL, access_type::WRITE, type,
                 static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)),

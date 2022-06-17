@@ -31,7 +31,7 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include <iss/tcc/jit_helper.h>
+#include "jit_helper.h"
 #include <iss/log_categories.h>
 #include <fmt/format.h>
 #include <array>

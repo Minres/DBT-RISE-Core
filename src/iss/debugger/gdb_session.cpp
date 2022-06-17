@@ -32,7 +32,7 @@
  ******************************************************************************/
 
 // clang-format off
-#include <iss/debugger/gdb_session.h>
+#include "gdb_session.h"
 #include <algorithm>
 #include <exception>
 #include <iomanip>

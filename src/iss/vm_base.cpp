@@ -31,10 +31,10 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include <iss/arch_if.h>
-#include <iss/iss.h>
-#include <iss/vm_if.h>
-#include <iss/vm_plugin.h>
+#include "arch_if.h"
+#include "iss.h"
+#include "vm_if.h"
+#include "vm_plugin.h"
 #include <util/logging.h>
 
 using namespace iss;

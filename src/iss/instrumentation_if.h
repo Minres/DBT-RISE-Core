@@ -27,61 +27,78 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
+ *
  * Contributors:
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include <iss/debugger/target_adapter_base.h>
+#ifndef _INCL_ISS_INSTRUMENTATION_IF_H_
+#define _INCL_ISS_INSTRUMENTATION_IF_H_
 
-using namespace iss::debugger;
+#include <cstdint>
+#include <string>
 
-void target_adapter_base::help(const char *prog_name) {}
+namespace iss {
 
-iss::status target_adapter_base::open(int argc, char *const agrv[], const char *prog_name, log_func log_fn) {
-    return iss::Ok;
+inline namespace v1 {}
+
+inline namespace v1 {
+struct instrumentation_if {
+
+    virtual ~instrumentation_if(){};
+
+    /**
+     * get the name of this architecture
+     *
+     * @return the name of this architecture
+     */
+    virtual const std::string core_type_name() const = 0;
+    /**
+     * Retrieve the current value of the program counter
+     *
+     * @return the value of the PC
+     */
+    virtual uint64_t get_pc() = 0;
+    /**
+     * Retrieve the current value of the program counter of the next instruction
+     *
+     * @return the value of the next PC
+     */
+    virtual uint64_t get_next_pc() = 0;
+    /**
+     * Retrieve the current instruction word being processed
+     *
+     * @return the value of the next PC
+     */
+    virtual uint64_t get_instr_word() = 0;
+    /**
+     * Retrieve the current value of the program counter of the next instruction
+     *
+     * @return the binary value of the current instruction
+     */
+    virtual uint64_t get_instr_count() = 0;
+    /**
+     * Retrieve the pending traps of the ISS if there are any
+     *
+     * @return the pending traps
+     */
+    virtual uint64_t get_pendig_traps() = 0;
+    /**
+     * Retrieve the current value of the program counter of the next instruction
+     *
+     * @return the value of the next PC
+     */
+    virtual uint64_t get_total_cycles() = 0;
+    /**
+     * update the cycle count (default is 1) of the last executed instruction
+     *
+     * @param cycles
+     */
+    virtual void set_curr_instr_cycles(unsigned cycles) = 0;
+
+};
 }
 
-void target_adapter_base::close() { bp_lut.clear(); }
+} /* namespace iss */
 
-iss::status target_adapter_base::connect(bool &can_restart) { return iss::Ok; }
-
-iss::status target_adapter_base::disconnect() { return iss::Ok; }
-
-void target_adapter_base::kill() {}
-
-iss::status target_adapter_base::restart() { return iss::Ok; }
-
-void target_adapter_base::stop() {
-    srv->request_stop(-1);
-    srv->wait_for_stop();
-}
-
-iss::status target_adapter_base::resume_from_current(bool step, int sig, rp_thread_ref thread,
-                                                     std::function<void(unsigned)> stop_callback) {
-    if (step)
-        srv->step(thread.val, 1);
-    else if (stop_callback)
-        srv->run(thread.val, stop_callback);
-    else
-        srv->run(thread.val);
-    return iss::Ok;
-}
-
-iss::status target_adapter_base::wait_non_blocking(bool &running) {
-    running = srv->is_running();
-    if (running) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        running = srv->is_running();
-    }
-    return iss::Ok;
-}
-
-iss::status target_adapter_base::wait_blocking() {
-    srv->wait_for_stop();
-    return iss::Ok;
-}
-
-iss::status iss::debugger::target_adapter_base::add_break_condition(std::function<unsigned()> bc) {
-    break_cond = bc;
-    return iss::Ok;
-}
+#endif /* _INCL_ISS_INSTRUMENTATION_IF_H_ */
