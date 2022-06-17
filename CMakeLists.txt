@@ -8,7 +8,7 @@ find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(tcc QUIET)
 if(tcc_FOUND)
     set(WITH_TCC ON)
-else(TARGET CONAN_PKG::tcc)
+elseif(TARGET CONAN_PKG::tcc)
 	set(WITH_TCC ON)  
 endif()
 
