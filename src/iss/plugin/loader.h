@@ -63,6 +63,12 @@
 #include <stdexcept>
 #include <memory>
 
+#if defined(_WIN64)
+#define _AMD64_
+#elif defined(_WIN32)
+#define _X86_
+#endif
+
 #if defined(_WIN32) || defined(_WIN64)
 #define OS_IS_WINDOWS true
 #include <libloaderapi.h>
@@ -107,7 +113,7 @@ private: // sub-definitions
         ~plugin_data() {
             if (handle) {
 #if OS_IS_WINDOWS
-                FreeLibrary((HINSTANCE)_handle);
+                FreeLibrary((HINSTANCE)handle);
 #else
                 dlclose(handle);
 #endif
