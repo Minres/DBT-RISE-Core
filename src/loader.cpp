@@ -52,8 +52,10 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
 #include <iss/plugin/loader.h>
+#if OS_IS_WINDOWS
+#include <WinBase.h>
+#endif
 
 using namespace iss::plugin;
 std::unordered_map<std::string, std::shared_ptr<loader::plugin_data>> loader::_cache;
@@ -88,7 +90,7 @@ void loader::bind_function(const std::string& label) {
     if (_data->symbols.find(label) != _data->symbols.end())
         return;
 #if OS_IS_WINDOWS
-    Function ptr = (Function)GetProcAddress((HMODULE)_handle, label.c_str());
+    auto ptr = GetProcAddress((HMODULE)_data->handle, label.c_str());
     if (!ptr)
         throw std::invalid_argument("failed to bind variable '"
                 + label
@@ -113,7 +115,7 @@ void loader::bind_variable(const std::string& label) {
     if (_data->symbols.find(label) != _data->symbols.end())
         return;
 #if OS_IS_WINDOWS
-    Variable ptr = (Variable)GetProcAddress((HMODULE)_handle, label.c_str());
+    auto ptr = GetProcAddress((HMODULE)_data->handle, label.c_str());
     if (!ptr)
         throw std::invalid_argument("failed to bind variable '"
                 + label
