@@ -267,26 +267,30 @@ public:
     virtual iss::status raw_query(std::string in_buf, std::string &out_buf) = 0;
 
     /*============ Breakpoints ===========================*/
+    enum break_type {
+        SW_EXEC=0,  //! software breakpoint
+        HW_EXEC=1,  //! hardware breakpoint
+        WR_WATCH=2, //! write access breakpoint
+        RD_WATCH=3  //! read and write access breakpoint
+    };
     /**
      * add a breakpoint
      *
-     * @param type      the type of the breakpoint: 0 -  sw exec, 1 - hw exec, 2 -
-     * write watchpoint, 3 - access watchpoint
+     * @param type      the type of the breakpoint
      * @param addr      address of the breakpoint
      * @param length    length of the range to check
      * @return iss:Ok if successful, iss::Err otherwise
      */
-    virtual iss::status add_break(int type, uint64_t addr, unsigned int length) = 0;
+    virtual iss::status add_break(break_type type, uint64_t addr, unsigned int length) = 0;
     /**
      * remove a breakpoint
      *
-     * @param type      the type of the breakpoint: 0 -  sw exec, 1 - hw exec, 2 -
-     * write watchpoint, 3 - access watchpoint
+     * @param type      the type of the breakpoint
      * @param addr      address of the breakpoint
      * @param length    length of the range to check
      * @return iss:Ok if successful, iss::Err otherwise
      */
-    virtual iss::status remove_break(int type, uint64_t addr, unsigned int length) = 0;
+    virtual iss::status remove_break(break_type type, uint64_t addr, unsigned int length) = 0;
 
     virtual iss::status add_break_condition(std::function<unsigned()> break_cond) = 0;
 

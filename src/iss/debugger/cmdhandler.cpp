@@ -672,10 +672,10 @@ std::string cmd_handler::breakpoint(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     uint64_t addr;
     unsigned int len;
-    int type;
+    target_adapter_if::break_type type;
     int ret;
 
-    if (!(ret = encdec.dec_break(in_buf.c_str(), &type, &addr, &len))) return "E00";
+    if (!(ret = encdec.dec_break(in_buf.c_str(), reinterpret_cast<int*>(&type), &addr, &len))) return "E00";
 
     if (in_buf[0] == 'Z') {
         ret = t->add_break(type, addr, len);
