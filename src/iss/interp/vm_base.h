@@ -173,6 +173,7 @@ protected:
     inline void do_sync(sync_type s, unsigned inst_id) {
         if (s == PRE_SYNC) {
             ex_info.branch_taken=false;
+            ex_info.hw_branch_taken=false;
             if (debugging_enabled())
                 tgt_adapter->check_continue(get_reg<addr_t>(arch::traits<ARCH>::PC)); //pre_instr_sync();
         }

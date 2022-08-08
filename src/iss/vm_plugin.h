@@ -57,6 +57,7 @@ END_BF_DECL();
 
 struct exec_info {
     bool branch_taken{false};
+    bool hw_branch_taken{false};
 };
 class vm_plugin { // @suppress("Class has a virtual method and non-virtual destructor")
 public:
