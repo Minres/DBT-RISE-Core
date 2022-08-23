@@ -32,6 +32,7 @@
  ******************************************************************************/
 
 #include "target_adapter_base.h"
+#include <thread>
 
 using namespace iss::debugger;
 

@@ -36,6 +36,7 @@
 #include "server_base.h"
 #include <functional>
 #include <future>
+#include <thread>
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 
