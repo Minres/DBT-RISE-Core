@@ -61,6 +61,7 @@ struct code_builder {
         os<<add_reg_ptr("trap_state", arch::traits<ARCH>::TRAP_STATE);
         os<<add_reg_ptr("pending_trap", arch::traits<ARCH>::PENDING_TRAP);
         os<<add_reg_ptr("icount", arch::traits<ARCH>::ICOUNT);
+        os<<add_reg_ptr("last_branch", arch::traits<ARCH>::LAST_BRANCH);
 
         for(size_t i=0; i<arch::traits<ARCH>::NUM_REGS; ++i){
             if(defined_regs[i]){
@@ -168,6 +169,9 @@ struct code_builder {
             else
                 lines.push_back(fmt::format("*pc = {};", val));
             return value("*pc", arch::traits<ARCH>::reg_bit_widths[reg_num], false);
+        case arch::traits<ARCH>::LAST_BRANCH:
+			lines.push_back(fmt::format("*last_branch = {};", val));
+            return value("*last_branch", arch::traits<ARCH>::reg_bit_widths[reg_num], false);
         default:
             defined_regs[reg_num]=true;
             if(val.is_signed())
@@ -338,10 +342,13 @@ struct code_builder {
         case 8:
         case 16:
         case 32:
-        case 64:
-            lines.push_back(fmt::format("uint{}_t rd_{} = read_mem{}(core_ptr, {}, {}, {});",
-                    size, lines.size(), size/8, iss::address_type::VIRTUAL, type, addr));
-            return value(fmt::format("rd_{}", lines.size()-1), size, false);
+        case 64: {
+        	auto id = lines.size();
+            lines.push_back(fmt::format("uint{}_t rd_{};", size, id));
+            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
+                    size/8, iss::address_type::VIRTUAL, type, addr, id));
+            return value(fmt::format("rd_{}", id), size, false);
+        }
         default:
             assert(false && "Unsupported mem read length");
             return value("", 0, false);
