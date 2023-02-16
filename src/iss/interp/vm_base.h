@@ -63,6 +63,10 @@ template<> class __make_unsigned_selector<__int128 unsigned, false, false> {
 public:
     typedef unsigned __int128 __type;
 };
+template<> struct is_signed<int128_t> { static constexpr bool value = true;};
+template<> struct is_signed<uint128_t> { static constexpr bool value = false;};
+template<> struct is_unsigned<int128_t> { static constexpr bool value = false;};
+template<> struct is_unsigned<uint128_t> { static constexpr bool value = true;};
 }
 #endif
 
