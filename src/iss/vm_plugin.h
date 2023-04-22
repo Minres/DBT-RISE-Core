@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * Copyright (C) 2017 - 2023, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,10 +55,6 @@ instr_info_t(unsigned cluster_id, unsigned core_id, unsigned instr_id, unsigned 
 }
 END_BF_DECL();
 
-struct exec_info {
-    bool branch_taken{false};
-    bool hw_branch_taken{false};
-};
 class vm_plugin { // @suppress("Class has a virtual method and non-virtual destructor")
 public:
     virtual ~vm_plugin() {}
@@ -67,7 +63,7 @@ public:
 
     virtual sync_type get_sync() = 0;
 
-    virtual void callback(instr_info_t instr_info, exec_info const&) = 0;
+    virtual void callback(instr_info_t) = 0;
 };
 }
 

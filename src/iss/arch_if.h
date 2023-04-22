@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * Copyright (C) 2017 - 2023, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@
 
 #include <dbt_rise_common.h>
 #include "vm_types.h"
+#include "instrumentation_if.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -56,7 +57,6 @@ public:
     const uint64_t addr;
 };
 
-inline namespace v1 { struct instrumentation_if; }
 /**
  * architecture interface
  */
@@ -203,7 +203,7 @@ public:
      *
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
-    virtual v1::instrumentation_if *get_instrumentation_if() { return nullptr; };
+    virtual instrumentation_if *get_instrumentation_if() { return nullptr; };
 };
 }
 

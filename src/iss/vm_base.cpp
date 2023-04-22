@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, 2020, MINRES Technologies GmbH
+ * Copyright (C) 2017 - 2023, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -90,8 +90,8 @@ void notify_phase(arch_if_ptr_t iface, uint32_t phase) {
     iface->notify_phase((arch_if::exec_phase)phase);
 }
 
-void call_plugin(vm_plugin_ptr_t iface, uint64_t instr_info, exec_info* exc) {
-    iface->callback(instr_info_t(instr_info), *exc);
+void call_plugin(vm_plugin_ptr_t iface, uint64_t instr_info) {
+    iface->callback(instr_info_t(instr_info));
 }
 
 int read_mem1(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t* data) {

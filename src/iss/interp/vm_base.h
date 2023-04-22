@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * Copyright (C) 2017 - 2023, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -77,10 +77,7 @@ namespace interp {
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
-    struct plugin_entry {
-        sync_type sync;
-        vm_plugin &plugin;
-    };
+    struct plugin_entry { vm_plugin &plugin; };
 public:
     using reg_e       = typename arch::traits<ARCH>::reg_e;
     using sr_flag_e   = typename arch::traits<ARCH>::sreg_flag_e;
@@ -165,7 +162,10 @@ protected:
     void register_plugin(vm_plugin &plugin) override {
         if (plugin.registration("1.0", *this)) {
             auto sync = plugin.get_sync();
-            plugins.push_back(plugin_entry{sync, plugin});
+            if(sync&PRE_SYNC)
+                pre_plugins.push_back(plugin_entry{plugin});
+            if(sync&POST_SYNC)
+                post_plugins.push_back(plugin_entry{plugin});
             sync_exec |= sync;
         }
     }
@@ -176,18 +176,19 @@ protected:
 
     inline void do_sync(sync_type s, unsigned inst_id) {
         if (s == PRE_SYNC) {
-            ex_info.branch_taken=false;
-            ex_info.hw_branch_taken=false;
             if (debugging_enabled())
                 tgt_adapter->check_continue(get_reg<addr_t>(arch::traits<ARCH>::PC)); //pre_instr_sync();
         }
         if ((s & sync_exec))
             core.notify_phase(notifier_mapping[s]);
+
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, static_cast<unsigned>(s)};
-        for (plugin_entry e : plugins) {
-            if (e.sync & s)
-                e.plugin.callback(iinfo.backing.val, ex_info);
-        }
+        if(s&PRE_SYNC)
+            for (plugin_entry e : pre_plugins)
+                e.plugin.callback(iinfo.backing.val);
+        else
+            for (plugin_entry e : post_plugins)
+                e.plugin.callback(iinfo.backing.val);
     }
 
     template<typename DT, typename AT>
@@ -229,8 +230,8 @@ protected:
     // non-owning pointers
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
-    std::vector<plugin_entry> plugins;
-    exec_info ex_info;
+    std::vector<plugin_entry> pre_plugins;
+    std::vector<plugin_entry> post_plugins;
 };
 }
 }
