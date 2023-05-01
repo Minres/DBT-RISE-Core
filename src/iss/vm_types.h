@@ -61,6 +61,7 @@ enum struct access_type : uint16_t {
     READ = 0x0,
     WRITE = 0x1,
     FETCH = 0x2,
+    PREFETCH = 0x3,
     DEBUG_READ = 0x4,
     DEBUG_WRITE = 0x5,
     DEBUG_FETCH = 0x6,
