@@ -56,13 +56,12 @@
 #include "loader.h"
 
 using namespace iss::plugin;
-std::unordered_map<std::string, std::shared_ptr<loader::plugin_data>> loader::_cache;
 
 std::shared_ptr<loader::plugin_data> loader::get_data(const std::string& filepath) {
     if (filepath.empty())
         throw std::invalid_argument("failed to bind to loader: filepath was empty");
-    auto iter = _cache.find(filepath);
-    if (iter != _cache.end())
+    auto iter = get_cache().find(filepath);
+    if (iter != get_cache().end())
         return iter->second;
 #if OS_IS_WINDOWS
     auto handle = (void*)LoadLibrary(filepath.c_str());
@@ -80,7 +79,7 @@ std::shared_ptr<loader::plugin_data> loader::get_data(const std::string& filepat
                 + std::string(dlerror()));
 #endif
     auto data = std::make_shared<plugin_data>(handle, filepath);
-    _cache[filepath] = data;
+    get_cache()[filepath] = data;
     return data;
 }
 

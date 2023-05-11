@@ -111,6 +111,7 @@ private: // sub-definitions
         : handle(handle), filepath(filepath) { }
 
         ~plugin_data() {
+            symbols.clear();
             if (handle) {
 #if OS_IS_WINDOWS
                 FreeLibrary((HINSTANCE)handle);
@@ -122,7 +123,11 @@ private: // sub-definitions
     };
 
 private: // members
-    static std::unordered_map<std::string, std::shared_ptr<plugin_data>> _cache;
+    using cache_t = std::unordered_map<std::string, std::shared_ptr<plugin_data>>;
+    static cache_t& get_cache() {
+        static cache_t cache;
+        return cache;
+    }
     std::shared_ptr<plugin_data> _data;
     std::shared_ptr<plugin_data> get_data(const std::string &filepath);
 
@@ -141,7 +146,7 @@ public: // methods
     }
 
     loader(const loader &other)
-    : _data(_cache[other.filepath()]) {
+    : _data(get_cache()[other.filepath()]) {
     }
 
     void bind_function(const std::string &label);
@@ -176,7 +181,7 @@ public: // methods
     }
 
     inline loader& operator=(const loader &other) {
-        _data = _cache[other.filepath()];
+        _data = get_cache()[other.filepath()];
         return *this;
     }
 
