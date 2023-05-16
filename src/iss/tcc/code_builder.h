@@ -17,6 +17,10 @@ struct value {
     unsigned size() const { return type&0xff;}
     void set_size(unsigned s){ type = (type&0xff00)+(s&0xff);}
     value(std::string const& s, unsigned size, bool sig = false):str(s), type((sig?0x100:0)+(size&0xff)){}
+    template <typename T, typename std::enable_if<std::is_signed<T>::value>::type* = nullptr>
+    value(T val):value(fmt::format("{}", val), sizeof(T)*8, true){}
+    template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type* = nullptr>
+    value(T val):value(fmt::format("{}", val), sizeof(T)*8, false){}
     value() = delete;
     value(value const&) = default;
     value(value&&) = default;
@@ -89,6 +93,12 @@ struct code_builder {
     void close_scope() {
         lines.push_back("}");
     }
+    inline void open_if(value const & cond){
+        lines.push_back(fmt::format("if({}){{", cond));
+    }
+    inline void open_else(){
+        lines.push_back("}else{");
+    }
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type* = nullptr>
     inline value constant(T val, unsigned size) const {
@@ -155,7 +165,7 @@ struct code_builder {
         return assignment(fmt::format("tmp{}", lines.size()), val, width);
     }
 
-    inline value store(value const& val, unsigned reg_num){
+    inline value store(unsigned reg_num, value const& val){
         switch(reg_num){
         case arch::traits<ARCH>::NEXT_PC:
             if(val.is_signed())
@@ -241,35 +251,35 @@ struct code_builder {
                 left.is_signed() && right.is_signed());
     }
 
-    inline value l_and(value const & left, value const & right){
+    inline value bitwise_and(value const & left, value const & right){
         return value(fmt::format("({}) & ({})", left, right), std::max(left.size(), right.size()),
                 left.is_signed() && right.is_signed());
     }
 
-    inline value l_or(value const & left, value const & right){
+    inline value bitwise_or(value const & left, value const & right){
         return value(fmt::format("({}) | ({})", left, right), std::max(left.size(), right.size()),
                 left.is_signed() && right.is_signed());
     }
 
-    inline value l_xor(value const & left, value const & right){
+    inline value bitwise_xor(value const & left, value const & right){
         return value(fmt::format("({}) ^ ({})", left, right), std::max(left.size(), right.size()),
                 left.is_signed() && right.is_signed());
     }
 
-    inline value b_and(value const & left, value const & right){
+    inline value logical_and(value const & left, value const & right){
         return value(fmt::format("({}) && ({})", left, right), 1, false);
     }
 
-    inline value b_or(value const & left, value const & right){
+    inline value logical_or(value const & left, value const & right){
         return value(fmt::format("({}) ||({})", left, right), 1, false);
     }
 
-    inline value l_not(value const & left){
-        return value(fmt::format("~({})", left), left.size(), left.is_signed());
+    inline value logical_not(value const & left){
+        return value(fmt::format("!({})", left), 1, false);
     }
 
-    inline value l_neg(value const & left){
-        return value(fmt::format("!({})", left), 1, false);
+    inline value logical_neg(value const & left){
+        return value(fmt::format("~({})", left), left.size(), left.is_signed());
     }
 
     inline value neg(value const & left){
@@ -294,7 +304,7 @@ struct code_builder {
             return value(fmt::format("((int{}_t)({}))>>({})", val.size(), val, shift), val.size(), true);
     }
 
-    inline value choose(value const & cond, value const & left, value const & right){
+    inline value conditionalAssignment(value const & cond, value const & left, value const & right){
         assert(left.size()==right.size());
         if(left ^right)
             return value(fmt::format("({})?({}) : ({})", cond, left, right),left.size(),left.is_signed());
