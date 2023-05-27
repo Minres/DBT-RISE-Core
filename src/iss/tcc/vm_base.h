@@ -117,7 +117,7 @@ public:
             iss::tcc::gen_func generator{[&param]() -> std::tuple<std::string, std::string> {
                 std::string fname;
                 std::string code;
-                std::tie(param.cont, fname, code) = param.vm->disass(param.pc);
+                std::tie(param.cont, fname, code) = param.vm->translate(param.pc);
                 param.vm->mod = nullptr;
                 param.vm->func = nullptr;
                 return std::make_tuple(fname, code);
@@ -202,7 +202,7 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, std::string, std::string> disass(virt_addr_t &pc) {
+    std::tuple<continuation_e, std::string, std::string> translate(virt_addr_t &pc) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, this->core.v2p(pc));
@@ -278,7 +278,7 @@ protected:
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
         for (plugin_entry e : plugins) {
             if (e.sync & s)
-                tu("call_plugin((void*){}, (uint64_t){})", e.plugin_ptr, iinfo.backing.val);
+                tu("call_plugin((void*){}, (uint64_t){});", e.plugin_ptr, iinfo.backing.val);
         }
     }
 
