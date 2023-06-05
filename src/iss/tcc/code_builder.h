@@ -205,16 +205,16 @@ struct code_builder {
         }
     }
 
-    inline value to_uint(value const & v){
+    inline value to_int(value const & v){
         if(v.is_signed())
-            return value(fmt::format("(uint{}_t)({})", v.size(), v), v.size(),false);
+            return value(fmt::format("(int{}_t)({})", v.size(), v), v.size(),false);
         else
             return v;
     }
 
     inline value add(value const & left, value const & right){
         if(left ^ right){
-            return value(fmt::format("({}) + ({})", to_uint(left), to_uint(right)), std::max(left.size(), right.size()),
+            return value(fmt::format("({}) + ({})", to_int(left), to_int(right)), std::max(left.size(), right.size()),
                     left.is_signed() && right.is_signed());
         } else {
             return value(fmt::format("({}) + ({})", left, right), std::max(left.size(), right.size()),
