@@ -39,6 +39,7 @@
 #include <llvm/Support/Signals.h> // llvm::sys::PrintStackTraceOnErrorSignal()
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h> //outs()
+#include <llvm/Support/Host.h>
 // needed to get the execution engine linked in
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -99,13 +100,13 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     static unsigned i = 0;
     std::array<char, 32> s;
     sprintf(s.data(), "mcjit_module_#%X_", ++i);
-    auto mod = make_unique<Module>(s.data(), getContext());
+    auto mod = std::make_unique<Module>(s.data(), getContext());
     auto *f = generator(mod.get());
     assert(f != nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
         std::error_code ec;
         std::string name(((std::string)mod->getName()) + ".il");
-        raw_fd_ostream os(StringRef(name), ec, sys::fs::F_None);
+        raw_fd_ostream os(StringRef(name), ec);//sys::fs::F_None);
         // WriteBitcodeToFile(mod, OS);
         // mod->dump();
         mod->print(os, nullptr, false, true);
@@ -130,11 +131,11 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
 
     std::string ErrStr;
     EngineBuilder eeb(std::move(mod)); // eeb and ee take ownership of module
-    eeb.setUseOrcMCJITReplacement(true);
+    //eeb.setUseOrcMCJITReplacement(true);
     TargetOptions to;
     to.EnableFastISel = true;
     to.GuaranteedTailCallOpt = false;
-    to.MCOptions.SanitizeAddress = false;
+    //to.MCOptions.SanitizeAddress = false;
     ExecutionEngine *ee = eeb.setEngineKind(EngineKind::JIT)
                               .setTargetOptions(to)
                               .setErrorStr(&ErrStr)
@@ -142,7 +143,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
                               .create();
     if (!ee) throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
-    return translation_block(ee->getFunctionAddress(f->getName()), {nullptr, nullptr}, ee);
+    return translation_block(ee->getFunctionAddress(f->getName().str()), {nullptr, nullptr}, ee);
 }
 }
 }

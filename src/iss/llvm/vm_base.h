@@ -188,7 +188,7 @@ public:
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if (e.state != 1) error = e.state;
         } catch (decoding_error &e) {
-            LOG(ERROR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
+            LOG(ERR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
             error = -1;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
@@ -508,8 +508,8 @@ protected:
         for (plugin_entry e : plugins) {
             if (e.sync & s) {
                 builder.CreateCall(mod->getFunction("call_plugin"), std::vector<Value *>{
-                                                                        e.plugin_ptr, gen_const(64, iinfo.st.value),
-                                                                    });
+                    e.plugin_ptr, gen_const(64, iinfo.backing.val),
+                });
             }
         }
     }
