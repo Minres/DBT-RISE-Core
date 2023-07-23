@@ -286,7 +286,18 @@ struct code_builder {
     inline value neg(value const & left){
         return value(fmt::format("-({})", left), left.size(), false);
     }
-
+    inline value postIncrement(value const & val){
+        return value(fmt::format("({})++", val), val.size(), val.is_signed());
+    }
+    inline value postDecrement(value const & val){
+        return value(fmt::format("({})--", val), val.size(), val.is_signed());
+    }
+    inline value preIncrement(value const & val){
+        return value(fmt::format("++({})", val), val.size(), val.is_signed());
+    }
+    inline value preDecrement(value const & val){
+        return value(fmt::format("--({})", val), val.size(), val.is_signed());
+    }
     inline value shl(value const & val,value const & shift){
         return value(fmt::format("({})<<({})", val, shift), val.size(), val.is_signed());
     }
