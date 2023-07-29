@@ -111,16 +111,17 @@ enum struct address_type : uint16_t { LOGICAL, VIRTUAL, PHYSICAL };
 
 class addr_t {
 public:
+    uint64_t val = 0;
+    uint32_t space = 0;
     const address_type type = address_type::LOGICAL;
     const access_type access = access_type::WRITE;
-    uint32_t space = 0;
-    uint64_t val = 0;
 
     constexpr addr_t(access_type acc_type, address_type addr_type, uint32_t space, uint64_t addr)
-    : type(addr_type)
-    , access(acc_type)
+    : val(addr)
     , space(space)
-    , val(addr) {}
+    , type(addr_type)
+    , access(acc_type)
+    {}
 
     const addr_t &operator=(uint64_t o) {
         val = o;

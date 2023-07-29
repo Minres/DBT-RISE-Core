@@ -32,55 +32,22 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _ISS_LLVM__JIT_HELPER_H
-#define _ISS_LLVM__JIT_HELPER_H
-
-#include "llvm/ExecutionEngine/GenericValue.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include <iostream>
-#include <iss/arch/traits.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Module.h>
-#include <llvm/Support/Error.h>
-#include <sstream>
-
-#include "boost/variant.hpp"
-#include <memory>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
-#include <string>
-#include "jit_init.h"
+#ifndef _ISS_LLVM__JIT_INIT_H
+#define _ISS_LLVM__JIT_INIT_H
 
 namespace iss {
-
-class arch_if;
-class vm_if;
-
-namespace llvm {
+/**
+ * initialize the LLVM infrastructure
+ */
+void init_jit();
 
 /**
- * get the LLVM context
- * NOTE: this is a singleton and not threadsave
- * @return the cotext
+ * initialize the LLVM infrastructure including stack trace pretty printer
+ * @param argc the number of CLI arguments
+ * @param argv the array of CLI arguments
  */
-::llvm::LLVMContext &getContext();
+void init_jit_debug(int argc, const char * const argv[]);
 
-struct alignas(4 * sizeof(void *)) translation_block {
-    uintptr_t f_ptr = 0;
-    std::array<translation_block *, 2> cont;
-    ::llvm::ExecutionEngine *mod_eng;
-    explicit translation_block(uintptr_t f_ptr_, std::array<translation_block *, 2> cont_,
-                               ::llvm::ExecutionEngine *mod_eng_)
-    : f_ptr(f_ptr_)
-    , cont(cont_)
-    , mod_eng(mod_eng_) {}
-};
-
-using gen_func = std::function<::llvm::Function *(::llvm::Module *)>;
-
-translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
 }
-}
-#endif // _ISS_LLVM__JIT_HELPER_H
+
+#endif // _ISS_LLVM__JIT_INIT_H
