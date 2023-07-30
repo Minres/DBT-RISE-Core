@@ -42,10 +42,6 @@ namespace llvm {
 using namespace std;
 using namespace ::llvm;
 
-cl::opt<uint32_t> LikelyBranchWeight("likely-branch-weight", cl::Hidden, cl::init(64),
-                                           cl::desc("Weight of the branch likely to be taken (default = 64)"));
-cl::opt<uint32_t> UnlikelyBranchWeight("unlikely-branch-weight", cl::Hidden, cl::init(4),
-                                             cl::desc("Weight of the branch unlikely to be taken (default = 4)"));
 #define INT_TYPE(L) Type::getIntNTy(mod->getContext(), L)
 #define FLOAT_TYPE Type::getFloatTy(mod->getContext())
 #define DOUBLE_TYPE Type::getDoubleTy(mod->getContext())
