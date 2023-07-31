@@ -401,8 +401,7 @@ struct code_builder {
     }
 
     inline void  write_mem(mem_type_e type, uint64_t addr, value val) {
-    	auto size = val.size();
-        switch(sizeof(size)){
+        switch(val.size()){
         case 8:
         case 16:
         case 32:
