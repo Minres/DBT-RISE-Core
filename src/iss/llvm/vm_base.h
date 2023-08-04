@@ -139,7 +139,9 @@ public:
             while (!core.should_stop() && core.get_icount() < icount) {
                 try {
                     // translate into physical address
-                    const auto pc_p = core.v2p(pc);
+                    phys_addr_t pc_p(pc.access, pc.space, pc.val);
+                    if(this->core.has_mmu())
+                        pc_p = this->core.virt2phys(pc);
                     // check if we have the block already compiled
                     auto it = this->func_map.find(pc_p.val);
                     if (it == this->func_map.end()) { // if not generate and compile it
@@ -212,10 +214,13 @@ protected:
     std::tuple<continuation_e, Function *> disass(virt_addr_t &pc) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
-        std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, this->core.v2p(pc));
+        phys_addr_t phys_pc(pc.access, pc.space, pc.val);
+        if(this->core.has_mmu())
+            phys_pc = this->core.virt2phys(pc);
+        std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, phys_pc);
         unsigned int num_inst = 0;
         // loaded_regs.clear();
-        func = this->open_block_func(cur_pc_mark.second);
+        func = this->open_block_func(phys_pc);
         leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
         trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
@@ -234,11 +239,11 @@ protected:
                 builder.SetInsertPoint(bb);
                 builder.CreateBr(leave_blk);
             }
-            const phys_addr_t end_pc(this->core.v2p(--cur_pc));
+            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
             assert(cur_pc_mark.first.val <= cur_pc.val);
             return std::make_tuple(cont, func);
         } catch (trap_access &ta) {
-            const phys_addr_t end_pc(this->core.v2p(--cur_pc));
+            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
             if (cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
                 builder.SetInsertPoint(bb);
                 builder.CreateBr(leave_blk);

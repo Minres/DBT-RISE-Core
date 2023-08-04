@@ -113,7 +113,14 @@ public:
      * @return pointer to the registers
      */
     virtual uint8_t *get_regs_base_ptr() = 0;
-
+    /**
+     * whether address translation is needed
+     *
+     * @return true if a call to the address translation function is needed
+     */
+    inline bool has_mmu(){
+        return mmu;
+    }
     /**
      * read from addresses
      *
@@ -204,6 +211,8 @@ public:
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
     virtual instrumentation_if *get_instrumentation_if() { return nullptr; };
+private:
+    bool mmu{false};
 };
 }
 
