@@ -55,6 +55,7 @@
 #include <chrono>
 #include <map>
 #include <sstream>
+#include <iostream>
 #include <stack>
 #include <utility>
 #include <vector>
@@ -223,7 +224,7 @@ protected:
         func = this->open_block_func(phys_pc);
         leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
-        trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
+        trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);       
         gen_trap_behavior(trap_blk);
         BasicBlock *bb = BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
         builder.SetInsertPoint(bb);
@@ -291,14 +292,19 @@ protected:
 
     void register_plugin(vm_plugin &plugin) {
         if (plugin.registration("1.0", *this)) {
-            Value *ptr = // this->builder.CreateIntToPtr(&plugin, get_type(8)->getPointerTo(0));
-                    ConstantInt::get(
-                            ::iss::llvm::getContext(),
-                            APInt(64, (uint64_t)&plugin)); // TODO: this is definitely non-portable and wrong
+            //This is wrong, needs ptrType
+            auto* plugin_addr = ConstantInt::get(::iss::llvm::getContext(),APInt(64, (uint64_t)&plugin));
+            Value* ptr = ConstantExpr::getIntToPtr(plugin_addr,  PointerType::getUnqual(Type::getInt8Ty(::iss::llvm::getContext())));
             plugins.push_back(plugin_entry{plugin.get_sync(), plugin, ptr});
         }
     }
 
+    inline Value *adj_to64(Value *val) {
+        return val->getType()->getScalarSizeInBits() == 64 ? val : builder.CreateZExt(val, builder.getInt64Ty());
+    }
+     /*
+    Getter Functions to allow easy usage of LLVM API
+    */
     inline Type *get_type(unsigned width) {
         assert(width > 0);
         if (width < 2)
@@ -314,11 +320,22 @@ protected:
         assert(!"Not supported yet");
         return builder.getInt64Ty();
     }
-
-    inline Value *adj_to64(Value *val) {
-        return val->getType()->getScalarSizeInBits() == 64 ? val : builder.CreateZExt(val, builder.getInt64Ty());
+    inline Type* get_typeptr(unsigned i) {
+        return get_type(arch::traits<ARCH>::reg_bit_widths[i]);
     }
 
+    inline Value *get_reg_ptr(unsigned i) {
+        return vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_widths[i]);
+    }
+
+    inline Value *get_reg_ptr(unsigned i, unsigned size) {
+        auto x = builder.CreateAdd(this->builder.CreatePtrToInt(regs_ptr, get_type(64)),
+                this->gen_const(64U, arch::traits<ARCH>::reg_byte_offsets[i]), "reg_offs_ptr");
+        return this->builder.CreateIntToPtr(x, get_type(size)->getPointerTo(0));
+    }
+    /*
+    Generator functions to create often used IR
+    */  
     inline Value *gen_get_reg(reg_e r) {
         std::vector<Value *> args{core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, r))};
         auto reg_size = arch::traits<ARCH>::reg_bit_widths[r];
@@ -380,16 +397,16 @@ protected:
         case 2:
         case 4:
         case 8:
-            return builder.CreateLoad(this->get_type(length * 8)->getPointerElementType(),builder.CreateBitCast(storage, get_type(length * 8)->getPointerTo(0)), false);
+            return builder.CreateLoad(this->get_type(length * 8),builder.CreateBitCast(storage, get_type(length * 8)->getPointerTo(0)), false);
         default:
-            return storage_ptr;
+            throw std::runtime_error("Invalid read attempt");
         }
     }
-
-    inline void gen_write_mem(mem_type_e type, uint64_t addr, Value *val) {
-        gen_write_mem(type, ConstantInt::get(::iss::llvm::getContext(), APInt(64, addr)), val);
+    template <typename T>
+    inline typename std::enable_if<std::is_integral<T>::value>::type gen_write_mem(mem_type_e type, T addr, Value *val) {
+        gen_write_mem(type, ConstantInt::get(::iss::llvm::getContext(), APInt(sizeof(T) * 8, static_cast<uint64_t>(addr))), val);
     }
-
+    
     inline void gen_write_mem(mem_type_e type, Value *addr, Value *val) {
         uint32_t bitwidth = val->getType()->getIntegerBitWidth();
         auto *storage = builder.CreateAlloca(IntegerType::get(mod->getContext(), bitwidth));
@@ -409,20 +426,6 @@ protected:
         this->builder.CreateCondBr(icmp, trap_blk, label_cont,
                 MDBuilder(this->mod->getContext()).createBranchWeights(4, 64));
         builder.SetInsertPoint(label_cont);
-    }
-
-    inline Type* get_typeptr(unsigned i) {
-        return get_type(arch::traits<ARCH>::reg_bit_widths[i])->getPointerElementType();
-    }
-
-    inline Value *get_reg_ptr(unsigned i) {
-        return vm_base<ARCH>::get_reg_ptr(i, arch::traits<ARCH>::reg_bit_widths[i]);
-    }
-
-    inline Value *get_reg_ptr(unsigned i, unsigned size) {
-        auto x = builder.CreateAdd(this->builder.CreatePtrToInt(regs_ptr, get_type(64)),
-                this->gen_const(64U, arch::traits<ARCH>::reg_byte_offsets[i]), "reg_offs_ptr");
-        return this->builder.CreateIntToPtr(x, get_type(size)->getPointerTo(0));
     }
 
     template <typename T, typename std::enable_if<std::is_signed<T>::value>::type * = nullptr>
@@ -473,13 +476,13 @@ protected:
                 builder.CreateAnd(f, f_mask)); // (t & ~t_mask) | (f & f_mask)
     }
 
-    inline void gen_cond_branch(Value *when, BasicBlock *then, BasicBlock *otherwise,
+    inline void gen_cond_branch(Value *cond, BasicBlock *then, BasicBlock *otherwise,
             bool likelyTrueBranch = 0) { // cond must be 1 or 0
         if (likelyTrueBranch)
-            this->builder.CreateCondBr(when, then, otherwise,
+            this->builder.CreateCondBr(cond, then, otherwise,
                     MDBuilder(this->mod->getContext()).createBranchWeights(64, 4));
         else
-            this->builder.CreateCondBr(when, then, otherwise,
+            this->builder.CreateCondBr(cond, then, otherwise,
                     MDBuilder(this->mod->getContext()).createBranchWeights(4, 64));
     }
 
@@ -491,13 +494,13 @@ protected:
         if (s == PRE_SYNC) {
             // update icount
             auto *icount_val =
-                    builder.CreateAdd(builder.CreateLoad(get_type(arch::traits<ARCH>::ICOUNT)->getPointerElementType(), get_reg_ptr(arch::traits<ARCH>::ICOUNT)), gen_const(64U, 1));
+                    builder.CreateAdd(builder.CreateLoad(get_typeptr(arch::traits<ARCH>::ICOUNT), get_reg_ptr(arch::traits<ARCH>::ICOUNT)), gen_const(64U, 1));
             builder.CreateStore(icount_val, get_reg_ptr(arch::traits<ARCH>::ICOUNT), false);
             // set PC
-            auto *pc_val = builder.CreateLoad(get_type(arch::traits<ARCH>::NEXT_PC)->getPointerElementType(), get_reg_ptr(arch::traits<ARCH>::NEXT_PC));
+            auto *pc_val = builder.CreateLoad(get_typeptr(arch::traits<ARCH>::NEXT_PC), get_reg_ptr(arch::traits<ARCH>::NEXT_PC));
             builder.CreateStore(pc_val, get_reg_ptr(arch::traits<ARCH>::PC), false);
             // copy over trap state
-            auto *trap_val = builder.CreateLoad(get_type(arch::traits<ARCH>::PENDING_TRAP)->getPointerElementType(), get_reg_ptr(arch::traits<ARCH>::PENDING_TRAP));
+            auto *trap_val = builder.CreateLoad(get_typeptr(arch::traits<ARCH>::PENDING_TRAP), get_reg_ptr(arch::traits<ARCH>::PENDING_TRAP));
             builder.CreateStore(trap_val, get_reg_ptr(arch::traits<ARCH>::TRAP_STATE), false);
             if (debugging_enabled())
                 builder.CreateCall(mod->getFunction("pre_instr_sync"), std::vector<Value *>{vm_ptr});

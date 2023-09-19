@@ -99,13 +99,13 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
 #endif
     static unsigned i = 0;
     std::array<char, 32> s;
-    sprintf(s.data(), "mcjit_module_#%X_", ++i);
+    sprintf(s.data(), "llvm_jit_%u", ++i);
     auto mod = std::make_unique<Module>(s.data(), getContext());
     auto *f = generator(mod.get());
     assert(f != nullptr && "Generator function did return nullptr");
     if (dumpEnabled) {
         std::error_code ec;
-        std::string name(((std::string)mod->getName()) + ".il");
+        std::string name(((std::string)mod->getName()) + ".ll");
         raw_fd_ostream os(StringRef(name), ec);//sys::fs::F_None);
         // WriteBitcodeToFile(mod, OS);
         // mod->dump();
@@ -115,7 +115,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
 
     mod->setTargetTriple(sys::getProcessTriple());
 
-    PassBuilder passBuilder;
+    /*PassBuilder passBuilder;
     ModuleAnalysisManager moduleAnalysisManager;
     passBuilder.registerModuleAnalyses(moduleAnalysisManager);
     CGSCCAnalysisManager cGSCCAnalysisManager;
@@ -128,7 +128,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
 
     ModulePassManager modulePassManager = passBuilder.buildPerModuleDefaultPipeline(PassBuilder::OptimizationLevel::O3);
     modulePassManager.run(*mod, moduleAnalysisManager);
-
+    */
     std::string ErrStr;
     EngineBuilder eeb(std::move(mod)); // eeb and ee take ownership of module
     //eeb.setUseOrcMCJITReplacement(true);
