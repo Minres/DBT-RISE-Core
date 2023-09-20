@@ -113,36 +113,22 @@ struct code_builder {
 
 
     template <typename T, typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-    inline value ext(T val, unsigned size, bool isUnSigned) const {
-        if(isUnSigned)
+    inline value ext(T val, unsigned size, bool isSigned) const {
+        if(!isSigned)
             return value(fmt::format("(uint{}_t)({})", size, val), size, false);
         else
             return value(fmt::format("(int{}_t)({})", size, val), size, true);
 
     }
 
-    inline value ext(value const& val, unsigned size, bool isUnSigned) const {
-        if(isUnSigned){
-            if(val.is_signed())
-                if(val.size() != size){
-                    return value(fmt::format("(uint{}_t)((uint{}_t)({}))", size, val.size(), val), size, true);
-                } else {
-                    return value(fmt::format("(uint{}_t)({})", size, val), size, false);
-                }
-            else
+    inline value ext(value const& val, unsigned size, bool isSigned) const {
+        if(!isSigned){
                 if(val.size() != size){
                     return value(fmt::format("(uint{}_t)({})", size, val), size, false);
                 } else {
                     return val;
                 }
         } else {
-            if(!val.is_signed())
-                if( val.size() != size){
-                    return value(fmt::format("(int{}_t)((int{}_t)({}))", size, val.size(), val), size, true);
-                } else {
-                    return value(fmt::format("(int{}_t)({})", size, val), size, true);
-                }
-            else
                 if(val.size() != size){
                     return value(fmt::format("(int{}_t)({})", size, val), size, false);
                 } else {
