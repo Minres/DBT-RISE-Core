@@ -118,23 +118,34 @@ struct code_builder {
             return value(fmt::format("(uint{}_t)({})", size, val), size, false);
         else
             return value(fmt::format("(int{}_t)({})", size, val), size, true);
+    
 
     }
 
-    inline value ext(value const& val, unsigned size, bool isSigned) const {
-        if(!isSigned){
-                if(val.size() != size){
-                    return value(fmt::format("(uint{}_t)({})", size, val), size, false);
-                } else {
-                    return val;
-                }
-        } else {
-                if(val.size() != size){
-                    return value(fmt::format("(int{}_t)({})", size, val), size, false);
-                } else {
-                    return val;
-                }
-        }
+    inline value ext(value const& val, unsigned target_size, bool target_is_signed) const {
+        if(val.is_signed()){
+            if(target_size == val.size()) 
+                if(target_is_signed)
+                    return val;                                                                                                 //intx_t -> intx_t
+                else 
+                    return value(fmt::format("(uint{}_t)({})", target_size, val), target_size, false);                          //intx_t -> uintx_t
+            else
+                if(target_is_signed)
+                    return value(fmt::format("(int{}_t)({})", target_size, val), target_size, true);                            //intx_t -> inty_t
+                else 
+                    return value(fmt::format("(uint{}_t)((int{}_t)({}))", target_size, target_size, val), target_size, false);; //intx_t -> inty_t -> uinty_t
+        }else{
+            if(target_size == val.size()) 
+                if(target_is_signed)
+                    return value(fmt::format("(int{}_t)({})", target_size, val), target_size, true);                            //uintx_t -> intx_t
+                else 
+                    return val;                                                                                                 //uintx_t -> uintx_t
+            else
+                if(target_is_signed)
+                    return value(fmt::format("(int{}_t)((uint{}_t)({}))", target_size, target_size, val), target_size, true);   //uintx_t -> uinty_t -> inty_t
+                else 
+                    return value(fmt::format("(uint{}_t)({})", target_size, val), target_size, false);                          //uintx_t -> uinty_t
+        }       
     }
 
     inline value assignment(std::string const& name, value const& val, unsigned width){
@@ -330,21 +341,6 @@ struct code_builder {
         return value("", 1, false);
     }
 
-    inline value zext_or_trunc(value const& val, unsigned width){
-        if(val.is_signed())
-            return value(fmt::format("(uint{}_t)((uint{}_t)({}))", width, val.size(), val), width, false);
-        else
-            return value(fmt::format("(uint{}_t)({})", width, val), width, false);
-    }
-
-    inline value trunc(value const& val, unsigned width){
-        if(val.is_signed())
-            return value(fmt::format("(int{}_t)({})", width, val), width, true);
-        else
-            return value(fmt::format("(uint{}_t)({})", width, val), width, false);
-
-    }
-
     inline value read_mem(mem_type_e type, uint64_t addr, uint32_t size) {
         switch(size){
         case 8:
@@ -371,15 +367,10 @@ struct code_builder {
         case 64:{
             auto id=lines.size();
             lines.push_back(fmt::format("uint{}_t rd_{};", size, id));
-            if(addr.is_signed()){
-                lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
-                        size/8, iss::address_type::VIRTUAL, type, zext_or_trunc(addr, 64), id));
-                return value(fmt::format("rd_{}", id), size, false);
-            } else
-                lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
-                        size/8, iss::address_type::VIRTUAL, type, addr, id));
-                return value(fmt::format("rd_{}", id), size, false);
-        }
+            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
+                    size/8, iss::address_type::VIRTUAL, type, addr, id));
+            return value(fmt::format("rd_{}", id), size, false);
+            }
        default:
             assert(false && "Unsupported mem read length");
             return value("", 0, false);
@@ -405,9 +396,6 @@ struct code_builder {
         case 16:
         case 32:
         case 64:
-            if(addr.is_signed())
-                lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, zext_or_trunc(addr, 64), val));
-            else
                 lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
             break;
         default:
