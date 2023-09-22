@@ -138,9 +138,9 @@ struct instrumentation_if {
      */
     virtual uint64_t get_pendig_traps() = 0;
     /**
-     * Retrieve the current value of the program counter of the next instruction
+     * Retrieve the total number of cycles executed by the core
      *
-     * @return the value of the next PC
+     * @return number of cycles
      */
     virtual uint64_t get_total_cycles() = 0;
     /**
@@ -149,8 +149,18 @@ struct instrumentation_if {
      * @param cycles
      */
     virtual void update_last_instr_cycles(unsigned cycles) = 0;
-
+    /**
+     * indicates if the last branch was taken or not
+     *
+     * @return true if branch was taken
+     */
     virtual bool is_branch_taken() = 0;
+    /**
+     * return the number of registers used by the core
+     *
+     * @return number of registers
+     */
+    virtual unsigned get_reg_num() = 0;
 };
 }
 } /* namespace iss */
