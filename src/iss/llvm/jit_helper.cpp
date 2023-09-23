@@ -114,21 +114,32 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     }
 
     mod->setTargetTriple(sys::getProcessTriple());
+/*
+    // Create the analysis managers.
+    LoopAnalysisManager LAM;
+    FunctionAnalysisManager FAM;
+    CGSCCAnalysisManager CGAM;
+    ModuleAnalysisManager MAM;
 
-    /*PassBuilder passBuilder;
-    ModuleAnalysisManager moduleAnalysisManager;
-    passBuilder.registerModuleAnalyses(moduleAnalysisManager);
-    CGSCCAnalysisManager cGSCCAnalysisManager;
-    passBuilder.registerCGSCCAnalyses(cGSCCAnalysisManager);
-    FunctionAnalysisManager functionAnalysisManager;
-    passBuilder.registerFunctionAnalyses(functionAnalysisManager);
-    LoopAnalysisManager loopAnalysisManager;
-    passBuilder.registerLoopAnalyses(loopAnalysisManager);
-    passBuilder.crossRegisterProxies(loopAnalysisManager, functionAnalysisManager, cGSCCAnalysisManager, moduleAnalysisManager);
+    // Create the new pass manager builder.
+    // Take a look at the PassBuilder constructor parameters for more
+    // customization, e.g. specifying a TargetMachine or various debugging
+    // options.
+    PassBuilder PB;
 
-    ModulePassManager modulePassManager = passBuilder.buildPerModuleDefaultPipeline(PassBuilder::OptimizationLevel::O3);
-    modulePassManager.run(*mod, moduleAnalysisManager);
-    */
+    // Register all the basic analyses with the managers.
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    // Create the pass manager.
+    // This one corresponds to a typical -O2 optimization pipeline.
+    ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(PassBuilder::OptimizationLevel::O2);
+
+    // Optimize the IR!
+    MPM.run(*mod, MAM);
+*/
     std::string ErrStr;
     EngineBuilder eeb(std::move(mod)); // eeb and ee take ownership of module
     //eeb.setUseOrcMCJITReplacement(true);
