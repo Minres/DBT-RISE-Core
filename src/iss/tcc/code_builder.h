@@ -349,7 +349,7 @@ struct code_builder {
         case 64: {
         	auto id = lines.size();
             lines.push_back(fmt::format("uint{}_t rd_{};", size, id));
-            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry_plugin;",
+            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
                     size/8, iss::address_type::VIRTUAL, type, addr, id));
             return value(fmt::format("rd_{}", id), size, false);
         }
@@ -367,7 +367,7 @@ struct code_builder {
         case 64:{
             auto id=lines.size();
             lines.push_back(fmt::format("uint{}_t rd_{};", size, id));
-            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry_plugin;",
+            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
                     size/8, iss::address_type::VIRTUAL, type, addr, id));
             return value(fmt::format("rd_{}", id), size, false);
             }
@@ -383,7 +383,7 @@ struct code_builder {
         case 16:
         case 32:
         case 64:
-            lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry_plugin;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
+            lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
             break;
         default:
             assert(false && "Unsupported mem write length");
@@ -396,7 +396,7 @@ struct code_builder {
         case 16:
         case 32:
         case 64:
-                lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry_plugin;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
+                lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
             break;
         default:
             assert(false && "Unsupported mem read length");
