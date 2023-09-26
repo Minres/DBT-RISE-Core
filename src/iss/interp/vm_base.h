@@ -185,10 +185,10 @@ protected:
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, static_cast<unsigned>(s)};
         if(s&PRE_SYNC)
             for (plugin_entry e : pre_plugins)
-                e.plugin.callback(iinfo.backing.val);
+                e.plugin.callback(iinfo);
         else
             for (plugin_entry e : post_plugins)
-                e.plugin.callback(iinfo.backing.val);
+                e.plugin.callback(iinfo);
     }
 
     template<typename DT, typename AT>
