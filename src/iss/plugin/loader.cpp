@@ -125,6 +125,8 @@ std::shared_ptr<loader::plugin_data> loader::get_data(const std::string& filepat
     if (filepath.empty())
         throw std::invalid_argument("failed to bind to loader: filepath was empty");
     auto full_path = search_file_for(filepath);
+    if (full_path.empty())
+        throw std::invalid_argument(std::string("Could not find file for plugin ")+filepath);
     auto iter = get_cache().find(full_path);
     if (iter != get_cache().end())
         return iter->second;
