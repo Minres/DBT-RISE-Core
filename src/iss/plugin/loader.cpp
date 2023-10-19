@@ -54,32 +54,97 @@
  */
 
 #include "loader.h"
+#include <sstream>
+#include <cstdlib>
+#include <cstring>
+#include <sys/stat.h>
+#include <unistd.h>
 
+#if OS_IS_WINDOWS
+#define PATH_DELIM ';'
+#define HIER_DELIM '\\'
+#define SHARED_LIB_SUFFIX ".dll"
+#define SHARED_LIB_PATH "PATH"
+#else
+#define PATH_DELIM ':'
+#define HIER_DELIM '/'
+#define SHARED_LIB_SUFFIX ".so"
+#define SHARED_LIB_PATH "LD_LIBRARY_PATH"
+#endif
 using namespace iss::plugin;
+namespace {
+inline bool file_exists(const std::string& name) {
+  struct stat buffer;   
+  return (stat (name.c_str(), &buffer) == 0); 
+}
 
+std::string search_file_in_envvar_for(std::string const& filepath, std::string const& env_var) {
+    auto is_hierarchical = filepath.find(HIER_DELIM) != std::string::npos;
+    auto const* env_val = getenv(env_var.c_str());
+    if(env_val && strlen(env_val)) {
+        std::stringstream ss (env_val);
+        std::string entry;
+        while (getline (ss, entry, PATH_DELIM)) {
+            std::stringstream sss;
+            sss << entry << HIER_DELIM << filepath << SHARED_LIB_SUFFIX;
+            if(file_exists(sss.str()))
+                return sss.str();
+            if(!is_hierarchical) {
+                sss.str("");
+                sss << entry << HIER_DELIM << filepath << "lib" << SHARED_LIB_SUFFIX;
+                if(file_exists(sss.str()))
+                    return sss.str();
+            }
+        }
+    }
+    return "";
+}
+
+std::string search_file_for(std::string const& filepath) {
+    if(filepath[0] != HIER_DELIM) {
+        if(filepath[0] == '.') {
+            if(file_exists(filepath))
+                return filepath;
+            std::stringstream sss;
+            sss << filepath << SHARED_LIB_SUFFIX;
+            if(file_exists(sss.str()))
+                return sss.str();
+        } else {
+            auto res = search_file_in_envvar_for(filepath, "DBTRISE_PLUGIN_PATH");
+            if(!res.empty())
+                return res;
+            res = search_file_in_envvar_for(filepath, SHARED_LIB_PATH);
+            if(!res.empty())
+                return res;
+        }
+    }
+    return "";
+}
+}
 std::shared_ptr<loader::plugin_data> loader::get_data(const std::string& filepath) {
     if (filepath.empty())
         throw std::invalid_argument("failed to bind to loader: filepath was empty");
-    auto iter = get_cache().find(filepath);
+    auto full_path = search_file_for(filepath);
+    auto iter = get_cache().find(full_path);
     if (iter != get_cache().end())
         return iter->second;
 #if OS_IS_WINDOWS
-    auto handle = (void*)LoadLibrary(filepath.c_str());
+    auto handle = (void*)LoadLibrary(full_path.c_str());
     if (!handle)
         throw std::invalid_argument("failed to bind to loader '"
-                + filepath
+                + full_path
                 + "': ERROR "
                 + std::to_string(GetLastError()));
 #else
-    auto handle = dlopen(filepath.c_str(), RTLD_NOW);
+    auto handle = dlopen(full_path.c_str(), RTLD_NOW);
     if(!handle)
         throw std::invalid_argument("failed to bind to loader '"
-                + filepath
+                + full_path
                 + "': "
                 + std::string(dlerror()));
 #endif
-    auto data = std::make_shared<plugin_data>(handle, filepath);
-    get_cache()[filepath] = data;
+    auto data = std::make_shared<plugin_data>(handle, full_path);
+    get_cache()[full_path] = data;
     return data;
 }
 
