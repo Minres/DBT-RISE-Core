@@ -118,7 +118,7 @@ std::string search_file_for(std::string const& filepath) {
                 return res;
         }
     }
-    return "";
+    return filepath;
 }
 }
 std::shared_ptr<loader::plugin_data> loader::get_data(const std::string& filepath) {
