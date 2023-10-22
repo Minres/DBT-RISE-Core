@@ -43,7 +43,7 @@ using vm_if_ptr_t = vm_if *;
 using vm_plugin_ptr_t = vm_plugin *;
 
 extern "C" {
-
+uint8_t read_mem_buf[8];
 uint8_t fetch(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
     return iface->read((address_type)addr_type, access_type::FETCH, (uint16_t)space, addr, length, data);
 }

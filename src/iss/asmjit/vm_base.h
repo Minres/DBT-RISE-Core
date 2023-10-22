@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * Copyright (C) 2023 MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,37 +29,41 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * Contributors:
- *       eyck@minres.com - initial API and implementation
+ *       alex@minres.com - initial implementation
  ******************************************************************************/
 
-#ifndef TCC_VM_BASE_H_
-#define TCC_VM_BASE_H_
+#ifndef ASMJIT_VM_BASE_H_
+#define ASMJIT_VM_BASE_H_
 
-#include "jit_helper.h"
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
 #include <iss/debugger_if.h>
-#include <iss/tcc/code_builder.h>
 #include <util/ities.h>
-#include <util/range_lut.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
 #include <util/logging.h>
 
+#include "jit_helper.h"
+extern "C" {
+    #include "extern_funcs.h"
+}
 #include <array>
 #include <chrono>
 #include <map>
 #include <sstream>
+#include <iostream>
 #include <stack>
 #include <utility>
 #include <vector>
 
 namespace iss {
 
-namespace tcc {
+namespace asmjit {
+using namespace ::asmjit;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
     struct plugin_entry {
@@ -75,10 +79,10 @@ public:
     using addr_t = typename arch::traits<ARCH>::addr_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
     using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
-    using tu_builder = typename iss::tcc::code_builder<ARCH>;
-    using dbg_if = iss::debugger_if;
 
+    using dbg_if = iss::debugger_if;
     constexpr static unsigned blk_size = 128; // std::numeric_limits<unsigned>::max();
+
 
     arch_if *get_arch() override { return &core; };
 
@@ -102,25 +106,15 @@ public:
         if (this->debugging_enabled()) sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0,
-                       get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
+                get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             continuation_e cont = CONT;
-            // struct to minimize the type size of the closure below to allow SSO
-            struct {
-                vm_base *vm;
-                virt_addr_t &pc;
-                continuation_e &cont;
-            } param = {this, pc, cont};
-            //translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled);
 
-            iss::tcc::gen_func generator{[&param]() -> std::tuple<std::string, std::string> {
-                std::string fname;
-                std::string code;
-                std::tie(param.cont, fname, code) = param.vm->translate(param.pc);
-                param.vm->mod = nullptr;
-                param.vm->func = nullptr;
-                return std::make_tuple(fname, code);
+            std::function<void(jit_holder&)> generator{[this, &pc, &cont](jit_holder& jh) -> void {
+                gen_block_prologue(jh);
+                cont = translate(pc, jh);
+                gen_block_epilogue(jh);
             }};
             // explicit std::function to allow use as reference in call below
             // std::function<Function*(Module*)> gen_ref(std::ref(generator));
@@ -138,7 +132,7 @@ public:
                     auto it = this->func_map.find(pc_p.val);
                     if (it == this->func_map.end()) { // if not generate and compile it
                         auto res = func_map.insert(std::make_pair(
-                            pc_p.val, getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
+                                pc_p.val, iss::asmjit::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
                     cur_tb = &(it->second);
@@ -159,7 +153,6 @@ public:
                             cur_tb = nullptr;
                     } while (cur_tb != nullptr);
                     if (cont == FLUSH) {
-                        //for (auto &e : func_map) delete (e.second.mod_eng);
                         func_map.clear();
                     }
                     if (cont == TRAP) {
@@ -173,11 +166,10 @@ public:
                 }
 #ifndef NDEBUG
                 LOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
-#endif
+#endif          
+                //break; //for testing, only exec first block and end sim
             }
-            LOG(INFO) << "ISS execution finished";
-            error = core.stop_code() > 1? core.stop_code():0;
-       } catch (simulation_stopped &e) {
+        } catch (simulation_stopped &e) {
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if (e.state != 1) error = e.state;
         } catch (decoding_error &e) {
@@ -185,12 +177,12 @@ public:
             error = -1;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
-                                                              // here
+        // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         LOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size()
-                  << " code blocks during " << millis << "ms resulting in " << (core.get_icount() * 0.001 / millis)
-                  << "MIPS";
+                          << " code blocks during " << millis << "ms resulting in " << (core.get_icount() * 0.001 / millis)
+                          << "MIPS";
         return error;
     }
 
@@ -204,7 +196,7 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, std::string, std::string> translate(virt_addr_t &pc) {
+    continuation_e translate(virt_addr_t &pc, jit_holder& jh) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         phys_addr_t phys_pc(pc.access, pc.space, pc.val);
@@ -212,43 +204,33 @@ protected:
             phys_pc = this->core.virt2phys(pc);
         std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, phys_pc);
         unsigned int num_inst = 0;
-        tu_builder tu;
-        open_block_func(tu, phys_pc);
         continuation_e cont = CONT;
         try {
             while (cont == CONT && cur_blk < blk_size) {
-                std::tie(cont) = gen_single_inst_behavior(cur_pc, num_inst, tu);
+                cont = gen_single_inst_behavior(cur_pc, num_inst, jh);
                 cur_blk++;
             }
-            //const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
             assert(cur_pc_mark.first.val <= cur_pc.val);
-            close_block_func(tu);
-            return std::make_tuple(cont, tu.fname, tu.finish());
+            return cont;
         } catch (trap_access &ta) {
-            //const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
-            if (cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
-                close_block_func(tu);
-                return std::make_tuple(cont, tu.fname, tu.finish());
-            } else // re-throw if it was the first instruction
+            if (cur_pc_mark.first.val <= cur_pc.val) { 
+                return cont;
+            } else 
                 throw ta;
         }
+        return cont;
     }
-
-    virtual void setup_module(std::string m) {}
-
-    virtual std::tuple<continuation_e>
-    gen_single_inst_behavior(virt_addr_t &pc_v, unsigned int &inst_cnt, tu_builder& tu) = 0;
-
-    virtual void gen_trap_behavior(tu_builder& tu) = 0;
-
+    virtual continuation_e
+    gen_single_inst_behavior(virt_addr_t&, unsigned int &, jit_holder&) = 0;
+    virtual void gen_block_prologue(jit_holder&) = 0;
+    virtual void gen_block_epilogue(jit_holder&) = 0;
+    
     explicit vm_base(ARCH &core, unsigned core_id = 0, unsigned cluster_id = 0)
     : core(core)
     , core_id(core_id)
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
     , sync_exec(NO_SYNC)
-    , mod(nullptr)
-    , func(nullptr)
     , tgt_adapter(nullptr) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
     }
@@ -260,40 +242,21 @@ protected:
             plugins.push_back(plugin_entry{plugin.get_sync(), plugin, &plugin});
         }
     }
+    void gen_sync(jit_holder& jh, sync_type s, unsigned inst_id){
+        for (plugin_entry e : plugins) {
+            if(e.sync & s){
+                iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
+                InvokeNode* call_plugin_node;
+                jh.cc.comment("\n//Plugin call:");
+                jh.cc.invoke(&call_plugin_node, &call_plugin, FuncSignatureT<uint64_t, void*, uint64_t>());
+                call_plugin_node->setArg(0, e.plugin_ptr);
+                call_plugin_node->setArg(1, iinfo.backing.val);
+            }
+        }
+    }
 
     inline void *get_reg_ptr(unsigned i) {
         return regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[i];
-    }
-
-    // NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3
-    const std::array<const iss::arch_if::exec_phase, 4> notifier_mapping = {
-        {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
-
-    inline void gen_sync(tu_builder& tu, sync_type s, unsigned inst_id) {
-        if (s == PRE_SYNC) {
-            // update icount
-            tu("(*icount)++;");
-            tu("*pc=*next_pc;");
-            tu("*trap_state=*pending_trap;");
-            if (debugging_enabled())
-                tu("pre_instr_sync(vm_ptr);");
-        }
-        if ((s & sync_exec))
-            tu("notify_phase(core_ptr, {});", notifier_mapping[s]);
-        iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
-        for (plugin_entry e : plugins) {
-            if (e.sync & s)
-                tu("call_plugin((void*){}, (uint64_t){});", e.plugin_ptr, iinfo.backing.val);
-        }
-    }
-
-    void open_block_func(tu_builder& tu, phys_addr_t pc) {
-        tu.fname = fmt::format("tcc_jit_{:#x}", pc.val);
-    }
-
-    void close_block_func(tu_builder& tu){
-        tu("return *next_pc;");
-        gen_trap_behavior(tu);
     }
 
     ARCH &core;
@@ -302,14 +265,9 @@ protected:
     uint8_t *regs_base_ptr;
     sync_type sync_exec;
     std::unordered_map<uint64_t, translation_block> func_map;
-    // non-owning pointers
-    void *mod;
-    void *func;
-    // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base *tgt_adapter;
     std::vector<plugin_entry> plugins;
 };
 }
-}
-
-#endif /* TCC_VM_BASE_H_ */
+} // namespace iss
+#endif /* ASMJIT_VM_BASE_H_ */

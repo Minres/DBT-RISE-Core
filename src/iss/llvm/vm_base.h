@@ -32,8 +32,8 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _VM_BASE_H_
-#define _VM_BASE_H_
+#ifndef LLVM_VM_BASE_H_
+#define LLVM_VM_BASE_H_
 
 #include "jit_helper.h"
 #include <iss/arch/traits.h>
@@ -556,4 +556,4 @@ protected:
 };
 }
 } // namespace iss
-#endif /* _VM_BASE_H_ */
+#endif /* LLVM_VM_BASE_H_ */

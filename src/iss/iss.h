@@ -49,6 +49,9 @@ template <typename ARCH> std::unique_ptr<iss::vm_if> create(ARCH *, unsigned sho
 namespace interp {
 template <typename ARCH> std::unique_ptr<iss::vm_if> create(ARCH *, unsigned short port = 0, bool dump = false);
 }
+namespace asmjit {
+template <typename ARCH> std::unique_ptr<iss::vm_if> create(ARCH *, unsigned short port = 0, bool dump = false);
+}
 }
 
 #endif /* _ISS_H */
