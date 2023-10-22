@@ -44,8 +44,6 @@ struct code_builder {
     }
     inline void operator()(std::string const& s){ lines.push_back(s);}
     inline void operator()(std::string && s){ lines.push_back(s);}
-//        inline void operator<<(std::string const& s){ lines.push_back(s);}
-//        inline void operator<<(std::string && s){ lines.push_back(s);}
     std::string fname;
     std::vector<std::string> lines{};
     std::array<bool, arch::traits<ARCH>::NEXT_PC+5> defined_regs{false};
@@ -75,11 +73,6 @@ struct code_builder {
                                 arch::traits<ARCH>::reg_byte_offsets[i], i);
             }
         }
-//        if(defined_regs[arch::traits<ARCH>::LAST_BRANCH]){
-//            os<<fmt::format("  uint{0}_t* reg{2:02d} = (uint{0}_t*)(regs_ptr+{1:#x});\n",
-//                            arch::traits<ARCH>::reg_bit_widths[arch::traits<ARCH>::LAST_BRANCH],
-//                            arch::traits<ARCH>::reg_byte_offsets[arch::traits<ARCH>::LAST_BRANCH], arch::traits<ARCH>::LAST_BRANCH);
-//        }
         // add generated code
         std::copy(lines.begin(), lines.end(), std::ostream_iterator<std::string>(os, "\n"));
         // and the epilogue
@@ -349,7 +342,7 @@ struct code_builder {
         case 64: {
         	auto id = lines.size();
             lines.push_back(fmt::format("uint{}_t rd_{};", size, id));
-            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
+            lines.push_back(fmt::format("if((*read_mem{})(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
                     size/8, iss::address_type::VIRTUAL, type, addr, id));
             return value(fmt::format("rd_{}", id), size, false);
         }
@@ -367,7 +360,7 @@ struct code_builder {
         case 64:{
             auto id=lines.size();
             lines.push_back(fmt::format("uint{}_t rd_{};", size, id));
-            lines.push_back(fmt::format("if(read_mem{}(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
+            lines.push_back(fmt::format("if((*read_mem{})(core_ptr, {}, {}, {}, &rd_{})) goto trap_entry;",
                     size/8, iss::address_type::VIRTUAL, type, addr, id));
             return value(fmt::format("rd_{}", id), size, false);
             }
@@ -383,7 +376,7 @@ struct code_builder {
         case 16:
         case 32:
         case 64:
-            lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
+            lines.push_back(fmt::format("if((*write_mem{})(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
             break;
         default:
             assert(false && "Unsupported mem write length");
@@ -396,7 +389,7 @@ struct code_builder {
         case 16:
         case 32:
         case 64:
-                lines.push_back(fmt::format("if(write_mem{}(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
+                lines.push_back(fmt::format("if((*write_mem{})(core_ptr, {}, {}, {}, {})) goto trap_entry;", val.size()/8, iss::address_type::VIRTUAL, type, addr, val));
             break;
         default:
             assert(false && "Unsupported mem read length");
@@ -404,16 +397,16 @@ struct code_builder {
     }
 
     inline value callf(std::string const& fn){
-        return {fmt::format("{}()", fn), 32, false};
+        return {fmt::format("(*{})()", fn), 32, false};
     }
 
     inline value callf(std::string const& fn, value v1){
-        return {fmt::format("{}({})", fn, v1), v1.size(), v1.is_signed()};
+        return {fmt::format("(*{})({})", fn, v1), v1.size(), v1.is_signed()};
     }
 
     template <typename Arg, typename... Args>
     inline value callf(std::string const& fn, Arg const& v1, Args const&... vals){
-        return {fmt::format("{}({})", fn, collect_args(v1, vals...)), v1.size(), v1.is_signed()};
+        return {fmt::format("(*{})({})", fn, collect_args(v1, vals...)), v1.size(), v1.is_signed()};
     }
 
     inline std::string collect_args(value const& v) {
