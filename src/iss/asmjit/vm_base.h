@@ -46,7 +46,7 @@
 
 #include "jit_helper.h"
 extern "C" {
-    #include "extern_funcs.h"
+    #include <iss/vm_jit_funcs.h>
 }
 #include <array>
 #include <chrono>

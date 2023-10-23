@@ -1,5 +1,6 @@
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
+#include <iss/vm_jit_funcs.h>
 #include <fmt/format.h>
 #include <string>
 #include <vector>
@@ -8,8 +9,6 @@
 namespace iss {
 namespace tcc {
 enum class ICmpInst {ICMP_UGT, ICMP_ULT, ICMP_UGE, ICMP_ULE, ICMP_EQ, ICMP_NE, ICMP_SGT, ICMP_SLT, ICMP_SGE, ICMP_SLE};
-
-std::ostream& write_prologue(std::ostream& );
 
 struct value {
     bool is_signed() const { return type&0x100;}
@@ -52,7 +51,7 @@ struct code_builder {
                 arch::traits<ARCH>::reg_bit_widths[reg_num],
                 arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
     }
-
+    std::ostream& write_prologue(std::ostream& );
     std::string finish(){
         std::ostringstream os;
         // generate prologue
@@ -420,6 +419,88 @@ struct code_builder {
 };
 
 
+template<typename ARCH>
+inline std::ostream& code_builder<ARCH>::write_prologue(std::ostream &os) {
+    os<<"#define bool    _Bool\n";
+    os<<"#define true    1\n";
+    os<<"#define false   0\n";
+    os<<"typedef __SIZE_TYPE__ size_t;\n";
+    os<<"typedef __PTRDIFF_TYPE__ ssize_t;\n";
+    os<<"typedef __WCHAR_TYPE__ wchar_t;\n";
+    os<<"typedef __PTRDIFF_TYPE__ ptrdiff_t;\n";
+    os<<"typedef __PTRDIFF_TYPE__ intptr_t;\n";
+    os<<"typedef __SIZE_TYPE__ uintptr_t;\n";
+    os<<"#define __int8_t_defined\n";
+    os<<"typedef signed char int8_t;\n";
+    os<<"typedef signed short int int16_t;\n";
+    os<<"typedef signed int int32_t;\n";
+    os<<"#ifdef __LP64__\n";
+    os<<"typedef signed long int int64_t;\n";
+    os<<"#else\n";
+    os<<"typedef signed long long int int64_t;\n";
+    os<<"#endif\n";
+    os<<"typedef unsigned char uint8_t;\n";
+    os<<"typedef unsigned short int uint16_t;\n";
+    os<<"typedef unsigned int uint32_t;\n";
+    os<<"#ifdef __LP64__\n";
+    os<<"typedef unsigned long int uint64_t;\n";
+    os<<"#else\n";
+    os<<"typedef unsigned long long int uint64_t;\n";
+    os<<"#endif\n";
+    os<<"#define NULL ((void*)0)\n";
+    os<<"#define offsetof(type, field) ((size_t)&((type *)0)->field)\n";
+    os<<"#if defined (__need_wint_t)\n";
+    os<<"#ifndef _WINT_T\n";
+    os<<"#define _WINT_T\n";
+    os<<"typedef __WINT_TYPE__ wint_t;\n";
+    os<<"#endif\n";
+    os<<"#undef __need_wint_t\n";
+    os<<"#endif\n";
+
+    os<<"int (*read_mem1)( void*, uint32_t, uint32_t, uint64_t, uint8_t*)="<<(uintptr_t)&read_mem1<<";\n";
+    os<<"int (*write_mem1)(void*, uint32_t, uint32_t, uint64_t, uint8_t)="<<(uintptr_t)&write_mem1<<";\n";
+    os<<"int (*read_mem2)( void*, uint32_t, uint32_t, uint64_t, uint16_t*)="<<(uintptr_t)&read_mem2<<";\n";
+    os<<"int (*write_mem2)(void*, uint32_t, uint32_t, uint64_t, uint16_t)="<<(uintptr_t)&write_mem2<<";\n";
+    os<<"int (*read_mem4)( void*, uint32_t, uint32_t, uint64_t, uint32_t*)="<<(uintptr_t)&read_mem4<<";\n";
+    os<<"int (*write_mem4)(void*, uint32_t, uint32_t, uint64_t, uint32_t)="<<(uintptr_t)&write_mem4<<";\n";
+    os<<"int (*read_mem8)( void*, uint32_t, uint32_t, uint64_t, uint64_t*)="<<(uintptr_t)&read_mem8<<";\n";
+    os<<"int (*write_mem8)(void*, uint32_t, uint32_t, uint64_t, uint64_t)="<<(uintptr_t)&write_mem8<<";\n";
+    os<<"uint64_t (*enter_trap)(void*, uint64_t, uint64_t, uint64_t)="<<(uintptr_t)&enter_trap<<";\n";
+    os<<"uint64_t (*leave_trap)(void*, uint64_t)="<<(uintptr_t)&leave_trap<<";\n";
+    os<<"void (*wait)(void*, uint64_t)="<<(uintptr_t)&wait<<";\n";
+    os<<"void (*print_string)(void*, char*)="<<(uintptr_t)&print_string<<";\n";
+    os<<"void (*print_disass)(void*, uint64_t, char*)="<<(uintptr_t)&print_disass<<";\n";
+    os<<"void (*pre_instr_sync)(void*)="<<(uintptr_t)&pre_instr_sync<<";\n";
+    os<<"void (*notify_phase)(void*, uint32_t)="<<(uintptr_t)&notify_phase<<";\n";
+    os<<"void (*call_plugin)(void*, uint64_t)="<<(uintptr_t)&call_plugin<<";\n";
+    //    os<<"uint32_t (*fget_flags)()="<<(uintptr_t)&fget_flags<<";\n";
+    //    os<<"uint32_t (*fadd_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fadd_s<<";\n";
+    //    os<<"uint32_t (*fsub_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fsub_s<<";\n";
+    //    os<<"uint32_t (*fmul_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fmul_s<<";\n";
+    //    os<<"uint32_t (*fdiv_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fdiv_s<<";\n";
+    //    os<<"uint32_t (*fsqrt_s)(uint32_t v1, uint8_t mode)="<<(uintptr_t)&fsqrt_s<<";\n";
+    //    os<<"uint32_t (*fcmp_s)(uint32_t v1, uint32_t v2, uint32_t op)="<<(uintptr_t)&fcmp_s<<";\n";
+    //    os<<"uint32_t (*fcvt_s)(uint32_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_s<<";\n";
+    //    os<<"uint32_t (*fmadd_s)(uint32_t v1, uint32_t v2, uint32_t v3, uint32_t op, uint8_t mode)="<<(uintptr_t)&fmadd_s<<";\n";
+    //    os<<"uint32_t (*fsel_s)(uint32_t v1, uint32_t v2, uint32_t op)="<<(uintptr_t)&fsel_s<<";\n";
+    //    os<<"uint32_t (*fclass_s)( uint32_t v1 )="<<(uintptr_t)&fclass_s<<";\n";
+    //    os<<"uint32_t (*fconv_d2f)(uint64_t v1, uint8_t mode)="<<(uintptr_t)&fconv_d2f<<";\n";
+    //    os<<"uint64_t (*fconv_f2d)(uint32_t v1, uint8_t mode)="<<(uintptr_t)&fconv_f2d<<";\n";
+    //    os<<"uint64_t (*fadd_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fadd_d<<";\n";
+    //    os<<"uint64_t (*fsub_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fsub_d<<";\n";
+    //    os<<"uint64_t (*fmul_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fmul_d<<";\n";
+    //    os<<"uint64_t (*fdiv_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fdiv_d<<";\n";
+    //    os<<"uint64_t (*fsqrt_d)(uint64_t v1, uint8_t mode)="<<(uintptr_t)&fsqrt_d<<";\n";
+    //    os<<"uint64_t (*fcmp_d)(uint64_t v1, uint64_t v2, uint32_t op)="<<(uintptr_t)&fcmp_d<<";\n";
+    //    os<<"uint64_t (*fcvt_d)(uint64_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_d<<";\n";
+    //    os<<"uint64_t (*fmadd_d)(uint64_t v1, uint64_t v2, uint64_t v3, uint32_t op, uint8_t mode)="<<(uintptr_t)&fmadd_d<<";\n";
+    //    os<<"uint64_t (*fsel_d)(uint64_t v1, uint64_t v2, uint32_t op)="<<(uintptr_t)&fsel_d<<";\n";
+    //    os<<"uint64_t (*fclass_d)(uint64_t v1  )="<<(uintptr_t)&fclass_d<<";\n";
+    //    os<<"uint64_t (*fcvt_32_64)(uint32_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_32_64<<";\n";
+    //    os<<"uint32_t (*fcvt_64_32)(uint64_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_64_32<<";\n";
+    //    os<<"uint32_t (*unbox_s)(uint64_t v)="<<(uintptr_t)&unbox_s<<";\n";
+    return os;
+}
 }
 }
 
@@ -436,3 +517,4 @@ struct fmt::formatter<iss::tcc::value>
         return fmt::format_to(ctx.out(), "{}", value.str);
     }
 };
+

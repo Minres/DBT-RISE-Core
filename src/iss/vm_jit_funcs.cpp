@@ -31,6 +31,7 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
+#include "vm_jit_funcs.h"
 #include "arch_if.h"
 #include "iss.h"
 #include "vm_if.h"
@@ -44,6 +45,7 @@ using vm_plugin_ptr_t = vm_plugin *;
 
 extern "C" {
 uint8_t read_mem_buf[8];
+
 uint8_t fetch(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t *data) {
     return iface->read((address_type)addr_type, access_type::FETCH, (uint16_t)space, addr, length, data);
 }
@@ -72,57 +74,61 @@ uint8_t write_mem_dbg(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, u
     return iface->write((address_type)addr_type, access_type::DEBUG_WRITE, (uint16_t)space, addr, length, data);
 }
 
-uint64_t enter_trap(arch_if_ptr_t iface, uint64_t flags, uint64_t addr, uint64_t instr) {
-    return iface->enter_trap(flags, addr, instr);
+uint64_t enter_trap(void* iface, uint64_t flags, uint64_t addr, uint64_t instr) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->enter_trap(flags, addr, instr);
 }
 
-uint64_t leave_trap(arch_if_ptr_t iface, uint64_t flags) { return iface->leave_trap(flags); }
+uint64_t leave_trap(void* iface, uint64_t flags) { return reinterpret_cast<arch_if_ptr_t>(iface)->leave_trap(flags); }
 
-void wait(arch_if_ptr_t iface, uint64_t flags) { iface->wait_until(flags); }
+void wait(void* iface, uint64_t flags) { reinterpret_cast<arch_if_ptr_t>(iface)->wait_until(flags); }
 
-void print_string(arch_if_ptr_t iface, char *str) { LOG(DEBUG) << "[EXEC] " << str; }
+void print_string(void* iface, char *str) { LOG(DEBUG) << "[EXEC] " << str; }
 
-void print_disass(arch_if_ptr_t iface, uint64_t pc, char *str) { iface->disass_output(pc, str); }
-
-void pre_instr_sync(vm_if_ptr_t iface) { iface->pre_instr_sync(); }
-
-void notify_phase(arch_if_ptr_t iface, uint32_t phase) {
-    iface->notify_phase((arch_if::exec_phase)phase);
+void print_disass(void* iface, uint64_t pc, char *str) {
+    reinterpret_cast<arch_if_ptr_t>(iface)->disass_output(pc, str);
 }
 
-void call_plugin(vm_plugin_ptr_t iface, uint64_t instr_info) {
-    iface->callback(instr_info_t(instr_info));
+void pre_instr_sync(void* iface) {
+    reinterpret_cast<vm_if_ptr_t>(iface)->pre_instr_sync();
 }
 
-int read_mem1(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t* data) {
-    return iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 1, data);
+void notify_phase(void* iface, uint32_t phase) {
+    reinterpret_cast<arch_if_ptr_t>(iface)->notify_phase((arch_if::exec_phase)phase);
 }
 
-int read_mem2(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint16_t* data) {
-    return iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 2, reinterpret_cast<uint8_t*>(data));
+void call_plugin(void* iface, uint64_t instr_info) {
+    reinterpret_cast<vm_plugin_ptr_t>(iface)->callback(instr_info_t(instr_info));
 }
 
-int read_mem4(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t* data) {
-    return iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 4, reinterpret_cast<uint8_t*>(data));
+int read_mem1(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t* data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 1, data);
 }
 
-int read_mem8(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint64_t* data) {
-    return iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 8, reinterpret_cast<uint8_t*>(data));
+int read_mem2(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint16_t* data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 2, reinterpret_cast<uint8_t*>(data));
 }
 
-int write_mem1(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t data) {
-    return iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 1, reinterpret_cast<uint8_t*>(&data));
+int read_mem4(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t* data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 4, reinterpret_cast<uint8_t*>(data));
 }
 
-int write_mem2(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint16_t data) {
-    return iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 2, reinterpret_cast<uint8_t*>(&data));
+int read_mem8(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint64_t* data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 8, reinterpret_cast<uint8_t*>(data));
 }
 
-int write_mem4(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t data) {
-    return iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 4, reinterpret_cast<uint8_t*>(&data));
+int write_mem1(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 1, reinterpret_cast<uint8_t*>(&data));
 }
 
-int write_mem8(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint64_t data) {
-    return iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 8, reinterpret_cast<uint8_t*>(&data));
+int write_mem2(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint16_t data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 2, reinterpret_cast<uint8_t*>(&data));
+}
+
+int write_mem4(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 4, reinterpret_cast<uint8_t*>(&data));
+}
+
+int write_mem8(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint64_t data) {
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 8, reinterpret_cast<uint8_t*>(&data));
 }
 }
