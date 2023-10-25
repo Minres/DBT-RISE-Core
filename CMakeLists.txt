@@ -42,6 +42,8 @@ set(LIB_SOURCES
 	src/iss/debugger/cmdhandler.cpp
 	src/iss/debugger/server_base.cpp
 	src/iss/vm_jit_funcs.cpp
+	src/iss/plugin/loader.cpp
+	src/iss/plugin/caculator.cpp
 )
 if (UNIX)
     list(APPEND LIB_SOURCES  src/iss/plugin/loader.cpp)
