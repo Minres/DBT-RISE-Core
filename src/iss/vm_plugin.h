@@ -59,12 +59,12 @@ class vm_plugin { // @suppress("Class has a virtual method and non-virtual destr
 public:
     virtual ~vm_plugin() {}
 
-    virtual bool registration(const char *const version, vm_if &arch) = 0;
+    virtual bool registration(const char* const version, vm_if& arch) = 0;
 
     virtual sync_type get_sync() = 0;
 
     virtual void callback(instr_info_t) = 0;
 };
-}
+} // namespace iss
 
 #endif /* DBT_CORE_INCL_ISS_VM_PLUGIN_H_ */

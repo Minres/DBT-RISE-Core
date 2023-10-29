@@ -39,35 +39,35 @@
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
 #include <iss/debugger_if.h>
-#include <util/ities.h>
-#include <util/range_lut.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
+#include <util/ities.h>
 #include <util/logging.h>
+#include <util/range_lut.h>
 
 #include <array>
 #include <chrono>
 #include <map>
 #include <sstream>
 #include <stack>
+#include <type_traits>
 #include <utility>
 #include <vector>
-#include <type_traits>
 
 #ifndef _MSC_VER
-using int128_t  = __int128;
+using int128_t = __int128;
 using uint128_t = unsigned __int128;
 namespace std {
-template<> struct make_unsigned<__int128> { typedef unsigned __int128 type; };
-template<> class __make_unsigned_selector<__int128 unsigned, false, false> {
+template <> struct make_unsigned<__int128> { typedef unsigned __int128 type; };
+template <> class __make_unsigned_selector<__int128 unsigned, false, false> {
 public:
     typedef unsigned __int128 __type;
 };
-template<> struct is_signed<int128_t> { static constexpr bool value = true;};
-template<> struct is_signed<uint128_t> { static constexpr bool value = false;};
-template<> struct is_unsigned<int128_t> { static constexpr bool value = false;};
-template<> struct is_unsigned<uint128_t> { static constexpr bool value = true;};
-}
+template <> struct is_signed<int128_t> { static constexpr bool value = true; };
+template <> struct is_signed<uint128_t> { static constexpr bool value = false; };
+template <> struct is_unsigned<int128_t> { static constexpr bool value = false; };
+template <> struct is_unsigned<uint128_t> { static constexpr bool value = true; };
+} // namespace std
 #endif
 
 namespace iss {
@@ -77,22 +77,25 @@ namespace interp {
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
-    struct plugin_entry { vm_plugin &plugin; };
+    struct plugin_entry {
+        vm_plugin& plugin;
+    };
+
 public:
-    using reg_e       = typename arch::traits<ARCH>::reg_e;
-    using sr_flag_e   = typename arch::traits<ARCH>::sreg_flag_e;
+    using reg_e = typename arch::traits<ARCH>::reg_e;
+    using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e;
     using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t;
     using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t;
-    using addr_t      = typename arch::traits<ARCH>::addr_t;
-    using reg_t       = typename arch::traits<ARCH>::reg_t;
+    using addr_t = typename arch::traits<ARCH>::addr_t;
+    using reg_t = typename arch::traits<ARCH>::reg_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
-    using mem_type_e  = typename arch::traits<ARCH>::mem_type_e;
+    using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
 
     using dbg_if = iss::debugger_if;
 
     constexpr static unsigned blk_size = 128; // std::numeric_limits<unsigned>::max();
 
-    arch_if *get_arch() override { return &core; };
+    arch_if* get_arch() override { return &core; };
 
     constexpr unsigned int get_reg_width(int idx) const {
         return idx < 0 ? arch::traits<ARCH>::NUM_REGS : arch::traits<ARCH>::reg_bit_widths[(reg_e)idx];
@@ -100,28 +103,30 @@ public:
 
     template <typename T> inline T get_reg_val(unsigned r) {
         std::array<uint8_t, sizeof(T)> res;
-        uint8_t *reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
+        uint8_t* reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
         auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
         std::copy(reg_base, reg_base + size, res.data());
-        return *reinterpret_cast<T *>(&res[0]);
+        return *reinterpret_cast<T*>(&res[0]);
     }
 
-    template <typename T = reg_t> inline T& get_reg(unsigned r){
-        return *reinterpret_cast<T*>(regs_base_ptr+arch::traits<ARCH>::reg_byte_offsets[r]);
+    template <typename T = reg_t> inline T& get_reg(unsigned r) {
+        return *reinterpret_cast<T*>(regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r]);
     }
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
-                finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
+              finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
-        if (this->debugging_enabled()) sync_exec = PRE_SYNC;
+        if(this->debugging_enabled())
+            sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::FETCH, 0, get_reg<addr_t>(arch::traits<ARCH>::PC));
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             execute_inst(cond, pc, icount);
-        } catch (simulation_stopped &e) {
+        } catch(simulation_stopped& e) {
             LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
-            if (e.state != 1) error = e.state;
-        } catch (decoding_error &e) {
+            if(e.state != 1)
+                error = e.state;
+        } catch(decoding_error& e) {
             LOG(ERR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
             error = -1;
         }
@@ -130,8 +135,8 @@ public:
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         auto instr_if = core.get_instrumentation_if();
-        LOG(INFO) << "Executed " << instr_if->get_instr_count() << " instructions in "<<instr_if->get_total_cycles() <<" cycles during " << millis
-                  << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
+        LOG(INFO) << "Executed " << instr_if->get_instr_count() << " instructions in " << instr_if->get_total_cycles() << " cycles during "
+                  << millis << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
         return error;
     }
 
@@ -147,7 +152,7 @@ public:
 protected:
     virtual virt_addr_t execute_inst(finish_cond_e cond, virt_addr_t start, uint64_t icount_limit) = 0;
 
-    explicit vm_base(ARCH &core, unsigned core_id = 0, unsigned cluster_id = 0)
+    explicit vm_base(ARCH& core, unsigned core_id = 0, unsigned cluster_id = 0)
     : core(core)
     , core_id(core_id)
     , cluster_id(cluster_id)
@@ -159,12 +164,12 @@ protected:
 
     ~vm_base() override { delete tgt_adapter; }
 
-    void register_plugin(vm_plugin &plugin) override {
-        if (plugin.registration("1.0", *this)) {
+    void register_plugin(vm_plugin& plugin) override {
+        if(plugin.registration("1.0", *this)) {
             auto sync = plugin.get_sync();
-            if(sync&PRE_SYNC)
+            if(sync & PRE_SYNC)
                 pre_plugins.push_back(plugin_entry{plugin});
-            if(sync&POST_SYNC)
+            if(sync & POST_SYNC)
                 post_plugins.push_back(plugin_entry{plugin});
             sync_exec |= sync;
         }
@@ -175,65 +180,60 @@ protected:
         {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
 
     inline void do_sync(sync_type s, unsigned inst_id) {
-        if (s == PRE_SYNC) {
-            if (debugging_enabled())
-                tgt_adapter->check_continue(get_reg<addr_t>(arch::traits<ARCH>::PC)); //pre_instr_sync();
+        if(s == PRE_SYNC) {
+            if(debugging_enabled())
+                tgt_adapter->check_continue(get_reg<addr_t>(arch::traits<ARCH>::PC)); // pre_instr_sync();
         }
-        if ((s & sync_exec))
+        if((s & sync_exec))
             core.notify_phase(notifier_mapping[s]);
 
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, static_cast<unsigned>(s)};
-        if(s&PRE_SYNC)
-            for (plugin_entry e : pre_plugins)
+        if(s & PRE_SYNC)
+            for(plugin_entry e : pre_plugins)
                 e.plugin.callback(iinfo);
         else
-            for (plugin_entry e : post_plugins)
+            for(plugin_entry e : post_plugins)
                 e.plugin.callback(iinfo);
     }
 
-    template<typename DT, typename AT>
-    inline DT read_mem(mem_type_e type, AT addr) {
+    template <typename DT, typename AT> inline DT read_mem(mem_type_e type, AT addr) {
         DT val;
         this->core.read(iss::address_type::VIRTUAL, access_type::READ, type,
-                static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)),
-                sizeof(DT),reinterpret_cast<uint8_t*>(&val));
+                        static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)), sizeof(DT),
+                        reinterpret_cast<uint8_t*>(&val));
         return val;
     }
 
-    template<typename DT, typename AT>
-    inline void write_mem(mem_type_e type, AT addr, DT val) {
+    template <typename DT, typename AT> inline void write_mem(mem_type_e type, AT addr, DT val) {
         this->core.write(iss::address_type::VIRTUAL, access_type::WRITE, type,
-                static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)),
-                sizeof(DT), reinterpret_cast<uint8_t*>(&val));
+                         static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)), sizeof(DT),
+                         reinterpret_cast<uint8_t*>(&val));
     }
 
-    template<typename TT, typename ST>
-    inline TT sext(ST val){
+    template <typename TT, typename ST> inline TT sext(ST val) {
         return static_cast<TT>(static_cast<typename std::make_signed<ST>::type>(val));
     }
 
-    template<typename TT, typename ST>
-    inline TT zext(ST val){
+    template <typename TT, typename ST> inline TT zext(ST val) {
         return static_cast<TT>(static_cast<typename std::make_unsigned<ST>::type>(val));
     }
 
-    template<typename TT, typename ST>
-    inline TT trunc(ST val){
+    template <typename TT, typename ST> inline TT trunc(ST val) {
         return static_cast<TT>(static_cast<typename std::make_unsigned<ST>::type>(val));
     }
 
-    ARCH &core;
+    ARCH& core;
     unsigned core_id = 0;
     unsigned cluster_id = 0;
-    uint8_t *regs_base_ptr;
+    uint8_t* regs_base_ptr;
     sync_type sync_exec;
     // non-owning pointers
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
-    iss::debugger::target_adapter_base *tgt_adapter;
+    iss::debugger::target_adapter_base* tgt_adapter;
     std::vector<plugin_entry> pre_plugins;
     std::vector<plugin_entry> post_plugins;
 };
-}
-}
+} // namespace interp
+} // namespace iss
 
 #endif /* _VM_BASE_H_ */

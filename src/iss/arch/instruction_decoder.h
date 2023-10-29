@@ -17,10 +17,9 @@ template <typename ARCH> struct instruction_decoder {
 
     static std::unique_ptr<instruction_decoder<ARCH>> create();
 
-    template<typename T>
-    unsigned decode_instruction(T);
+    template <typename T> unsigned decode_instruction(T);
 };
-}
-}
+} // namespace arch
+} // namespace iss
 
 #endif /* _ISS_ARCH_INSTRUCTION_DECODER_H_ */

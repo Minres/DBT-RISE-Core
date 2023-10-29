@@ -7,18 +7,18 @@
 #endif
 
 #include "calculator.h"
-#include <util/logging.h>
-#include <util/ities.h>
 #include <boost/foreach.hpp>
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/phoenix/function.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/recursive_variant.hpp>
+#include <util/ities.h>
+#include <util/logging.h>
 
 #include <iostream>
-#include <string>
 #include <list>
+#include <string>
 namespace iss {
 namespace plugin {
 namespace ast {
@@ -30,9 +30,7 @@ struct signed_;
 struct variable;
 struct expression;
 
-typedef boost::variant<nil, unsigned int, variable, boost::recursive_wrapper<signed_>,
-                       boost::recursive_wrapper<expression>>
-    operand;
+typedef boost::variant<nil, unsigned int, variable, boost::recursive_wrapper<signed_>, boost::recursive_wrapper<expression>> operand;
 
 struct variable {
     variable(std::string const& name = "")
@@ -64,6 +62,7 @@ inline std::ostream& operator<<(std::ostream& out, nil) {
 } // namespace plugin
 } // namespace iss
 
+// clang-format off
 BOOST_FUSION_ADAPT_STRUCT(iss::plugin::ast::variable,
         (std::string, name))
 BOOST_FUSION_ADAPT_STRUCT(iss::plugin::ast::signed_,
@@ -75,13 +74,14 @@ BOOST_FUSION_ADAPT_STRUCT(iss::plugin::ast::operation,
 BOOST_FUSION_ADAPT_STRUCT(iss::plugin::ast::expression,
         (iss::plugin::ast::operand, first)
         (std::list<iss::plugin::ast::operation>, rest))
+// clang-format on
 
 namespace iss {
 namespace plugin {
 ///////////////////////////////////////////////////////////////////////////
 //  The Virtual Machine
 ///////////////////////////////////////////////////////////////////////////
-enum byte_code {op_neg, op_add, op_sub, op_mul, op_div, op_int, op_var};
+enum byte_code { op_neg, op_add, op_sub, op_mul, op_div, op_int, op_var };
 
 ///////////////////////////////////////////////////////////////////////////
 //  The Compiler
@@ -108,25 +108,21 @@ struct compiler {
         code.push_back(var_accessors.size());
         auto pos = v.name.find('_');
         auto sep = v.name.find(':');
-        auto upper = std::strtoul(v.name.substr(pos+1, sep-pos-1).c_str(), nullptr, 10);
-        auto lower = std::strtoul(v.name.substr(sep+1).c_str(), nullptr, 10);
-        auto size = upper-lower+1;
-        auto mask = (1ULL<<size)-1;
+        auto upper = std::strtoul(v.name.substr(pos + 1, sep - pos - 1).c_str(), nullptr, 10);
+        auto lower = std::strtoul(v.name.substr(sep + 1).c_str(), nullptr, 10);
+        auto size = upper - lower + 1;
+        auto mask = (1ULL << size) - 1;
         auto rp = reg_ptr;
-        if(v.name[0]=='X') {
-            var_accessors.push_back([lower, mask, rp](uint64_t instr) -> unsigned {
-                return *(rp+((instr>>lower) & mask));
-            });
-        } else if(v.name[0]=='s') {
-            auto sign_mask = 1ULL<<(size-1);
+        if(v.name[0] == 'X') {
+            var_accessors.push_back([lower, mask, rp](uint64_t instr) -> unsigned { return *(rp + ((instr >> lower) & mask)); });
+        } else if(v.name[0] == 's') {
+            auto sign_mask = 1ULL << (size - 1);
             var_accessors.push_back([lower, mask, sign_mask, rp](uint64_t instr) -> unsigned {
-                auto val = (instr>>lower) & mask;
+                auto val = (instr >> lower) & mask;
                 return (val & mask) | ((val & sign_mask) ? ~mask : 0);
             });
         } else {
-            var_accessors.push_back([lower, mask](uint64_t instr) -> unsigned {
-                return (instr>>lower) & mask;
-            });
+            var_accessors.push_back([lower, mask](uint64_t instr) -> unsigned { return (instr >> lower) & mask; });
         }
     }
 
@@ -182,9 +178,9 @@ struct error_handler_ {
     template <typename, typename, typename> struct result { typedef void type; };
 
     template <typename Iterator> void operator()(qi::info const& what, Iterator err_pos, Iterator last) const {
-        LOG(ERR) << "Expecting " << what               // what failed?
-                  << " here: \"" << std::string(err_pos, last) // iterators to error-pos, end
-                  << "\"" << std::endl;
+        LOG(ERR) << "Expecting " << what                      // what failed?
+                 << " here: \"" << std::string(err_pos, last) // iterators to error-pos, end
+                 << "\"" << std::endl;
     }
 };
 
@@ -224,7 +220,8 @@ template <typename Iterator> struct grammar : qi::grammar<Iterator, ast::express
     qi::rule<Iterator, std::string(), ascii::space_type> identifier;
 };
 
-calculator::calculator(uint32_t* reg_base_ptr, const std::string &formula): reg_base_ptr{reg_base_ptr} {
+calculator::calculator(uint32_t* reg_base_ptr, const std::string& formula)
+: reg_base_ptr{reg_base_ptr} {
     using iterator_type = std::string::const_iterator;
     grammar<iterator_type> grammar;
     ast::expression expression;
@@ -235,7 +232,7 @@ calculator::calculator(uint32_t* reg_base_ptr, const std::string &formula): reg_
     bool r = boost::spirit::qi::phrase_parse(iter, end, grammar, space, expression);
     if(r && iter == end) {
         compile(expression);
-        error =  "";
+        error = "";
     } else
         error = std::string(iter, end);
 }
@@ -282,5 +279,5 @@ unsigned calculator::operator()(uint64_t instr) {
     }
     return stack_ptr[-1];
 }
-}
-}
+} // namespace plugin
+} // namespace iss

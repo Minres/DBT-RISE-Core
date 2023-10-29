@@ -44,8 +44,8 @@
 namespace iss {
 namespace debugger {
 class packet_parse_error : public std::exception {};
-}
-}
+} // namespace debugger
+} // namespace iss
 using namespace iss::debugger;
 using namespace std;
 using boost::asio::ip::tcp;
@@ -55,7 +55,7 @@ const int CORE_ID = 0;
 const std::string ack("+");
 const std::string sig_trap("S05");
 
-template <class TContainer> bool begins_with(const TContainer &input, const TContainer &match) {
+template <class TContainer> bool begins_with(const TContainer& input, const TContainer& match) {
     return input.size() >= match.size() && equal(match.begin(), match.end(), input.begin());
 }
 
@@ -71,7 +71,7 @@ public:
     : start_char(is_notification ? '%' : '$') {}
 
     void add(uint8_t m) {
-        if (m == '#' || m == '$' || m == '}') {
+        if(m == '#' || m == '$' || m == '}') {
             buffer.push_back('}');
             m ^= 0x20;
         }
@@ -84,19 +84,20 @@ public:
         assert(c < 16);
         return c > 9 ? (c + 'a' - 10) : (c + '0');
     }
-    gdb_resp_msg &operator<<(const char *msg) {
+    gdb_resp_msg& operator<<(const char* msg) {
         body = true;
-        while (msg && *msg) add(*(msg++));
+        while(msg && *msg)
+            add(*(msg++));
         return *this;
     }
-    template <typename T> gdb_resp_msg &operator<<(T val) {
+    template <typename T> gdb_resp_msg& operator<<(T val) {
         stringstream ss;
         ss << std::hex << val;
         this->operator<<(ss.str().c_str());
         return *this;
     }
-    template <typename T> gdb_resp_msg &operator<<(boost::optional<T> val) {
-        if (val) {
+    template <typename T> gdb_resp_msg& operator<<(boost::optional<T> val) {
+        if(val) {
             stringstream ss;
             ss << std::hex << val.get();
             this->operator<<(ss.str().c_str());
@@ -108,9 +109,10 @@ public:
     operator bool() { return /*ack||*/ body; }
     operator std::string() {
         std::stringstream ss;
-        if (body) {
+        if(body) {
             ss << start_char;
-            for (std::vector<uint8_t>::const_iterator it = buffer.begin(); it != buffer.end(); ++it) ss << *it;
+            for(std::vector<uint8_t>::const_iterator it = buffer.begin(); it != buffer.end(); ++it)
+                ss << *it;
             ss << "#" << get_checksum_char(0) << get_checksum_char(1);
         }
         return ss.str();
@@ -123,7 +125,7 @@ protected:
     const char start_char = '$';
 };
 
-gdb_session::gdb_session(server_if *server_, boost::asio::io_context &io_service)
+gdb_session::gdb_session(server_if* server_, boost::asio::io_context& io_service)
 : stop_callback([this](unsigned handle) {
     gdb_resp_msg resp;
     resp << (handle > 0 ? "S05" : "S02");
@@ -145,57 +147,60 @@ int gdb_session::start() {
     return 0;
 }
 
-void gdb_session::send_completed(const boost::system::error_code &e) {
-    if (!e) {
+void gdb_session::send_completed(const boost::system::error_code& e) {
+    if(!e) {
         conn_shptr->async_read();
     } else {
         LOG(ERR) << e.message() << "(" << e << ")";
     }
 }
 
-bool is_all_hex(char *input) { // destroys input
+bool is_all_hex(char* input) { // destroys input
     return (strtok(input, "0123456789ABCDEFabcdef") == nullptr);
 }
 
-bool gdb_session::message_completed(std::vector<char> &buffer) {
+bool gdb_session::message_completed(std::vector<char>& buffer) {
     //	std::cout << "Checking for "; for (auto i = buffer.begin(); i !=
     // buffer.end(); ++i) std::cout << (int)*i << '('<<*i<<")
     //";std::cout<<std::endl;
     size_t s = buffer.size();
-    if (s == 1 && (buffer[0] == '+' || buffer[0] == '-' || buffer[0] == 3)) return true;
-    if (s == 2 && (buffer[0] == -1 && buffer[1] == -13)) return true;
-    if (s > 4 && buffer[0] == '$' && buffer[s - 3] == '#') return true;
+    if(s == 1 && (buffer[0] == '+' || buffer[0] == '-' || buffer[0] == 3))
+        return true;
+    if(s == 2 && (buffer[0] == -1 && buffer[1] == -13))
+        return true;
+    if(s > 4 && buffer[0] == '$' && buffer[s - 3] == '#')
+        return true;
     return false;
 }
 
-void gdb_session::receive_completed(const boost::system::error_code &e, std::string *msg) {
-    if (e.value() == 2) {
+void gdb_session::receive_completed(const boost::system::error_code& e, std::string* msg) {
+    if(e.value() == 2) {
         CLOG(WARN, connection) << "Client closed connection (" << e.message() << ")";
         // TODO: cleanup settings like: server.remove_breakpoint(CORE_ID, 0);
         handler.t->close();
         return;
-    } else if (e) {
+    } else if(e) {
         CLOG(ERR, connection) << "Communication error (" << e.message() << ")";
         handler.t->close();
         return;
     }
     // CLOG(TRACE, connection) << "Received message '"<<*msg<<"'";
-    if (msg->compare("+") == 0) {
+    if(msg->compare("+") == 0) {
         CLOG(TRACE, connection) << "Received ACK";
         last_msg = "";
         conn_shptr->async_read();
-    } else if (msg->compare("-") == 0) {
+    } else if(msg->compare("-") == 0) {
         CLOG(TRACE, connection) << "Received NACK, repeating msg '" << last_msg << "'";
         conn_shptr->write_data(last_msg);
         conn_shptr->async_read();
-    } else if (msg->at(0) == 3 || (msg->at(0) == -1 && msg->at(1) == -13)) {
+    } else if(msg->at(0) == 3 || (msg->at(0) == -1 && msg->at(1) == -13)) {
         CLOG(TRACE, connection) << "Received BREAK, interrupting target";
         handler.t->stop();
         respond("+");
     } else {
         CLOG(TRACE, connection) << "Received packet '" << *msg << "', processing it";
         std::string data = check_packet(*msg);
-        if (data.size()) {
+        if(data.size()) {
             conn_shptr->write_data(ack);
             parse_n_execute(data);
         } else
@@ -204,17 +209,17 @@ void gdb_session::receive_completed(const boost::system::error_code &e, std::str
     return;
 }
 
-void gdb_session::parse_n_execute(std::string &data) {
+void gdb_session::parse_n_execute(std::string& data) {
     try {
         gdb_resp_msg resp;
         std::string out_buf;
         int do_connect;
         bool do_reinitialize = false, input_error = false;
-        switch (data[0]) {
+        switch(data[0]) {
         case '!':
             /* Set extended operation */
             CLOG(DEBUG, connection) << __FUNCTION__ << ": switching to extended protocol mode";
-            if (handler.can_restart) {
+            if(handler.can_restart) {
                 handler.extended_protocol = true;
                 resp << "OK";
             } else {
@@ -252,8 +257,10 @@ void gdb_session::parse_n_execute(std::string &data) {
             break;
         case 'k':
             do_connect = handler.kill(data, out_buf); // TODO: pass socket handling
-            if (do_connect == -1) input_error = true;
-            if (!do_connect) do_reinitialize = true;
+            if(do_connect == -1)
+                input_error = true;
+            if(!do_connect)
+                do_reinitialize = true;
             resp << out_buf;
             break;
         case 'm':
@@ -276,9 +283,11 @@ void gdb_session::parse_n_execute(std::string &data) {
             break;
         case 'R':
             do_connect = handler.restart_target(data, out_buf); // TODO: pass socket handling
-            if (do_connect == -1) do_reinitialize = true;
+            if(do_connect == -1)
+                do_reinitialize = true;
             resp << out_buf;
-            if (do_connect) break;
+            if(do_connect)
+                break;
             break;
         case 't':
             resp << handler.search_memory(data);
@@ -298,22 +307,24 @@ void gdb_session::parse_n_execute(std::string &data) {
             break;
         }
         respond(resp);
-    } catch (boost::system::system_error const &e1) {
+    } catch(boost::system::system_error const& e1) {
         CLOG(ERR, connection) << "Caught boost error " << e1.what();
-    } catch (std::exception const &e2) {
+    } catch(std::exception const& e2) {
         CLOG(ERR, connection) << "Caught std::exception (" << typeid(e2).name() << "): " << e2.what();
     }
 }
 
-std::string gdb_session::check_packet(std::string &msg) {
+std::string gdb_session::check_packet(std::string& msg) {
     std::string::size_type start = msg.find_first_of('$');
     std::string::size_type end = msg.find_first_of('#', start);
     unsigned checksum = 0;
-    for (unsigned i = start + 1; i < end; i++) checksum += msg.at(i);
+    for(unsigned i = start + 1; i < end; i++)
+        checksum += msg.at(i);
     std::istringstream in(msg.substr(end + 1, 2));
     unsigned long xmit;
     in >> std::hex >> xmit;
-    if (xmit == (checksum & 0xff)) return msg.substr(start + 1, end - 1);
+    if(xmit == (checksum & 0xff))
+        return msg.substr(start + 1, end - 1);
     // throw(iss::debugger::packet_parse_error());
     return "";
 }

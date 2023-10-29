@@ -36,15 +36,13 @@
 
 using namespace iss::debugger;
 
-void target_adapter_base::help(const char *prog_name) {}
+void target_adapter_base::help(const char* prog_name) {}
 
-iss::status target_adapter_base::open(int argc, char *const agrv[], const char *prog_name, log_func log_fn) {
-    return iss::Ok;
-}
+iss::status target_adapter_base::open(int argc, char* const agrv[], const char* prog_name, log_func log_fn) { return iss::Ok; }
 
 void target_adapter_base::close() { bp_lut.clear(); }
 
-iss::status target_adapter_base::connect(bool &can_restart) { return iss::Ok; }
+iss::status target_adapter_base::connect(bool& can_restart) { return iss::Ok; }
 
 iss::status target_adapter_base::disconnect() { return iss::Ok; }
 
@@ -59,18 +57,18 @@ void target_adapter_base::stop() {
 
 iss::status target_adapter_base::resume_from_current(bool step, int sig, rp_thread_ref thread,
                                                      std::function<void(unsigned)> stop_callback) {
-    if (step)
+    if(step)
         srv->step(thread.val, 1);
-    else if (stop_callback)
+    else if(stop_callback)
         srv->run(thread.val, stop_callback);
     else
         srv->run(thread.val);
     return iss::Ok;
 }
 
-iss::status target_adapter_base::wait_non_blocking(bool &running) {
+iss::status target_adapter_base::wait_non_blocking(bool& running) {
     running = srv->is_running();
-    if (running) {
+    if(running) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         running = srv->is_running();
     }

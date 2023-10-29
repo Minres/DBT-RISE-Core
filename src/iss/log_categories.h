@@ -39,6 +39,6 @@
 namespace logging {
 class connection {};
 class disass {};
-}
+} // namespace logging
 
 #endif /* DBT_CORE_INCL_ISS_LOG_CATEGORIES_H_ */

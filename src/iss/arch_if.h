@@ -35,9 +35,9 @@
 #ifndef _ARCH_IF_H_
 #define _ARCH_IF_H_
 
-#include <dbt_rise_common.h>
-#include "vm_types.h"
 #include "instrumentation_if.h"
+#include "vm_types.h"
+#include <dbt_rise_common.h>
 
 #include <algorithm>
 #include <iomanip>
@@ -112,15 +112,13 @@ public:
      *
      * @return pointer to the registers
      */
-    virtual uint8_t *get_regs_base_ptr() = 0;
+    virtual uint8_t* get_regs_base_ptr() = 0;
     /**
      * whether address translation is needed
      *
      * @return true if a call to the address translation function is needed
      */
-    inline bool has_mmu(){
-        return mmu;
-    }
+    inline bool has_mmu() { return mmu; }
     /**
      * read from addresses
      *
@@ -130,7 +128,7 @@ public:
      * @param data pointer to the memory to read into
      * @return success or failure of access
      */
-    inline iss::status read(const addr_t &addr, const unsigned length, uint8_t *const data){
+    inline iss::status read(const addr_t& addr, const unsigned length, uint8_t* const data) {
         return read(addr.type, addr.access, addr.space, addr.val, length, data);
     }
     /**
@@ -142,8 +140,8 @@ public:
      * @param data pointer to the memory to read into
      * @return success or failure of access
      */
-    virtual iss::status read(const address_type type, const access_type access, const uint32_t space,
-            const uint64_t addr, const unsigned length, uint8_t *const data) = 0;
+    virtual iss::status read(const address_type type, const access_type access, const uint32_t space, const uint64_t addr,
+                             const unsigned length, uint8_t* const data) = 0;
     /**
      * write to addresses
      *
@@ -153,7 +151,7 @@ public:
      * @param data pointer to the memory to write from
      * @return success or failure of access
      */
-    inline iss::status write(const addr_t &addr, const unsigned length, const uint8_t *const data){
+    inline iss::status write(const addr_t& addr, const unsigned length, const uint8_t* const data) {
         return write(addr.type, addr.access, addr.space, addr.val, length, data);
     }
     /**
@@ -165,9 +163,9 @@ public:
      * @param data pointer to the memory to write from
      * @return success or failure of access
      */
-    virtual iss::status write(const address_type type, const access_type access, const uint32_t space,
-            const uint64_t addr, const unsigned length, const uint8_t *const data) = 0;
-   /**
+    virtual iss::status write(const address_type type, const access_type access, const uint32_t space, const uint64_t addr,
+                              const unsigned length, const uint8_t* const data) = 0;
+    /**
      * vm encountered a trap (exception, interrupt), process accordingly in core
      *
      * @param flags trap flags
@@ -210,10 +208,11 @@ public:
      *
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
-    virtual instrumentation_if *get_instrumentation_if() { return nullptr; };
+    virtual instrumentation_if* get_instrumentation_if() { return nullptr; };
+
 private:
     bool mmu{false};
 };
-}
+} // namespace iss
 
 #endif /* _ARCH_IF_H_ */

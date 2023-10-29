@@ -44,17 +44,13 @@ namespace iss {
 class arch_if;
 class vm_plugin;
 
-enum class finish_cond_e {
-    NONE = 0,
-    JUMP_TO_SELF=1,
-    COUNT_LIMIT=2
-};
+enum class finish_cond_e { NONE = 0, JUMP_TO_SELF = 1, COUNT_LIMIT = 2 };
 
-inline finish_cond_e operator|(finish_cond_e a, finish_cond_e b){
-    return static_cast<finish_cond_e>(static_cast<int>(a)|static_cast<int>(b));
+inline finish_cond_e operator|(finish_cond_e a, finish_cond_e b) {
+    return static_cast<finish_cond_e>(static_cast<int>(a) | static_cast<int>(b));
 }
-inline finish_cond_e operator&(finish_cond_e a, finish_cond_e b){
-    return static_cast<finish_cond_e>(static_cast<int>(a)&static_cast<int>(b));
+inline finish_cond_e operator&(finish_cond_e a, finish_cond_e b) {
+    return static_cast<finish_cond_e>(static_cast<int>(a) & static_cast<int>(b));
 }
 
 class vm_if { // @suppress("Class has a virtual method and non-virtual destructor")
@@ -68,13 +64,13 @@ public:
      *
      * @param plugin reference to the plugin to be registered
      */
-    virtual void register_plugin(vm_plugin &plugin) = 0;
+    virtual void register_plugin(vm_plugin& plugin) = 0;
     /**
      * get the underlying class of the core to be simulated
      *
      * @return pointer to the core
      */
-    virtual arch_if *get_arch() = 0;
+    virtual arch_if* get_arch() = 0;
     /**
      * start the simulation
      *
@@ -82,10 +78,7 @@ public:
      * @param dump intermediat code if any
      * @return number of executed instructions
      */
-    inline
-    int start(finish_cond_e cond, bool dump = false) {
-        return start(std::numeric_limits<uint64_t>::max(), dump, cond);
-    }
+    inline int start(finish_cond_e cond, bool dump = false) { return start(std::numeric_limits<uint64_t>::max(), dump, cond); }
     /**
      * start the simulation
      *
@@ -96,7 +89,7 @@ public:
      */
 
     virtual int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
-            finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) = 0;
+                      finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) = 0;
     /**
      * reset the core
      *
@@ -147,6 +140,6 @@ public:
     : std::runtime_error("simulation stopped")
     , state(s) {}
 };
-}
+} // namespace iss
 
 #endif /* _VM_IF_H_ */

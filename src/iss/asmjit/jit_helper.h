@@ -39,19 +39,18 @@
 #include <asmjit/asmjit.h>
 #include <functional>
 
-namespace iss{
-namespace asmjit{
+namespace iss {
+namespace asmjit {
 
-struct alignas(4 * sizeof(void *)) translation_block {
+struct alignas(4 * sizeof(void*)) translation_block {
     uintptr_t f_ptr = 0;
-    std::array<translation_block *, 2> cont;
+    std::array<translation_block*, 2> cont;
     void* f_mem;
 
-    explicit translation_block(void* f_ptr_, std::array<translation_block *, 2> cont_, void* mem_ptr = nullptr )
+    explicit translation_block(void* f_ptr_, std::array<translation_block*, 2> cont_, void* mem_ptr = nullptr)
     : f_ptr(reinterpret_cast<uintptr_t>(f_ptr_))
     , cont(cont_)
-    , f_mem(mem_ptr)
-    {}
+    , f_mem(mem_ptr) {}
 
     translation_block() = delete;
 
@@ -59,36 +58,41 @@ struct alignas(4 * sizeof(void *)) translation_block {
 
     translation_block& operator=(translation_block const& other) = delete;
 
-    translation_block(translation_block && o){
-        f_ptr=o.f_ptr,o.f_ptr=0;
-        cont=o.cont; o.cont[0]=nullptr; o.cont[1]=nullptr;
-        f_mem=o.f_mem; o.f_mem=nullptr;
+    translation_block(translation_block&& o) {
+        f_ptr = o.f_ptr, o.f_ptr = 0;
+        cont = o.cont;
+        o.cont[0] = nullptr;
+        o.cont[1] = nullptr;
+        f_mem = o.f_mem;
+        o.f_mem = nullptr;
     }
 
-    translation_block& operator=(translation_block && o){
-        f_ptr=o.f_ptr,o.f_ptr=0;
-        cont=o.cont; o.cont[0]=nullptr; o.cont[1]=nullptr;
-        f_mem=o.f_mem; o.f_mem=nullptr;
+    translation_block& operator=(translation_block&& o) {
+        f_ptr = o.f_ptr, o.f_ptr = 0;
+        cont = o.cont;
+        o.cont[0] = nullptr;
+        o.cont[1] = nullptr;
+        f_mem = o.f_mem;
+        o.f_mem = nullptr;
         return *this;
     }
 
-    ~translation_block(){
-        free(f_mem);
-    }
+    ~translation_block() { free(f_mem); }
 };
 
-struct jit_holder{
+struct jit_holder {
     ::asmjit::x86::Compiler& cc;
-    ::asmjit::x86::Gp& regs_base_ptr ;
-    ::asmjit::x86::Gp& arch_if_ptr ;
+    ::asmjit::x86::Gp& regs_base_ptr;
+    ::asmjit::x86::Gp& arch_if_ptr;
     ::asmjit::x86::Gp& vm_if_ptr;
     ::asmjit::Label trap_entry;
     ::asmjit::x86::Gp trap_state;
     ::asmjit::x86::Gp pc;
     ::asmjit::x86::Gp next_pc;
 };
-translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<void(jit_holder&)>& generator, bool dumpEnabled);
-int set_pages_executable(void *ptr, unsigned long length);
-}//namespace asmjit
-}//namespace iss
-#endif //ISS_ASMJIT_JIT__HELPER_H
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<void(jit_holder&)>& generator,
+                                       bool dumpEnabled);
+int set_pages_executable(void* ptr, unsigned long length);
+} // namespace asmjit
+} // namespace iss
+#endif // ISS_ASMJIT_JIT__HELPER_H

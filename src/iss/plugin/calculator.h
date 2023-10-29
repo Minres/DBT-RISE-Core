@@ -34,11 +34,11 @@
 #ifndef _ISS_PLUGIN_CALCULATOR_H_
 #define _ISS_PLUGIN_CALCULATOR_H_
 
-#include <unordered_map>
-#include <string>
-#include <memory>
-#include <vector>
 #include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace iss {
 namespace plugin {
@@ -58,8 +58,7 @@ private:
     std::vector<std::function<unsigned(uint64_t)>> var_accessors;
     std::vector<int> stack{1024};
     std::vector<int>::iterator stack_ptr{stack.begin()};
-    uint32_t* reg_base_ptr {nullptr};
-
+    uint32_t* reg_base_ptr{nullptr};
 };
 } // namespace plugin
 } // namespace iss

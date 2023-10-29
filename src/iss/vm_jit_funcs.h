@@ -15,6 +15,6 @@ extern void print_string(void*, char*);
 extern void print_disass(void*, uint64_t, char*);
 extern void pre_instr_sync(void*);
 extern void notify_phase(void*, uint32_t);
-extern void call_plugin(void*, uint64_t) ;
+extern void call_plugin(void*, uint64_t);
 extern uint8_t read_mem_buf[];
 }

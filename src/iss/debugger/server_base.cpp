@@ -36,20 +36,21 @@
 #include "server_base.h"
 #include <functional>
 #include <future>
-#include <thread>
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
+#include <thread>
 
 using namespace iss::debugger;
 using namespace logging;
 
-template <typename T> static T to(unsigned char *data, size_t num_bytes) {
+template <typename T> static T to(unsigned char* data, size_t num_bytes) {
     T res = 0;
-    for (unsigned i = 0; i < num_bytes; i++) res += (T)data[i] << +i * 8;
+    for(unsigned i = 0; i < num_bytes; i++)
+        res += (T)data[i] << +i * 8;
     return res;
 }
 
-server_base::server_base(iss::debugger_if *vm)
+server_base::server_base(iss::debugger_if* vm)
 : vm(vm)
 , tgt(nullptr) {}
 
@@ -59,18 +60,21 @@ void server_base::step(unsigned coreId, unsigned steps) {
     cycles.store(steps, std::memory_order_relaxed);
     mode.store(MODE_RUN, std::memory_order_release);
     syncronizer.enqueue_and_wait(&server_base::dummy_func, this);
-    while (!syncronizer.is_ready()) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    while(!syncronizer.is_ready())
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     LOG(TRACE) << "step finished";
 }
 // called from debugger
 void server_base::run(unsigned coreId) {
-    if (mode == MODE_RUN) return;
+    if(mode == MODE_RUN)
+        return;
     cycles.store(std::numeric_limits<uint64_t>::max(), std::memory_order_relaxed);
     mode.store(MODE_RUN, std::memory_order_release);
     syncronizer.enqueue_and_wait(&server_base::dummy_func, this);
 }
 void server_base::run(unsigned coreId, std::function<void(unsigned)> callback) {
-    if (mode == MODE_RUN) return;
+    if(mode == MODE_RUN)
+        return;
     cycles.store(std::numeric_limits<uint64_t>::max(), std::memory_order_relaxed);
     mode.store(MODE_RUN, std::memory_order_release);
     this->stop_callback = callback;
@@ -81,7 +85,8 @@ void server_base::request_stop(unsigned coreId) { mode.store(MODE_STOP, std::mem
 
 void server_base::wait_for_stop() {
     // busy wait
-    while (mode != MODE_STOP) std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    while(mode != MODE_STOP)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 iss::status server_base::reset(int coreId) { return iss::Ok; }

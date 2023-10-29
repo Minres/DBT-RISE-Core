@@ -93,9 +93,8 @@ struct instrumentation_if {
      * @param cycles
      */
     virtual void set_curr_instr_cycles(unsigned cycles) = 0;
-
 };
-}
+} // namespace v1
 inline namespace v2 {
 struct instrumentation_if {
 
@@ -162,7 +161,7 @@ struct instrumentation_if {
      */
     virtual unsigned get_reg_num() = 0;
 };
-}
+} // namespace v2
 } /* namespace iss */
 
 #endif /* _INCL_ISS_INSTRUMENTATION_IF_H_ */

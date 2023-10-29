@@ -35,11 +35,11 @@
 #include <iss/log_categories.h>
 #include <llvm/Support/Debug.h> //EnableDebugBuffering
 #include <llvm/Support/Error.h>
+#include <llvm/Support/Host.h>
 #include <llvm/Support/PrettyStackTrace.h>
 #include <llvm/Support/Signals.h> // llvm::sys::PrintStackTraceOnErrorSignal()
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h> //outs()
-#include <llvm/Support/Host.h>
 // needed to get the execution engine linked in
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -53,36 +53,34 @@
 #include <iostream>
 #include <memory>
 
-
-#include <llvm/InitializePasses.h>
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/LLVMContext.h>
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
+#include <llvm/InitializePasses.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <memory>
 
-#include <llvm/Passes/PassBuilder.h>
 #include <llvm/IR/PassManager.h>
-
+#include <llvm/Passes/PassBuilder.h>
 
 using namespace llvm;
 using namespace logging;
 
 namespace iss {
 
-void init_jit(){
+void init_jit() {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
 }
 
-void init_jit_debug(int argc, const char * const argv[]) {
+void init_jit_debug(int argc, const char* const argv[]) {
     init_jit();
 #ifdef LLVM_DEBUG
     sys::PrintStackTraceOnErrorSignal(argv[0]);
@@ -93,13 +91,13 @@ void init_jit_debug(int argc, const char * const argv[]) {
 
 namespace llvm {
 
-LLVMContext &getContext() {
+LLVMContext& getContext() {
     static LLVMContext context;
     return context;
 }
 
-translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
-                                       std::function<Function *(Module *)> &generator, bool dumpEnabled) {
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)>& generator,
+                                       bool dumpEnabled) {
 #ifndef NDEBUG
     LOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
@@ -107,12 +105,12 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     std::array<char, 32> s;
     sprintf(s.data(), "llvm_jit_%u", ++i);
     auto mod = std::make_unique<Module>(s.data(), getContext());
-    auto *f = generator(mod.get());
+    auto* f = generator(mod.get());
     assert(f != nullptr && "Generator function did return nullptr");
-    if (dumpEnabled) {
+    if(dumpEnabled) {
         std::error_code ec;
         std::string name(((std::string)mod->getName()) + ".ll");
-        raw_fd_ostream os(StringRef(name), ec);//sys::fs::F_None);
+        raw_fd_ostream os(StringRef(name), ec); // sys::fs::F_None);
         // WriteBitcodeToFile(mod, OS);
         // mod->dump();
         mod->print(os, nullptr, false, true);
@@ -120,57 +118,53 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr,
     }
     mod->setTargetTriple(sys::getProcessTriple());
 
-    if(false){ 
-    // Create a new pass manager attached to it.
-    auto fpm = std::make_unique<legacy::FunctionPassManager>(mod.get());
-    fpm->add(createInstructionCombiningPass());// Do simple "peephole" optimizations and bit-twiddling optzns.
-    fpm->add(createReassociatePass());// Reassociate expressions.
-    fpm->add(createGVNPass());// Eliminate Common SubExpressions.
-    fpm->add(createCFGSimplificationPass());// Simplify the control flow graph
-    fpm->doInitialization();
-    } 
-
-    
-    if(false){// Create the analysis managers.
-    LoopAnalysisManager LAM;
-    FunctionAnalysisManager FAM;
-    CGSCCAnalysisManager CGAM;
-    ModuleAnalysisManager MAM;
-
-    // Create the new pass manager builder.
-    // Take a look at the PassBuilder constructor parameters for more
-    // customization, e.g. specifying a TargetMachine or various debugging
-    // options.
-    PassBuilder PB;
-
-    // Register all the basic analyses with the managers.
-    PB.registerModuleAnalyses(MAM);
-    PB.registerCGSCCAnalyses(CGAM);
-    PB.registerFunctionAnalyses(FAM);
-    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-
-    // Create the pass manager.
-    // This one corresponds to a typical -O2 optimization pipeline.
-    ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(PassBuilder::OptimizationLevel::O2);
-
-    // Optimize the IR!
-    MPM.run(*mod, MAM);
+    if(false) {
+        // Create a new pass manager attached to it.
+        auto fpm = std::make_unique<legacy::FunctionPassManager>(mod.get());
+        fpm->add(createInstructionCombiningPass()); // Do simple "peephole" optimizations and bit-twiddling optzns.
+        fpm->add(createReassociatePass());          // Reassociate expressions.
+        fpm->add(createGVNPass());                  // Eliminate Common SubExpressions.
+        fpm->add(createCFGSimplificationPass());    // Simplify the control flow graph
+        fpm->doInitialization();
     }
-    
+
+    if(false) { // Create the analysis managers.
+        LoopAnalysisManager LAM;
+        FunctionAnalysisManager FAM;
+        CGSCCAnalysisManager CGAM;
+        ModuleAnalysisManager MAM;
+
+        // Create the new pass manager builder.
+        // Take a look at the PassBuilder constructor parameters for more
+        // customization, e.g. specifying a TargetMachine or various debugging
+        // options.
+        PassBuilder PB;
+
+        // Register all the basic analyses with the managers.
+        PB.registerModuleAnalyses(MAM);
+        PB.registerCGSCCAnalyses(CGAM);
+        PB.registerFunctionAnalyses(FAM);
+        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+        // Create the pass manager.
+        // This one corresponds to a typical -O2 optimization pipeline.
+        ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(PassBuilder::OptimizationLevel::O2);
+
+        // Optimize the IR!
+        MPM.run(*mod, MAM);
+    }
 
     std::string ErrStr;
     EngineBuilder eb(std::move(mod)); // eb and ee take ownership of module
     TargetOptions to;
     to.EnableFastISel = true;
     to.GuaranteedTailCallOpt = false;
-    ExecutionEngine *ee = eb.setEngineKind(EngineKind::JIT)
-                            .setTargetOptions(to)
-                            .setErrorStr(&ErrStr)
-                            .setOptLevel(CodeGenOpt::Aggressive)
-                            .create();
-    if (!ee) throw std::runtime_error(ErrStr);
+    ExecutionEngine* ee =
+        eb.setEngineKind(EngineKind::JIT).setTargetOptions(to).setErrorStr(&ErrStr).setOptLevel(CodeGenOpt::Aggressive).create();
+    if(!ee)
+        throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
     return translation_block(ee->getFunctionAddress(f->getName().str()), {nullptr, nullptr}, ee);
 }
-}
-}
+} // namespace llvm
+} // namespace iss

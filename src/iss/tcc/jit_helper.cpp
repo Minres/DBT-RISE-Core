@@ -32,13 +32,13 @@
  ******************************************************************************/
 
 #include "jit_helper.h"
-#include <iss/vm_jit_funcs.h>
-#include <iss/log_categories.h>
-#include <fmt/format.h>
 #include <array>
-#include <iostream>
-#include <memory>
+#include <fmt/format.h>
 #include <fstream>
+#include <iostream>
+#include <iss/log_categories.h>
+#include <iss/vm_jit_funcs.h>
+#include <memory>
 #include <stdexcept>
 
 using namespace logging;
@@ -46,35 +46,38 @@ using namespace logging;
 namespace iss {
 namespace tcc {
 
-translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool dumpEnabled) {
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func& generator, bool dumpEnabled) {
 #ifndef NDEBUG
     LOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
     auto res = generator();
-    if (dumpEnabled) {
+    if(dumpEnabled) {
         std::string name(fmt::format("tcc_jit_{}.c", ++i));
         std::ofstream ofs(name);
-        ofs<<std::get<1>(res)<<std::endl;
+        ofs << std::get<1>(res) << std::endl;
     }
     auto tcc = tcc_new();
-    if(!tcc) throw std::runtime_error("could not create TCC instance");
+    if(!tcc)
+        throw std::runtime_error("could not create TCC instance");
     tcc_set_output_type(tcc, TCC_OUTPUT_MEMORY);
     tcc_set_options(tcc, "-fno-common");
     tcc_set_options(tcc, "-w");
     /* relocate the code */
-    auto result=tcc_compile_string(tcc, std::get<1>(res).c_str());
-    if(result) throw std::runtime_error("could not compile translated code");
+    auto result = tcc_compile_string(tcc, std::get<1>(res).c_str());
+    if(result)
+        throw std::runtime_error("could not compile translated code");
     int size = tcc_relocate(tcc, nullptr);
-    if(!size) throw std::runtime_error("TCC did not return reasonable code size");
+    if(!size)
+        throw std::runtime_error("TCC did not return reasonable code size");
     auto* fmem = malloc(size);
-    result=tcc_relocate(tcc, fmem);
-    if(result) throw std::runtime_error("could not relocate compiled code");
+    result = tcc_relocate(tcc, fmem);
+    if(result)
+        throw std::runtime_error("could not relocate compiled code");
     /* get entry symbol */
     auto func = tcc_get_symbol(tcc, std::get<0>(res).c_str());
     tcc_delete(tcc);
     return translation_block(func, {nullptr, nullptr}, fmem);
 }
-}
-}
-
+} // namespace tcc
+} // namespace iss

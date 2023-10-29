@@ -31,8 +31,8 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#include <iss/iss.h>
 #include "vm_base.h"
+#include <iss/iss.h>
 #include <iss/vm_plugin.h>
 #include <util/logging.h>
 
@@ -47,40 +47,34 @@ using namespace ::llvm;
 #define DOUBLE_TYPE Type::getDoubleTy(mod->getContext())
 #define VOID_TYPE Type::getVoidTy(mod->getContext())
 #define THIS_PTR_TYPE Type::getIntNPtrTy(mod->getContext(), 8)
-#define FDECLL(NAME, RET, ...)                                                                                         \
-    Function *NAME##_func = CurrentModule->getFunction(#NAME);                                                         \
-    if (!NAME##_func) {                                                                                                \
-        std::vector<Type *> NAME##_args{__VA_ARGS__};                                                                  \
-        FunctionType *NAME##_type = FunctionType::get(RET, NAME##_args, false);                                        \
-        NAME##_func = Function::Create(NAME##_type, GlobalValue::ExternalLinkage, #NAME, CurrentModule);               \
-        NAME##_func->setCallingConv(CallingConv::C);                                                                   \
+#define FDECLL(NAME, RET, ...)                                                                                                             \
+    Function* NAME##_func = CurrentModule->getFunction(#NAME);                                                                             \
+    if(!NAME##_func) {                                                                                                                     \
+        std::vector<Type*> NAME##_args{__VA_ARGS__};                                                                                       \
+        FunctionType* NAME##_type = FunctionType::get(RET, NAME##_args, false);                                                            \
+        NAME##_func = Function::Create(NAME##_type, GlobalValue::ExternalLinkage, #NAME, CurrentModule);                                   \
+        NAME##_func->setCallingConv(CallingConv::C);                                                                                       \
     }
 
-#define FDECL(NAME, RET, ...)                                                                                          \
-    std::vector<Type *> NAME##_args{__VA_ARGS__};                                                                      \
-    FunctionType *NAME##_type = FunctionType::get(RET, NAME##_args, false);                                      \
+#define FDECL(NAME, RET, ...)                                                                                                              \
+    std::vector<Type*> NAME##_args{__VA_ARGS__};                                                                                           \
+    FunctionType* NAME##_type = FunctionType::get(RET, NAME##_args, false);                                                                \
     mod->getOrInsertFunction(#NAME, NAME##_type);
 
 using namespace llvm;
 
-void add_functions_2_module(Module *mod) {
+void add_functions_2_module(Module* mod) {
     //    FDECL(get_reg, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(16));
     //    FDECL(set_reg, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(64));
     //    FDECL(get_flag, INT_TYPE(1), THIS_PTR_TYPE, INT_TYPE(16));
     //    FDECL(set_flag, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(1));
     //    FDECL(update_flags, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(16), INT_TYPE(64), INT_TYPE(64));
-    FDECL(fetch, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
-          INT_TYPE(8)->getPointerTo());
-    FDECL(fetch_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
-          INT_TYPE(8)->getPointerTo());
-    FDECL(read_mem, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
-          INT_TYPE(8)->getPointerTo());
-    FDECL(write_mem, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
-          INT_TYPE(8)->getPointerTo());
-    FDECL(read_mem_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
-          INT_TYPE(8)->getPointerTo());
-    FDECL(write_mem_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32),
-          INT_TYPE(8)->getPointerTo());
+    FDECL(fetch, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
+    FDECL(fetch_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
+    FDECL(read_mem, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
+    FDECL(write_mem, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
+    FDECL(read_mem_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
+    FDECL(write_mem_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
     FDECL(enter_trap, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(64), INT_TYPE(64));
     FDECL(leave_trap, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(64));
     FDECL(wait, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64));
@@ -90,5 +84,5 @@ void add_functions_2_module(Module *mod) {
     FDECL(notify_phase, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(32));
     FDECL(call_plugin, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64));
 }
-}
-}
+} // namespace llvm
+} // namespace iss

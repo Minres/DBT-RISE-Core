@@ -57,11 +57,11 @@
 #define _ISS_PLUGIN_LOADER_H_
 
 // standard library
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <stdexcept>
-#include <memory>
 
 #if defined(_WIN64)
 #define _AMD64_
@@ -82,10 +82,9 @@ namespace plugin {
 class loader {
 public: // sub-definitions
     using function = void (*)();
-    using variable = void *;
+    using variable = void*;
 
 private: // sub-definitions
-
     struct symbol {
         bool is_func = false;
         union {
@@ -96,23 +95,26 @@ private: // sub-definitions
         symbol() = default;
 
         symbol(function function)
-        : is_func(true), func(function) { }
+        : is_func(true)
+        , func(function) {}
 
         symbol(variable var)
-        : is_func(false), var(var) { }
+        : is_func(false)
+        , var(var) {}
     };
 
     struct plugin_data {
-        void *handle = nullptr;
+        void* handle = nullptr;
         std::string filepath;
         std::unordered_map<std::string, symbol> symbols;
 
-        plugin_data(void *handle, std::string filepath)
-        : handle(handle), filepath(filepath) { }
+        plugin_data(void* handle, std::string filepath)
+        : handle(handle)
+        , filepath(filepath) {}
 
         ~plugin_data() {
             symbols.clear();
-            if (handle) {
+            if(handle) {
 #if OS_IS_WINDOWS
                 FreeLibrary((HINSTANCE)handle);
 #else
@@ -129,79 +131,64 @@ private: // members
         return cache;
     }
     std::shared_ptr<plugin_data> _data;
-    std::shared_ptr<plugin_data> get_data(const std::string &filepath);
+    std::shared_ptr<plugin_data> get_data(const std::string& filepath);
 
 public: // methods
-
-    loader(const std::string &filepath, const std::vector<std::string> &functions = {}, const std::vector<std::string> &variables = {})
+    loader(const std::string& filepath, const std::vector<std::string>& functions = {}, const std::vector<std::string>& variables = {})
     : _data(get_data(filepath)) {
-        for (const auto &label : functions)
+        for(const auto& label : functions)
             bind_function(label);
-        for (const auto &label : variables)
+        for(const auto& label : variables)
             bind_variable(label);
     }
 
-    loader(loader &&other)
-    : _data(std::move(other._data)) {
-    }
+    loader(loader&& other)
+    : _data(std::move(other._data)) {}
 
-    loader(const loader &other)
-    : _data(get_cache()[other.filepath()]) {
-    }
+    loader(const loader& other)
+    : _data(get_cache()[other.filepath()]) {}
 
-    void bind_function(const std::string &label);
-    void bind_variable(const std::string &label);
+    void bind_function(const std::string& label);
+    void bind_variable(const std::string& label);
 
-    inline bool contains(const std::string &label) const {
-        return _data->symbols.find(label) != _data->symbols.end();
-    }
+    inline bool contains(const std::string& label) const { return _data->symbols.find(label) != _data->symbols.end(); }
 
-    inline bool contains_function(const std::string &label) const {
+    inline bool contains_function(const std::string& label) const {
         auto iter = _data->symbols.find(label);
         return iter != _data->symbols.end() && iter->second.is_func;
     }
 
-    inline bool contains_variable(const std::string &label) const {
+    inline bool contains_variable(const std::string& label) const {
         auto iter = _data->symbols.find(label);
         return iter != _data->symbols.end() && !iter->second.is_func;
     }
 
-    function get_function_ptr(const std::string &label) const;
-    variable get_variable_ptr(const std::string &label) const;
+    function get_function_ptr(const std::string& label) const;
+    variable get_variable_ptr(const std::string& label) const;
 
-    template<typename T>
-    inline T get_variable(const std::string &label) const {
-        return *(T*) get_variable_ptr(label);
-    }
+    template <typename T> inline T get_variable(const std::string& label) const { return *(T*)get_variable_ptr(label); }
 
-    template<typename T, typename ... Args>
-    inline T call_function(const std::string &label, Args ... args) const {
+    template <typename T, typename... Args> inline T call_function(const std::string& label, Args... args) const {
         T (*func)(Args...) = (decltype(func))get_function_ptr(label);
         return func(args...);
     }
 
-    inline loader& operator=(const loader &other) {
+    inline loader& operator=(const loader& other) {
         _data = get_cache()[other.filepath()];
         return *this;
     }
 
-    inline loader& operator=(loader &&other) {
+    inline loader& operator=(loader&& other) {
         _data = std::move(other._data);
         return *this;
     }
 
-    inline std::shared_ptr<loader::plugin_data> data() const {
-        return _data;
-    }
+    inline std::shared_ptr<loader::plugin_data> data() const { return _data; }
 
-    inline size_t count() const {
-        return _data->symbols.size();
-    }
+    inline size_t count() const { return _data->symbols.size(); }
 
-    inline const std::string& filepath() const {
-        return _data->filepath;
-    }
+    inline const std::string& filepath() const { return _data->filepath; }
 };
-}
-}
+} // namespace plugin
+} // namespace iss
 #endif /* _ISS_PLUGIN_LOADER_H_ */

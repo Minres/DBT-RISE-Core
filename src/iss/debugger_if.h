@@ -58,11 +58,11 @@ public:
      * @param server server interface to be used for the target adapter
      * @return the target adapter for the core
      */
-    virtual debugger::target_adapter_if *accquire_target_adapter(debugger::server_if *server) = 0;
+    virtual debugger::target_adapter_if* accquire_target_adapter(debugger::server_if* server) = 0;
 
 protected:
     bool dbg_enabled = false;
 };
-}
+} // namespace iss
 
 #endif /* _DEBUGGER_IF_H_ */

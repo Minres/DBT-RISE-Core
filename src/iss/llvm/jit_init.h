@@ -46,8 +46,8 @@ void init_jit();
  * @param argc the number of CLI arguments
  * @param argv the array of CLI arguments
  */
-void init_jit_debug(int argc, const char * const argv[]);
+void init_jit_debug(int argc, const char* const argv[]);
 
-}
+} // namespace iss
 
 #endif // _ISS_LLVM__JIT_INIT_H
