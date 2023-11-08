@@ -117,7 +117,8 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
         os.flush();
     }
     mod->setTargetTriple(sys::getProcessTriple());
-
+#if 0
+// commit 95e3ccb2241ef3c7aed7c15452fd1309d225ec58 broke this
     if(false) {
         // Create a new pass manager attached to it.
         auto fpm = std::make_unique<legacy::FunctionPassManager>(mod.get());
@@ -153,7 +154,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
         // Optimize the IR!
         MPM.run(*mod, MAM);
     }
-
+#endif
     std::string ErrStr;
     EngineBuilder eb(std::move(mod)); // eb and ee take ownership of module
     TargetOptions to;
