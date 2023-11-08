@@ -70,12 +70,16 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
 #ifndef NDEBUG
     LOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
+    static int i = 0;
     JitRuntime rt;
-    CodeHolder code;
-    FileLogger logger(stdout);
+    FileLogger logger(nullptr);
     MyErrorHandler myErrorHandler;
+    CodeHolder code;
     code.init(rt.environment(), rt.cpuFeatures());
     if(dumpEnabled) {
+        std::string name(fmt::format("asmjit_{}.asm", ++i));
+        FILE* log_file = fopen(name.c_str(), "w");
+        logger.setFile(log_file);
         code.setLogger(&logger);
     }
     code.setErrorHandler(&myErrorHandler);
