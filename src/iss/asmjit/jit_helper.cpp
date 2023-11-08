@@ -37,6 +37,7 @@
 #include <array>
 #include <exception>
 #include <fmt/format.h>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <sys/mman.h>
@@ -72,16 +73,12 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
 #endif
     static int i = 0;
     JitRuntime rt;
-    FileLogger logger(nullptr);
+    StringLogger logger;
     MyErrorHandler myErrorHandler;
     CodeHolder code;
+    code.setLogger(&logger); // TODO check how much performance this costs, possibly set logger conditionally with dumpEnabled
     code.init(rt.environment(), rt.cpuFeatures());
-    if(dumpEnabled) {
-        std::string name(fmt::format("asmjit_{}.asm", ++i));
-        FILE* log_file = fopen(name.c_str(), "w");
-        logger.setFile(log_file);
-        code.setLogger(&logger);
-    }
+
     code.setErrorHandler(&myErrorHandler);
     x86::Compiler cc(&code);
     FuncNode* funcNode = cc.addFunc(FuncSignatureT<uint64_t, uint8_t*, void*, void*>());
@@ -94,10 +91,15 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
     Label trap_entry = cc.newNamedLabel("\ntrap_entry");
     jit_holder jh{cc, regs_base_ptr, arch_if_ptr, vm_if_ptr, trap_entry};
     generator(jh);
-
     cc.endFunc();
     cc.finalize();
     code.flatten();
+
+    if(dumpEnabled) {
+        std::string name(fmt::format("asmjit_{}.asm", ++i));
+        std::ofstream ofs(name);
+        ofs << logger.data() << std::endl;
+    }
     // allocate memory and make it executable
     auto size = code.codeSize();
     auto* fmem = malloc(size);
