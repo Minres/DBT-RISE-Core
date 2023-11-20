@@ -62,6 +62,7 @@ target_include_directories(${LIB_NAME} PUBLIC src)
 if (MSVC)
     target_compile_definitions(${LIB_NAME} PUBLIC NOMINMAX)
 endif()
+target_compile_definitions(${LIB_NAME} PRIVATE LIB_EXEC_DIR=${CMAKE_INSTALL_LIBEXECDIR})
 
 if(WITH_LLVM)
 	target_compile_definitions(${LIB_NAME} PUBLIC WITH_LLVM ${LLVM_DEFINITIONS})
