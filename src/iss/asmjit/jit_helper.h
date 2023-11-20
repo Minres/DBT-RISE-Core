@@ -86,7 +86,6 @@ struct jit_holder {
     ::asmjit::x86::Gp& arch_if_ptr;
     ::asmjit::x86::Gp& vm_if_ptr;
     ::asmjit::Label trap_entry;
-    ::asmjit::x86::Gp trap_state;
     ::asmjit::x86::Gp pc;
     ::asmjit::x86::Gp next_pc;
 };

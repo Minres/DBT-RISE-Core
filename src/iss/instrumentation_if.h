@@ -160,6 +160,14 @@ struct instrumentation_if {
      * @return number of registers
      */
     virtual unsigned get_reg_num() = 0;
+    /**
+     * return the size of requested registers
+     *
+     * @param num number of register
+     *
+     * @return size of register in bits
+     */
+    virtual unsigned get_reg_size(unsigned) = 0;
 };
 } // namespace v2
 } /* namespace iss */
