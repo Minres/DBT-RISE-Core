@@ -118,7 +118,7 @@ std::string search_file_for(std::string const& filepath) {
                 return sss.str();
         } else {
             std::stringstream sss;
-            sss << LIB_EXEC_DIR << HIER_DELIM << filepath << SHARED_LIB_SUFFIX;
+            sss << STR(LIB_EXEC_DIR) << HIER_DELIM << filepath << SHARED_LIB_SUFFIX;
             if(file_exists(sss.str()))
                 return sss.str();
             auto res = search_file_in_envvar_for(filepath, "DBTRISE_PLUGIN_PATH");
