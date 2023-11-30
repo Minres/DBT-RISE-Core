@@ -72,7 +72,7 @@
 #define SHARED_LIB_PATH "LD_LIBRARY_PATH"
 #endif
 #ifndef LIB_EXEC_DIR
-#define LIB_EXEC_DIR /usr/lib
+#define LIB_EXEC_DIR "/usr/lib"
 #endif
 
 #define XSTR(V) #V
@@ -118,7 +118,7 @@ std::string search_file_for(std::string const& filepath) {
                 return sss.str();
         } else {
             std::stringstream sss;
-            sss << STR(LIB_EXEC_DIR) << HIER_DELIM << filepath << SHARED_LIB_SUFFIX;
+            sss << LIB_EXEC_DIR << HIER_DELIM << filepath << SHARED_LIB_SUFFIX;
             if(file_exists(sss.str()))
                 return sss.str();
             auto res = search_file_in_envvar_for(filepath, "DBTRISE_PLUGIN_PATH");
