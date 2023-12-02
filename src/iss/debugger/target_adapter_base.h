@@ -45,33 +45,34 @@ namespace debugger {
 
 class target_adapter_base : public target_adapter_if {
 public:
-    target_adapter_base(iss::debugger::server_if *srv)
+    target_adapter_base(iss::debugger::server_if* srv)
     : srv(srv)
     , bp_lut(0) {}
 
-    void set_server(iss::debugger::server_if *server) { srv = server; }
+    void set_server(iss::debugger::server_if* server) { srv = server; }
 
     inline void check_continue(uint64_t pc) {
         unsigned handle = bp_lut.getEntry(pc);
-        if (!handle && break_cond) {
+        if(!handle && break_cond) {
             handle = break_cond();
-            if (handle) break_cond = std::function<unsigned()>();
+            if(handle)
+                break_cond = std::function<unsigned()>();
         }
         srv->check_continue(handle);
     }
 
     /* return table of remote commands */
-    const std::vector<target_adapter_if::custom_command> &custom_commands() override { return ccmds; }
+    const std::vector<target_adapter_if::custom_command>& custom_commands() override { return ccmds; }
 
-    void add_custom_command(custom_command &&cmd) override { ccmds.push_back(cmd); };
+    void add_custom_command(custom_command&& cmd) override { ccmds.push_back(cmd); };
 
-    void help(const char *prog_name) override;
+    void help(const char* prog_name) override;
 
-    iss::status open(int argc, char *const agrv[], const char *prog_name, log_func log_fn) override;
+    iss::status open(int argc, char* const agrv[], const char* prog_name, log_func log_fn) override;
 
     void close() override;
 
-    iss::status connect(bool &can_restart) override;
+    iss::status connect(bool& can_restart) override;
 
     iss::status disconnect() override;
 
@@ -81,17 +82,16 @@ public:
 
     void stop() override;
 
-    iss::status resume_from_current(bool step, int sig, rp_thread_ref thread,
-                                    std::function<void(unsigned)> stop_callback) override;
+    iss::status resume_from_current(bool step, int sig, rp_thread_ref thread, std::function<void(unsigned)> stop_callback) override;
 
-    iss::status wait_non_blocking(bool &running) override;
+    iss::status wait_non_blocking(bool& running) override;
 
     iss::status wait_blocking() override;
 
     iss::status add_break_condition(std::function<unsigned()> break_cond) override;
 
 protected:
-    iss::debugger::server_if *srv;
+    iss::debugger::server_if* srv;
     util::range_lut<unsigned> bp_lut;
     long bp_count = 0;
     std::function<unsigned()> break_cond;
@@ -99,6 +99,6 @@ protected:
 };
 
 } // namespace debugger
-} // namspace iss
+} // namespace iss
 
 #endif /* _TARGETADAPTER_H_ */

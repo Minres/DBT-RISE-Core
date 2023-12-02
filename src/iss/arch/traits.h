@@ -39,7 +39,7 @@ namespace iss {
 namespace arch {
 
 template <typename ARCH> struct traits {};
-}
-}
+} // namespace arch
+} // namespace iss
 
 #endif /* _TRAITS_H_ */

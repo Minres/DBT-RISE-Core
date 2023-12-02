@@ -50,7 +50,7 @@ namespace debugger {
 
 class server_base : public server_if {
 public:
-    server_base(debugger_if *adapter);
+    server_base(debugger_if* adapter);
 
     unsigned int get_reg_width(int index) const;
 
@@ -66,15 +66,15 @@ public:
 
     iss::status reset(int coreId) override;
 
-    target_adapter_if *get_target() override { return vm->accquire_target_adapter(this); }
+    target_adapter_if* get_target() override { return vm->accquire_target_adapter(this); }
 
 protected:
-    debugger_if *vm;
+    debugger_if* vm;
     int dummy_func();
-    target_adapter_if *tgt;
+    target_adapter_if* tgt;
 };
 
 } // namespace debugger
-} // namspace iss
+} // namespace iss
 
 #endif /* _SERVER_BASE_H_ */

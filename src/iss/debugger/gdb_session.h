@@ -40,10 +40,10 @@
 #include <boost/bind/bind.hpp>
 #include <chrono>
 #include <cstdlib>
+#include <functional>
 #include <iostream>
 #include <iss/debugger/serialized_connection.h>
 #include <thread>
-#include <functional>
 
 #include "cmdhandler.h"
 #include "serialized_connection.h"
@@ -57,24 +57,24 @@ using boost::asio::ip::tcp;
 
 class gdb_session : public connection<std::string, std::string>::async_listener {
 public:
-    gdb_session(server_if *server_, boost::asio::io_context &io_service);
+    gdb_session(server_if* server_, boost::asio::io_context& io_service);
 
     virtual ~gdb_session() = default;
 
-    tcp::socket &socket() { return conn_shptr->socket(); }
+    tcp::socket& socket() { return conn_shptr->socket(); }
 
     int start();
 
-    void receive_completed(const boost::system::error_code &e, std::string *data) override;
+    void receive_completed(const boost::system::error_code& e, std::string* data) override;
 
-    void send_completed(const boost::system::error_code &e) override;
+    void send_completed(const boost::system::error_code& e) override;
 
-    bool message_completed(std::vector<char> &buffer) override;
+    bool message_completed(std::vector<char>& buffer) override;
 
 protected:
-    std::string check_packet(std::string &msg);
+    std::string check_packet(std::string& msg);
 
-    void parse_n_execute(std::string &msg);
+    void parse_n_execute(std::string& msg);
 
     void respond(std::string const& msg) {
         last_msg = msg;
@@ -86,13 +86,13 @@ protected:
     }
 
 private:
-    server_if *server;
+    server_if* server;
     boost::shared_ptr<connection<std::string, std::string>> conn_shptr;
     std::string last_msg;
     cmd_handler handler;
 
     std::function<void(unsigned)> stop_callback;
 };
-}
-}
+} // namespace debugger
+} // namespace iss
 #endif /* _GDB_SESSION_H_ */

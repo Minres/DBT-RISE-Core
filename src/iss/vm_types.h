@@ -46,21 +46,18 @@ enum status { Ok, Err, NotSupported };
 
 enum sync_type { NO_SYNC = 0U, PRE_SYNC = 1U, POST_SYNC = 2U, ALL_SYNC = 3U };
 
-inline sync_type operator |(sync_type a, sync_type b) {
-    return static_cast<sync_type>(static_cast<int>(a) | static_cast<int>(b));
-}
+inline sync_type operator|(sync_type a, sync_type b) { return static_cast<sync_type>(static_cast<int>(a) | static_cast<int>(b)); }
 
-inline sync_type operator &(sync_type a, sync_type b) {
-    return static_cast<sync_type>(static_cast<int>(a) & static_cast<int>(b));
-}
+inline sync_type operator&(sync_type a, sync_type b) { return static_cast<sync_type>(static_cast<int>(a) & static_cast<int>(b)); }
 
-inline sync_type& operator |=(sync_type& a, sync_type b){ return a = a | b; }
+inline sync_type& operator|=(sync_type& a, sync_type b) { return a = a | b; }
 
 enum struct access_type : uint16_t {
     // operations
     READ = 0x0,
     WRITE = 0x1,
     FETCH = 0x2,
+    PREFETCH = 0x3,
     DEBUG_READ = 0x4,
     DEBUG_WRITE = 0x5,
     DEBUG_FETCH = 0x6,
@@ -78,60 +75,48 @@ inline access_type operator&(access_type a1, access_type a2) {
     return static_cast<access_type>(static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2));
 }
 
-inline access_type operator&(access_type a1, uint16_t a2) {
-    return static_cast<access_type>(static_cast<uint16_t>(a1) & a2);
-}
+inline access_type operator&(access_type a1, uint16_t a2) { return static_cast<access_type>(static_cast<uint16_t>(a1) & a2); }
 
 inline bool operator==(access_type a, uint16_t i) { return static_cast<uint16_t>(a) == i; }
 
 inline bool operator!=(access_type a, uint16_t i) { return static_cast<uint16_t>(a) != i; }
 
-inline bool operator&&(access_type a1, access_type a2) {
-    return (static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2));
-}
+inline bool operator&&(access_type a1, access_type a2) { return (static_cast<uint16_t>(a1) & static_cast<uint16_t>(a2)); }
 
-inline bool is_debug(access_type a){
-    return (a&access_type::DEBUG)==access_type::DEBUG;
-}
+inline bool is_debug(access_type a) { return (a & access_type::DEBUG) == access_type::DEBUG; }
 
-inline bool is_fetch(access_type a){
-    return (a&access_type::FETCH)==access_type::FETCH;
-}
+inline bool is_fetch(access_type a) { return (a & access_type::FETCH) == access_type::FETCH; }
 
-inline bool is_read(access_type a){
-    return (a&access_type::READ)==access_type::READ;
-}
+inline bool is_read(access_type a) { return (a & access_type::READ) == access_type::READ; }
 
-inline bool is_write(access_type a){
-    return (a&access_type::WRITE)==access_type::WRITE;
-}
+inline bool is_write(access_type a) { return (a & access_type::WRITE) == access_type::WRITE; }
 
 enum struct address_type : uint16_t { LOGICAL, VIRTUAL, PHYSICAL };
 
 class addr_t {
 public:
+    uint64_t val = 0;
+    uint32_t space = 0;
     const address_type type = address_type::LOGICAL;
     const access_type access = access_type::WRITE;
-    uint32_t space = 0;
-    uint64_t val = 0;
 
     constexpr addr_t(access_type acc_type, address_type addr_type, uint32_t space, uint64_t addr)
-    : type(addr_type)
-    , access(acc_type)
+    : val(addr)
     , space(space)
-    , val(addr) {}
+    , type(addr_type)
+    , access(acc_type) {}
 
-    const addr_t &operator=(uint64_t o) {
+    const addr_t& operator=(uint64_t o) {
         val = o;
         return *this;
     }
 
-    const addr_t &operator=(const addr_t &o) {
+    const addr_t& operator=(const addr_t& o) {
         val = o.val;
         return *this;
     }
 
-    addr_t &operator++() { // prefix increment
+    addr_t& operator++() { // prefix increment
         val++;
         return *this;
     }
@@ -142,32 +127,32 @@ public:
         return ret;
     }
 
-    addr_t &operator--() {
+    addr_t& operator--() {
         val--;
         return *this;
     }
 
-    addr_t &operator&=(uint64_t m) {
+    addr_t& operator&=(uint64_t m) {
         val &= m;
         return *this;
     }
 };
 
-inline addr_t operator+(const addr_t &a, const addr_t &o) {
+inline addr_t operator+(const addr_t& a, const addr_t& o) {
     assert(a.type == o.type && a.space == o.space);
     return addr_t{a.access, a.type, a.space, a.val + o.val};
 }
 
-inline addr_t operator-(const addr_t &a, const addr_t &o) {
+inline addr_t operator-(const addr_t& a, const addr_t& o) {
     assert(a.type == o.type && a.space == o.space);
     return addr_t{a.access, a.type, a.space, a.val - o.val};
 }
 
-inline addr_t operator+(addr_t &a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val + m}; }
+inline addr_t operator+(addr_t& a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val + m}; }
 
-inline addr_t operator-(addr_t &a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val - m}; }
+inline addr_t operator-(addr_t& a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val - m}; }
 
-inline std::ostream &operator<<(std::ostream &os, const addr_t &op) {
+inline std::ostream& operator<<(std::ostream& os, const addr_t& op) {
     os << "[" << op.space << "]0x" << std::hex << op.val << std::dec;
     return os;
 }
@@ -180,10 +165,10 @@ public:
     : addr_t(acc_type, TYPE, space, v) {}
     constexpr typed_addr_t(access_type t, uint64_t v)
     : addr_t(t, TYPE, 0, v) {}
-    constexpr typed_addr_t(const addr_t &o)
+    constexpr typed_addr_t(const addr_t& o)
     : typed_addr_t(o.access, o.space, o.val) {}
 };
-}
+} // namespace iss
 
 namespace iss {
 template <typename T, int ARCH> class PrimitiveTypeHolder {
@@ -193,8 +178,8 @@ public:
     explicit PrimitiveTypeHolder(T v)
     : v(v) {}
     operator const T() const { return v; }
-    const this_type operator+(const this_type &other) const { return this_type(v + other.v); }
-    this_type &operator++() { // prefix increment
+    const this_type operator+(const this_type& other) const { return this_type(v + other.v); }
+    this_type& operator++() { // prefix increment
         v++;
         return *this;
     }
@@ -203,7 +188,7 @@ public:
         v++;
         return ret;
     }
-    this_type &operator--() {
+    this_type& operator--() {
         v--;
         return *this;
     }
@@ -211,7 +196,7 @@ public:
 
     this_type operator-(int m) const { return this_type(v - m); }
 
-    this_type &operator=(T o) {
+    this_type& operator=(T o) {
         v = o;
         return *this;
     }
@@ -219,6 +204,6 @@ public:
 private:
     T v;
 };
-}
+} // namespace iss
 
 #endif /* _VM_TYPES_H_ */

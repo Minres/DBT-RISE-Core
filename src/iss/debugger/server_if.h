@@ -125,28 +125,29 @@ public:
      * get the target adapter for the core being debugged
      * @return
      */
-    virtual target_adapter_if *get_target() = 0;
+    virtual target_adapter_if* get_target() = 0;
     /**
      * check if the simulation can continue
      * @param bp_handle the handle of breakpoint condition being met, 0 means no
      * hit
      */
     inline void check_continue(unsigned bp_handle) {
-        if (bp_handle) {
+        if(bp_handle) {
             mode.store(MODE_STOP, std::memory_order_release);
             last_bp = bp_handle;
         }
-        if (mode.load(std::memory_order_acquire) == MODE_STOP) {
-            if (stop_callback) {
+        if(mode.load(std::memory_order_acquire) == MODE_STOP) {
+            if(stop_callback) {
                 stop_callback(last_bp);
                 stop_callback = std::function<void(unsigned)>();
             }
-            while (mode.load(std::memory_order_acquire) == MODE_STOP) {
+            while(mode.load(std::memory_order_acquire) == MODE_STOP) {
                 syncronizer.executeNext();
             }
             last_bp = 0;
         }
-        if (--cycles == 0) mode = MODE_STOP;
+        if(--cycles == 0)
+            mode = MODE_STOP;
     }
     /**
      * execute the specified function synchronized in the simulation thread
@@ -154,8 +155,7 @@ public:
      * @param args arguments of the function
      * @return result value of function (if any)
      */
-    template <class F, class... Args>
-    typename std::result_of<F(Args...)>::type execute_syncronized(F &&f, Args &&... args) {
+    template <class F, class... Args> typename std::result_of<F(Args...)>::type execute_syncronized(F&& f, Args&&... args) {
         return syncronizer.enqueue_and_wait(f, args...);
     }
 
@@ -168,6 +168,6 @@ protected:
 };
 
 } // namespace debugger
-} // namspace iss
+} // namespace iss
 
 #endif /* _SERVER_IF_H_ */

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * Copyright (C) 2021, MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,14 +31,35 @@
  * Contributors:
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
+#ifndef _ISS_PLUGIN_CALCULATOR_H_
+#define _ISS_PLUGIN_CALCULATOR_H_
 
-#ifndef _ISS_LOG_CATEGORIES_H_
-#define _ISS_LOG_CATEGORIES_H_
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-#include <util/logging.h>
-namespace logging {
-class connection {};
-class disass {};
-} // namespace logging
+namespace iss {
+namespace plugin {
 
-#endif /* DBT_CORE_INCL_ISS_LOG_CATEGORIES_H_ */
+class calculator {
+public:
+    calculator(uint32_t* reg_base_ptr, std::string const& formula);
+    ~calculator();
+
+    calculator(const calculator&);
+
+    unsigned operator()(uint64_t instr);
+
+private:
+    std::string error;
+    std::vector<int> byte_code;
+    std::vector<std::function<unsigned(uint64_t)>> var_accessors;
+    std::vector<int> stack{1024};
+    std::vector<int>::iterator stack_ptr{stack.begin()};
+    uint32_t* reg_base_ptr{nullptr};
+};
+} // namespace plugin
+} // namespace iss
+#endif /* _ISS_PLUGIN_CALCULATOR_H_ */

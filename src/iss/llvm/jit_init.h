@@ -32,13 +32,22 @@
  *       eyck@minres.com - initial API and implementation
  ******************************************************************************/
 
-#ifndef _ISS_LOG_CATEGORIES_H_
-#define _ISS_LOG_CATEGORIES_H_
+#ifndef _ISS_LLVM__JIT_INIT_H
+#define _ISS_LLVM__JIT_INIT_H
 
-#include <util/logging.h>
-namespace logging {
-class connection {};
-class disass {};
-} // namespace logging
+namespace iss {
+/**
+ * initialize the LLVM infrastructure
+ */
+void init_jit();
 
-#endif /* DBT_CORE_INCL_ISS_LOG_CATEGORIES_H_ */
+/**
+ * initialize the LLVM infrastructure including stack trace pretty printer
+ * @param argc the number of CLI arguments
+ * @param argv the array of CLI arguments
+ */
+void init_jit_debug(int argc, const char* const argv[]);
+
+} // namespace iss
+
+#endif // _ISS_LLVM__JIT_INIT_H

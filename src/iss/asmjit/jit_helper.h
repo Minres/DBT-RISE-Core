@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2017, 2018, MINRES Technologies GmbH
+ * Copyright (C) 2023 MINRES Technologies GmbH
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,33 +27,20 @@
  * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
- *
  * Contributors:
- *       eyck@minres.com - initial API and implementation
+ *       alex@minres.com - initial implementation
  ******************************************************************************/
+#ifndef ISS_ASMJIT_JIT_HELPER_H
+#define ISS_ASMJIT_JIT_HELPER_H
+#ifndef PAGESIZE
+#define PAGESIZE 4096
+#endif
 
-#ifndef _TCCJITHELPER_H_
-#define _TCCJITHELPER_H_
-
+#include <asmjit/asmjit.h>
 #include <functional>
-#include <iostream>
-#include <iss/arch/traits.h>
-#include <libtcc.h>
-#include <sstream>
-
-#include "boost/variant.hpp"
-#include <memory>
-#include <string>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
 
 namespace iss {
-
-class arch_if;
-class vm_if;
-
-namespace tcc {
+namespace asmjit {
 
 struct alignas(4 * sizeof(void*)) translation_block {
     uintptr_t f_ptr = 0;
@@ -93,9 +80,18 @@ struct alignas(4 * sizeof(void*)) translation_block {
     ~translation_block() { free(f_mem); }
 };
 
-using gen_func = std::function<std::tuple<std::string, std::string>(void)>;
-
-translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func& generator, bool dumpEnabled);
-} // namespace tcc
+struct jit_holder {
+    ::asmjit::x86::Compiler& cc;
+    ::asmjit::x86::Gp& regs_base_ptr;
+    ::asmjit::x86::Gp& arch_if_ptr;
+    ::asmjit::x86::Gp& vm_if_ptr;
+    ::asmjit::Label trap_entry;
+    ::asmjit::x86::Gp pc;
+    ::asmjit::x86::Gp next_pc;
+};
+translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<void(jit_holder&)>& generator,
+                                       bool dumpEnabled);
+int set_pages_executable(void* ptr, unsigned long length);
+} // namespace asmjit
 } // namespace iss
-#endif /* _MCJITHELPER_H_ */
+#endif // ISS_ASMJIT_JIT__HELPER_H

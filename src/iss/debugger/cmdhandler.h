@@ -71,7 +71,7 @@ enum signals {
 };
 
 /* Remote command */
-#define GEN_ENTRY(name, hlp)                                                                                           \
+#define GEN_ENTRY(name, hlp)                                                                                                               \
     { #name, &cmd_handler::rcmd_##name, hlp }
 
 class cmd_handler {
@@ -80,14 +80,14 @@ public:
     class my_custom_command {
     public:
         /* command name */
-        const char *name;
+        const char* name;
         /* command function */
-        int (cmd_handler::*function)(int, char **, out_func, data_func);
+        int (cmd_handler::*function)(int, char**, out_func, data_func);
         /* one line of help text */
-        const char *help;
+        const char* help;
     };
 
-    cmd_handler(iss::debugger::server_if &server, std::function<void(unsigned)> &stop_callback)
+    cmd_handler(iss::debugger::server_if& server, std::function<void(unsigned)>& stop_callback)
     : s(server)
     , t(s.get_target())
     , extended_protocol(false)
@@ -105,23 +105,23 @@ public:
     std::string read_memory(std::string const& in_buf);
     std::string write_memory(std::string const& in_buf);
     std::string running(std::string const& in_buf, bool blocking = true, bool vCont = false);
-    int kill(std::string const& in_buf, std::string &out_buf);
+    int kill(std::string const& in_buf, std::string& out_buf);
     std::string thread_alive(std::string const& in_buf);
     void interrupt_target();
-    int restart_target(std::string const& in_buf, std::string &out_buf);
+    int restart_target(std::string const& in_buf, std::string& out_buf);
     std::string detach(std::string const& in_buf);
     std::string query(std::string const& in_buf);
     std::string set(std::string const& in_buf);
     boost::optional<std::string> handle_extended(std::string const& in_buf);
     std::string breakpoint(std::string const& in_buf);
-    int rcmd(const char *const in_buf, out_func of, data_func df);
+    int rcmd(const char* const in_buf, out_func of, data_func df);
     // TODO: change calls
-    int rcmd_help(int argc, char *argv[], out_func of, data_func df);
-    int rcmd_set(int argc, char *argv[], out_func of, data_func df);
+    int rcmd_help(int argc, char* argv[], out_func of, data_func df);
+    int rcmd_set(int argc, char* argv[], out_func of, data_func df);
 
     /* Encode return value */
-    const char *to_string(int ret) {
-        switch (ret) {
+    const char* to_string(int ret) {
+        switch(ret) {
         case iss::Ok:
             return "OK";
         case iss::Err:
@@ -133,8 +133,8 @@ public:
             return nullptr;
         }
     }
-    const char *to_string(iss::status ret) {
-        switch (ret) {
+    const char* to_string(iss::status ret) {
+        switch(ret) {
         case iss::Ok:
             return "OK";
         case iss::Err:
@@ -147,12 +147,12 @@ public:
         }
     }
 
-    iss::debugger::server_if &s;
+    iss::debugger::server_if& s;
     std::shared_ptr<target_adapter_if> t;
     encoder_decoder encdec;
     bool extended_protocol;
     bool can_restart;
-    std::function<void(unsigned)> &stop_callback;
+    std::function<void(unsigned)>& stop_callback;
     std::unordered_map<uint64_t, unsigned> bp_map;
     std::array<const my_custom_command, 3> rp_remote_commands = {{
         /* Table of commands */
@@ -163,6 +163,6 @@ public:
 };
 
 } // namespace debugger
-} // namspace iss
+} // namespace iss
 
 #endif /* _CMDHANDLER_H_ */
