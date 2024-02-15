@@ -1,6 +1,6 @@
 #define BOOST_SPIRIT_NO_PREDEFINED_TERMINALS
 // Define this to enable debugging
-//#define BOOST_SPIRIT_QI_DEBUG
+// #define BOOST_SPIRIT_QI_DEBUG
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4345)
