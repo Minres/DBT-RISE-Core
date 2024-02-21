@@ -118,7 +118,7 @@ public:
         if(this->debugging_enabled())
             sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
-        virt_addr_t pc(iss::access_type::FETCH, 0, get_reg<addr_t>(arch::traits<ARCH>::PC));
+        virt_addr_t pc(iss::access_type::FETCH, arch::traits<ARCH>::IMEM, get_reg<addr_t>(arch::traits<ARCH>::PC));
         LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             execute_inst(cond, pc, icount);
