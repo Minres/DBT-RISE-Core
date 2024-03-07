@@ -32,6 +32,7 @@
  ******************************************************************************/
 #ifndef ISS_ASMJIT_JIT_HELPER_H
 #define ISS_ASMJIT_JIT_HELPER_H
+#include <vector>
 #ifndef PAGESIZE
 #define PAGESIZE 4096
 #endif
@@ -88,6 +89,7 @@ struct jit_holder {
     ::asmjit::Label trap_entry;
     ::asmjit::x86::Gp pc;
     ::asmjit::x86::Gp next_pc;
+    std::vector<char*> disass_collection;
 };
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<void(jit_holder&)>& generator,
                                        bool dumpEnabled);

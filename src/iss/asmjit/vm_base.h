@@ -35,6 +35,7 @@
 #ifndef ASMJIT_VM_BASE_H_
 #define ASMJIT_VM_BASE_H_
 
+#include <cstdlib>
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
@@ -115,6 +116,10 @@ public:
                 gen_block_prologue(jh);
                 cont = translate(pc, jh);
                 gen_block_epilogue(jh);
+                // move local disass collection to global collection by appending
+                this->global_disass_collection.insert(this->global_disass_collection.end(), jh.disass_collection.begin(),
+                                                      jh.disass_collection.end());
+                jh.disass_collection.clear();
             }};
             // explicit std::function to allow use as reference in call below
             // std::function<Function*(Module*)> gen_ref(std::ref(generator));
@@ -234,7 +239,13 @@ protected:
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
     }
 
-    ~vm_base() override { delete tgt_adapter; }
+    ~vm_base() override {
+        delete tgt_adapter;
+        for(auto& each : global_disass_collection) {
+            free(each);
+        }
+        global_disass_collection.clear();
+    }
 
     void register_plugin(vm_plugin& plugin) {
         if(plugin.registration("1.0", *this)) {
@@ -264,6 +275,7 @@ protected:
     std::unordered_map<uint64_t, translation_block> func_map;
     iss::debugger::target_adapter_base* tgt_adapter;
     std::vector<plugin_entry> plugins;
+    std::vector<char*> global_disass_collection;
 };
 } // namespace asmjit
 } // namespace iss
