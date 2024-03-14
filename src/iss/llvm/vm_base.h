@@ -113,7 +113,7 @@ public:
             sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
-        LOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
+        CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             continuation_e cont = CONT;
             // struct to minimize the type size of the closure below to allow SSO
@@ -183,22 +183,22 @@ public:
                     pc.val = core.enter_trap(ta.id, ta.addr, 0);
                 }
 #ifndef NDEBUG
-                LOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
+                CPPLOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
 #endif
             }
         } catch(simulation_stopped& e) {
-            LOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
+            CPPLOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if(e.state != 1)
                 error = e.state;
         } catch(decoding_error& e) {
-            LOG(ERR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
+            CPPLOG(ERR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
             error = -1;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
         // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        LOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size() << " code blocks during " << millis
+        CPPLOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size() << " code blocks during " << millis
                   << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
         return error;
     }

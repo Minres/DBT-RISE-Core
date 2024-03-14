@@ -62,7 +62,7 @@ void server_base::step(unsigned coreId, unsigned steps) {
     syncronizer.enqueue_and_wait(&server_base::dummy_func, this);
     while(!syncronizer.is_ready())
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    LOG(TRACE) << "step finished";
+    CPPLOG(TRACE) << "step finished";
 }
 // called from debugger
 void server_base::run(unsigned coreId) {

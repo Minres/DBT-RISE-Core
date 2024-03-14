@@ -48,7 +48,7 @@ namespace tcc {
 
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func& generator, bool dumpEnabled) {
 #ifndef NDEBUG
-    LOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
+    CPPLOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
     auto res = generator();
