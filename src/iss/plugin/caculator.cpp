@@ -181,8 +181,8 @@ struct error_handler_ {
 
     template <typename Iterator> void operator()(qi::info const& what, Iterator err_pos, Iterator last) const {
         CPPLOG(ERR) << "Expecting " << what                      // what failed?
-                 << " here: \"" << std::string(err_pos, last) // iterators to error-pos, end
-                 << "\"" << std::endl;
+                    << " here: \"" << std::string(err_pos, last) // iterators to error-pos, end
+                    << "\"" << std::endl;
     }
 };
 

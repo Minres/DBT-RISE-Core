@@ -60,8 +60,8 @@ uint8_t read_mem(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64
 
 uint8_t write_mem(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
 #ifdef EXEC_LOGGING
-    CPPLOG(TRACE) << "EXEC: write mem " << (unsigned)type << " of core " << iface << " at addr 0x" << hex << addr << " with value 0x" << data
-               << dec << " of len " << length;
+    CPPLOG(TRACE) << "EXEC: write mem " << (unsigned)type << " of core " << iface << " at addr 0x" << hex << addr << " with value 0x"
+                  << data << dec << " of len " << length;
 #endif
     return iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, length, data);
 }

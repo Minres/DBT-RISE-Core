@@ -191,7 +191,7 @@ public:
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         CPPLOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size() << " code blocks during " << millis
-                  << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
+                     << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
         return error;
     }
 
