@@ -35,7 +35,11 @@
 #ifndef ASMJIT_VM_BASE_H_
 #define ASMJIT_VM_BASE_H_
 
+#include <asmjit/x86/x86operand.h>
+#include <cassert>
+#include <cstddef>
 #include <cstdlib>
+#include <fmt/format.h>
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
@@ -46,6 +50,7 @@
 #include <util/logging.h>
 
 #include "jit_helper.h"
+#include <asmjit/asmjit.h>
 extern "C" {
 #include <iss/vm_jit_funcs.h>
 }
@@ -65,6 +70,10 @@ namespace asmjit {
 using namespace ::asmjit;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum operation { add, sub, band, bor, bxor, shl, sar, shr };
+enum complex_operation { imul, mul, idiv, div, srem, urem };
+enum comparison_operation { land, lor, eq, ne, lt, ltu, gt, gtu, lte, lteu, gte, gteu };
+enum unary_operation { lnot, inc, dec, bnot, neg };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
     struct plugin_entry {
@@ -81,6 +90,7 @@ public:
     using addr_t = typename arch::traits<ARCH>::addr_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
     using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
+    using traits = typename arch::traits<ARCH>::traits;
 
     using dbg_if = iss::debugger_if;
     constexpr static unsigned blk_size = 128; // std::numeric_limits<unsigned>::max();
@@ -193,7 +203,7 @@ public:
 
     void reset() override { core.reset(); }
 
-    void reset(uint64_t address) { core.reset(address); }
+    void reset(uint64_t address) override { core.reset(address); }
 
     void pre_instr_sync() override {
         uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
@@ -247,25 +257,42 @@ protected:
         global_disass_collection.clear();
     }
 
-    void register_plugin(vm_plugin& plugin) {
+    void register_plugin(vm_plugin& plugin) override {
         if(plugin.registration("1.0", *this)) {
             plugins.push_back(plugin_entry{plugin.get_sync(), plugin, &plugin});
         }
     }
     void gen_sync(jit_holder& jh, sync_type s, unsigned inst_id) {
+        if(plugins.size() /*or debugger*/)
+            write_back(jh);
         for(plugin_entry e : plugins) {
             if(e.sync & s) {
                 iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
                 InvokeNode* call_plugin_node;
-                jh.cc.comment("\n//Plugin call:");
-                jh.cc.invoke(&call_plugin_node, &call_plugin, FuncSignatureT<uint64_t, void*, uint64_t>());
+                jh.cc.comment("//Plugin call:");
+                jh.cc.invoke(&call_plugin_node, &call_plugin, FuncSignatureT<void, void*, uint64_t>());
                 call_plugin_node->setArg(0, e.plugin_ptr);
                 call_plugin_node->setArg(1, iinfo.backing.val);
             }
         }
+        // TODO: handle Debugger
     }
 
-    inline void* get_reg_ptr(unsigned i) { return regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[i]; }
+    inline void gen_wait(jit_holder& jh, unsigned type) {
+        InvokeNode* call_wait;
+        jh.cc.comment("//gen_wait");
+        jh.cc.invoke(&call_wait, &wait, FuncSignatureT<void, void*, uint64_t>());
+        call_wait->setArg(0, this->get_arch());
+        call_wait->setArg(1, type);
+    }
+    inline void gen_leave(jit_holder& jh, unsigned lvl) {
+        InvokeNode* call_leave;
+        jh.cc.comment("//gen_leave");
+        jh.cc.invoke(&call_leave, &leave_trap, FuncSignatureT<void, void*, uint64_t>());
+        call_leave->setArg(0, this->get_arch());
+        call_leave->setArg(1, lvl);
+        jh.next_pc = load_reg_from_mem(jh, traits::NEXT_PC);
+    }
 
     ARCH& core;
     unsigned core_id = 0;
@@ -276,6 +303,420 @@ protected:
     iss::debugger::target_adapter_base* tgt_adapter;
     std::vector<plugin_entry> plugins;
     std::vector<char*> global_disass_collection;
+
+    // Asmjit generator functions for commonly used expressions
+    void write_back(jit_holder& jh) {
+        write_reg_to_mem(jh, jh.pc, traits::PC);
+        write_reg_to_mem(jh, jh.next_pc, traits::NEXT_PC);
+    }
+    x86::Mem get_ptr_for(jit_holder& jh, unsigned idx) {
+        x86::Gp tmp_ptr = jh.cc.newUIntPtr("tmp_ptr");
+        jh.cc.mov(tmp_ptr, jh.regs_base_ptr);
+        jh.cc.add(tmp_ptr, traits::reg_byte_offsets[idx]);
+        switch(traits::reg_bit_widths[idx]) {
+        case 8:
+            return x86::ptr_8(tmp_ptr);
+        case 16:
+            return x86::ptr_16(tmp_ptr);
+        case 32:
+            return x86::ptr_32(tmp_ptr);
+        case 64:
+            return x86::ptr_64(tmp_ptr);
+        default:
+            throw std::runtime_error("Invalid reg size in get_ptr_for");
+        }
+    }
+    x86::Gp get_reg(jit_holder& jh, unsigned size, bool is_signed = true) {
+        if(is_signed)
+            switch(size) {
+            case 8:
+                return jh.cc.newInt8();
+            case 16:
+                return jh.cc.newInt16();
+            case 32:
+                return jh.cc.newInt32();
+            case 64:
+                return jh.cc.newInt64();
+            default:
+                throw std::runtime_error("Invalid reg size in get_ptr_for");
+            }
+        else
+            switch(size) {
+            case 8:
+                return jh.cc.newUInt8();
+            case 16:
+                return jh.cc.newUInt16();
+            case 32:
+                return jh.cc.newUInt32();
+            case 64:
+                return jh.cc.newUInt64();
+            default:
+                throw std::runtime_error("Invalid reg size in get_ptr_for");
+            }
+    }
+    x86::Gp get_reg_for(jit_holder& jh, unsigned idx) {
+        // TODO can check for regs in jh and return them instead of creating new ones
+        return get_reg(jh, traits::reg_bit_widths[idx]);
+    }
+    inline x86::Gp load_reg_from_mem(jit_holder& jh, unsigned idx) {
+        auto ptr = get_ptr_for(jh, idx);
+        auto reg = get_reg_for(jh, idx);
+        jh.cc.mov(reg, ptr);
+        return reg;
+    }
+    inline void write_reg_to_mem(jit_holder& jh, x86::Gp reg, unsigned idx) {
+        auto ptr = get_ptr_for(jh, idx);
+        jh.cc.mov(ptr, reg);
+    }
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
+    inline x86::Gp gen_ext(jit_holder& jh, T val, unsigned size, bool is_signed) {
+        auto val_reg = get_reg(jh, sizeof(val) * 8, is_signed);
+        jh.cc.mov(val_reg, val);
+        return gen_ext(jh, val_reg, size, is_signed);
+    }
+    inline x86::Gp gen_ext(jit_holder& jh, x86::Gp val, unsigned size, bool is_signed) {
+        auto& cc = jh.cc;
+        if(is_signed) {
+            switch(val.size()) {
+            case 1:
+                cc.cbw(val);
+                break;
+            case 2:
+                cc.cwde(val);
+                break;
+            case 4:
+                cc.cdqe(val);
+                break;
+            case 8:
+                break;
+            default:
+                throw std::runtime_error("Invalid register size in gen_ext");
+            }
+        }
+        switch(size) {
+        case 8:
+            cc.and_(val, std::numeric_limits<uint8_t>::max());
+            return val.r8();
+        case 16:
+            cc.and_(val, std::numeric_limits<uint16_t>::max());
+            return val.r16();
+        case 32:
+            cc.and_(val, std::numeric_limits<uint32_t>::max());
+            return val.r32();
+        case 64:
+            cc.and_(val, std::numeric_limits<uint64_t>::max());
+            return val.r64();
+        case 128:
+            return val.r64();
+        default:
+            throw std::runtime_error("Invalid size in gen_ext");
+        }
+    }
+
+    inline x86::Gp gen_read_mem(jit_holder& jh, mem_type_e type, x86::Gp addr, uint32_t length) {
+        x86::Compiler& cc = jh.cc;
+        auto ret_reg = cc.newInt32();
+
+        auto mem_type_reg = cc.newInt32();
+        cc.mov(mem_type_reg, type);
+
+        auto space_reg = cc.newInt32();
+        cc.mov(space_reg, static_cast<uint16_t>(iss::address_type::VIRTUAL));
+
+        auto val_ptr = cc.newUIntPtr();
+        cc.mov(val_ptr, read_mem_buf);
+        x86::Mem read_res;
+        InvokeNode* invokeNode;
+        x86::Gp val_reg = get_reg(jh, length * 8, true);
+
+        switch(length) {
+        case 1: {
+            cc.invoke(&invokeNode, &read_mem1, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            read_res = x86::ptr_8(val_ptr);
+            break;
+        }
+        case 2: {
+            cc.invoke(&invokeNode, &read_mem2, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            read_res = x86::ptr_16(val_ptr);
+            break;
+        }
+        case 4: {
+            cc.invoke(&invokeNode, &read_mem4, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            read_res = x86::ptr_32(val_ptr);
+            break;
+        }
+        case 8: {
+            cc.invoke(&invokeNode, &read_mem8, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            read_res = x86::ptr_64(val_ptr);
+            break;
+        }
+        default:
+            throw std::runtime_error(fmt::format("Invalid length ({}) in gen_read_mem", length));
+        }
+
+        invokeNode->setRet(0, ret_reg);
+        invokeNode->setArg(0, jh.arch_if_ptr);
+        invokeNode->setArg(1, space_reg);
+        invokeNode->setArg(2, mem_type_reg);
+        invokeNode->setArg(3, addr);
+        invokeNode->setArg(4, val_ptr);
+        cc.cmp(ret_reg, 0);
+        cc.jne(jh.trap_entry);
+
+        cc.mov(val_reg, read_res);
+        return val_reg;
+    }
+    inline x86::Gp gen_read_mem(jit_holder& jh, mem_type_e type, uint64_t addr, uint32_t length) {
+        auto addr_reg = get_reg(jh, length * 8, true);
+        jh.cc.mov(addr_reg, addr);
+
+        return gen_read_mem(jh, type, addr_reg, length);
+    }
+
+    inline void gen_write_mem(jit_holder& jh, mem_type_e type, x86::Gp addr, x86::Gp val, uint32_t length) {
+        x86::Compiler& cc = jh.cc;
+        assert(val.size() == length);
+        auto mem_type_reg = cc.newInt32();
+        jh.cc.mov(mem_type_reg, type);
+        auto space_reg = cc.newInt32();
+        jh.cc.mov(space_reg, static_cast<uint16_t>(iss::address_type::VIRTUAL));
+        auto ret_reg = cc.newInt32();
+        InvokeNode* invokeNode;
+        switch(length) {
+        case 1:
+            cc.invoke(&invokeNode, &write_mem1, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint8_t>());
+            break;
+        case 2:
+            cc.invoke(&invokeNode, &write_mem2, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint16_t>());
+            break;
+        case 4:
+            cc.invoke(&invokeNode, &write_mem4, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint32_t>());
+            break;
+        case 8:
+            cc.invoke(&invokeNode, &write_mem8, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint64_t>());
+
+            break;
+        default:
+            throw std::runtime_error("Invalid register size in gen_write_mem");
+        }
+        invokeNode->setRet(0, ret_reg);
+        invokeNode->setArg(0, jh.arch_if_ptr);
+        invokeNode->setArg(1, space_reg);
+        invokeNode->setArg(2, mem_type_reg);
+        invokeNode->setArg(3, addr);
+        invokeNode->setArg(4, val);
+
+        cc.cmp(ret_reg, 0);
+        cc.jne(jh.trap_entry);
+    }
+    inline void gen_write_mem(jit_holder& jh, mem_type_e type, uint64_t addr, x86::Gp val, uint32_t length) {
+        auto addr_reg = jh.cc.newUInt64();
+        jh.cc.mov(addr_reg, addr);
+        gen_write_mem(jh, type, addr_reg, val, length);
+    }
+    inline void gen_write_mem(jit_holder& jh, mem_type_e type, uint64_t addr, int64_t val, uint32_t length) {
+        auto val_reg = get_reg(jh, length * 8, true);
+        jh.cc.mov(val_reg, val);
+
+        auto addr_reg = jh.cc.newUInt64();
+        jh.cc.mov(addr_reg, addr);
+        gen_write_mem(jh, type, addr_reg, val_reg, length);
+    }
+    inline void gen_write_mem(jit_holder& jh, mem_type_e type, x86::Gp addr, int64_t val, uint32_t length) {
+        auto val_reg = get_reg(jh, length * 8, true);
+        jh.cc.mov(val_reg, val);
+        gen_write_mem(jh, type, addr, val_reg, length);
+    }
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
+    x86::Gp gen_operation(jit_holder& jh, operation op, x86::Gp a, T b) {
+        x86::Compiler& cc = jh.cc;
+        switch(op) {
+        case add: {
+            cc.add(a, b);
+            break;
+        }
+        case sub: {
+            cc.sub(a, b);
+            break;
+        }
+        case band: {
+            cc.and_(a, b);
+            break;
+        }
+        case bor: {
+            cc.or_(a, b);
+            break;
+        }
+        case bxor: {
+            cc.xor_(a, b);
+            break;
+        }
+        case shl: {
+            cc.shl(a, b);
+            break;
+        }
+        case sar: {
+            cc.sar(a, b);
+            break;
+        }
+        case shr: {
+            cc.shr(a, b);
+            break;
+        }
+        default:
+            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (operation)", op));
+        }
+        return a;
+    }
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
+    x86::Gp gen_operation(jit_holder& jh, complex_operation op, x86::Gp a, T b) {
+        x86::Gp b_reg = get_reg(jh, sizeof(b) * 8);
+        jh.cc.mov(b_reg, b);
+        return gen_operation(jh, op, a, b_reg);
+    }
+    x86::Gp gen_operation(jit_holder& jh, complex_operation op, x86::Gp a, x86::Gp b) {
+        // why is this written in the three operand form?
+        assert(a.size() == b.size());
+        x86::Compiler& cc = jh.cc;
+        switch(op) {
+        case imul: {
+            x86::Gp dummy = cc.newInt64();
+            cc.imul(dummy, a.r64(), b.r64());
+            return a;
+        }
+        case mul: {
+            x86::Gp dummy = cc.newInt64();
+            cc.mul(dummy, a.r64(), b.r64());
+            return a;
+        }
+        case idiv: {
+            x86::Gp dummy = cc.newInt64();
+            cc.mov(dummy, 0);
+            cc.idiv(dummy, a.r64(), b.r64());
+            return a;
+        }
+        case div: {
+            x86::Gp dummy = cc.newInt64();
+            cc.mov(dummy, 0);
+            cc.div(dummy, a.r64(), b.r64());
+            return a;
+        }
+        case srem: {
+            x86::Gp rem = cc.newInt32();
+            cc.mov(rem, 0);
+            auto a_reg = cc.newInt32();
+            cc.mov(a_reg, a.r32());
+            cc.idiv(rem, a_reg, b.r32());
+            return rem;
+        }
+        case urem: {
+            x86::Gp rem = cc.newInt32();
+            cc.mov(rem, 0);
+            auto a_reg = cc.newInt32();
+            cc.mov(a_reg, a.r32());
+            cc.div(rem, a_reg, b.r32());
+            return rem;
+        }
+
+        default:
+            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (three_operand)", op));
+        }
+        return a;
+    }
+
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
+    x86::Gp gen_operation(jit_holder& jh, comparison_operation op, x86::Gp a, T b) {
+        x86::Compiler& cc = jh.cc;
+        x86::Gp tmp = cc.newInt8();
+        cc.mov(tmp, 1);
+        Label label_then = cc.newLabel();
+        cc.cmp(a, b);
+        switch(op) {
+        case eq:
+            cc.je(label_then);
+            break;
+        case ne:
+            cc.jne(label_then);
+            break;
+        case lt:
+            cc.jl(label_then);
+            break;
+        case ltu:
+            cc.jb(label_then);
+            break;
+        case gt:
+            cc.jg(label_then);
+            break;
+        case gtu:
+            cc.ja(label_then);
+            break;
+        case lte:
+            cc.jle(label_then);
+            break;
+        case lteu:
+            cc.jbe(label_then);
+            break;
+        case gte:
+            cc.jge(label_then);
+            break;
+        case gteu:
+            cc.jae(label_then);
+            break;
+        case land: {
+            Label label_false = cc.newLabel();
+            cc.cmp(a, 0);
+            cc.je(label_false);
+            auto b_reg = cc.newInt8();
+            cc.mov(b_reg, b);
+            cc.cmp(b_reg, 0);
+            cc.je(label_false);
+            cc.jmp(label_then);
+            cc.bind(label_false);
+            break;
+        }
+        case lor: {
+            cc.cmp(a, 0);
+            cc.jne(label_then);
+            auto b_reg = cc.newInt8();
+            cc.mov(b_reg, b);
+            cc.cmp(b_reg, 0);
+            cc.jne(label_then);
+            break;
+        }
+        default:
+            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (comparison)", op));
+        }
+        cc.mov(tmp, 0);
+        cc.bind(label_then);
+        return tmp;
+    }
+
+    x86::Gp gen_operation(jit_holder& jh, unary_operation op, x86::Gp a) {
+        x86::Compiler& cc = jh.cc;
+        switch(op) {
+        case lnot:
+            throw std::runtime_error("Current operation not supported in gen_operation(lnot)");
+        case inc: {
+            cc.inc(a);
+            break;
+        }
+        case dec: {
+            cc.dec(a);
+            break;
+        }
+        case bnot: {
+            cc.not_(a);
+            break;
+        }
+        case neg: {
+            cc.neg(a);
+            break;
+        }
+        default:
+            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (unary)", op));
+        }
+        return a;
+    }
 };
 } // namespace asmjit
 } // namespace iss
