@@ -46,6 +46,7 @@
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
+#include <stdexcept>
 #include <util/ities.h>
 #include <util/logging.h>
 
@@ -338,7 +339,7 @@ protected:
             case 64:
                 return jh.cc.newInt64();
             default:
-                throw std::runtime_error("Invalid reg size in get_ptr_for");
+                throw std::runtime_error("Invalid reg size in get_reg");
             }
         else
             switch(size) {
@@ -351,13 +352,11 @@ protected:
             case 64:
                 return jh.cc.newUInt64();
             default:
-                throw std::runtime_error("Invalid reg size in get_ptr_for");
+                throw std::runtime_error("Invalid reg size in get_reg");
             }
     }
-    x86::Gp get_reg_for(jit_holder& jh, unsigned idx) {
-        // TODO can check for regs in jh and return them instead of creating new ones
-        return get_reg(jh, traits::reg_bit_widths[idx]);
-    }
+    x86::Gp get_reg_for(jit_holder& jh, unsigned idx) { return get_reg(jh, traits::reg_bit_widths[idx]); }
+
     inline x86::Gp load_reg_from_mem(jit_holder& jh, unsigned idx) {
         auto ptr = get_ptr_for(jh, idx);
         auto reg = get_reg_for(jh, idx);
@@ -375,42 +374,45 @@ protected:
         return gen_ext(jh, val_reg, size, is_signed);
     }
     inline x86::Gp gen_ext(jit_holder& jh, x86::Gp val, unsigned size, bool is_signed) {
-        auto& cc = jh.cc;
-        if(is_signed) {
-            switch(val.size()) {
-            case 1:
-                cc.cbw(val);
-                break;
-            case 2:
-                cc.cwde(val);
-                break;
-            case 4:
-                cc.cdqe(val);
-                break;
+        if(val.size() * 8 == size) // identity cast
+            return val;
+        else if(val.size() * 8 > size) // truncation
+            switch(size) {
             case 8:
-                break;
+                return val.r8();
+            case 16:
+                return val.r16();
+            case 32:
+                return val.r32();
             default:
-                throw std::runtime_error("Invalid register size in gen_ext");
+                throw std::runtime_error("Invalid truncation size in gen_ext");
+            }
+        x86::Gp ret_val = get_reg(jh, size);
+        if(is_signed) {
+            if(val.size() == 4 && size == 64)
+                jh.cc.movsxd(ret_val, val);
+            else
+                jh.cc.movsx(ret_val, val);
+        } else if(val.size() == 1 || val.size() == 2)
+            // movzx can extend 8 and 16 bit values
+            jh.cc.movzx(ret_val, val);
+        else {
+            assert(val.size() == 4);
+            // from: http://x86asm.net/articles/x86-64-tour-of-intel-manuals/
+            // Perhaps the most surprising fact is that an instruction such as MOV EAX, EBX automatically zeroes
+            // upper 32 bits of RAX register
+            ret_val = get_reg(jh, val.size() * 8);
+            jh.cc.mov(ret_val, val);
+            switch(size) {
+            case 32:
+                return ret_val.r32();
+            case 64:
+                return ret_val.r64();
+            default:
+                throw std::runtime_error("Invalid size in gen_ext");
             }
         }
-        switch(size) {
-        case 8:
-            cc.and_(val, std::numeric_limits<uint8_t>::max());
-            return val.r8();
-        case 16:
-            cc.and_(val, std::numeric_limits<uint16_t>::max());
-            return val.r16();
-        case 32:
-            cc.and_(val, std::numeric_limits<uint32_t>::max());
-            return val.r32();
-        case 64:
-            cc.and_(val, std::numeric_limits<uint64_t>::max());
-            return val.r64();
-        case 128:
-            return val.r64();
-        default:
-            throw std::runtime_error("Invalid size in gen_ext");
-        }
+        return ret_val;
     }
 
     inline x86::Gp gen_read_mem(jit_holder& jh, mem_type_e type, x86::Gp addr, uint32_t length) {
@@ -575,18 +577,16 @@ protected:
         return gen_operation(jh, op, a, b_reg);
     }
     x86::Gp gen_operation(jit_holder& jh, complex_operation op, x86::Gp a, x86::Gp b) {
-        // why is this written in the three operand form?
         assert(a.size() == b.size());
         x86::Compiler& cc = jh.cc;
+        x86::Gp overflow = get_reg(jh, a.size() * 8);
         switch(op) {
         case imul: {
-            x86::Gp dummy = cc.newInt64();
-            cc.imul(dummy, a.r64(), b.r64());
+            cc.imul(overflow, a, b);
             return a;
         }
         case mul: {
-            x86::Gp dummy = cc.newInt64();
-            cc.mul(dummy, a.r64(), b.r64());
+            cc.mul(overflow, a, b);
             return a;
         }
         case idiv: {
@@ -619,9 +619,8 @@ protected:
         }
 
         default:
-            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (three_operand)", op));
+            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (complex_operation)", op));
         }
-        return a;
     }
 
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
