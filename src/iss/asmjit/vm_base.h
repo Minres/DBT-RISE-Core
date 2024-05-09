@@ -311,18 +311,15 @@ protected:
         write_reg_to_mem(jh, jh.next_pc, traits::NEXT_PC);
     }
     x86::Mem get_ptr_for(jit_holder& jh, unsigned idx) {
-        x86::Gp tmp_ptr = jh.cc.newUIntPtr("tmp_ptr");
-        jh.cc.mov(tmp_ptr, jh.regs_base_ptr);
-        jh.cc.add(tmp_ptr, traits::reg_byte_offsets[idx]);
         switch(traits::reg_bit_widths[idx]) {
         case 8:
-            return x86::ptr_8(tmp_ptr);
+            return x86::ptr_8(jh.regs_base_ptr, traits::reg_byte_offsets[idx]);
         case 16:
-            return x86::ptr_16(tmp_ptr);
+            return x86::ptr_16(jh.regs_base_ptr, traits::reg_byte_offsets[idx]);
         case 32:
-            return x86::ptr_32(tmp_ptr);
+            return x86::ptr_32(jh.regs_base_ptr, traits::reg_byte_offsets[idx]);
         case 64:
-            return x86::ptr_64(tmp_ptr);
+            return x86::ptr_64(jh.regs_base_ptr, traits::reg_byte_offsets[idx]);
         default:
             throw std::runtime_error("Invalid reg size in get_ptr_for");
         }
