@@ -570,6 +570,22 @@ protected:
         }
         return a;
     }
+    inline void prepare_division(jit_holder& jh, x86::Gp upper_half, x86::Gp dividend) {
+        x86::Compiler& cc = jh.cc;
+        switch(dividend.size()) {
+        case 2:
+            cc.cwd(upper_half, dividend);
+            return;
+        case 4:
+            cc.cdq(upper_half, dividend);
+            return;
+        case 8:
+            cc.cqo(upper_half, dividend);
+            return;
+        default:
+            throw std::runtime_error(fmt::format("Cannot prepare division for operand of size {}", dividend.size()));
+        }
+    }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
     x86::Gp gen_operation(jit_holder& jh, complex_operation op, x86::Gp a, T b) {
         x86::Gp b_reg = get_reg(jh, sizeof(b) * 8);
@@ -590,32 +606,24 @@ protected:
             return a;
         }
         case idiv: {
-            x86::Gp dummy = cc.newInt64();
-            cc.mov(dummy, 0);
-            cc.idiv(dummy, a.r64(), b.r64());
+            prepare_division(jh, overflow, a);
+            cc.idiv(overflow, a, b);
             return a;
         }
         case div: {
-            x86::Gp dummy = cc.newInt64();
-            cc.mov(dummy, 0);
-            cc.div(dummy, a.r64(), b.r64());
+            prepare_division(jh, overflow, a);
+            cc.div(overflow, a, b);
             return a;
         }
         case srem: {
-            x86::Gp rem = cc.newInt32();
-            cc.mov(rem, 0);
-            auto a_reg = cc.newInt32();
-            cc.mov(a_reg, a.r32());
-            cc.idiv(rem, a_reg, b.r32());
-            return rem;
+            prepare_division(jh, overflow, a);
+            cc.idiv(overflow, a, b);
+            return overflow;
         }
         case urem: {
-            x86::Gp rem = cc.newInt32();
-            cc.mov(rem, 0);
-            auto a_reg = cc.newInt32();
-            cc.mov(a_reg, a.r32());
-            cc.div(rem, a_reg, b.r32());
-            return rem;
+            prepare_division(jh, overflow, a);
+            cc.div(overflow, a, b);
+            return overflow;
         }
 
         default:
