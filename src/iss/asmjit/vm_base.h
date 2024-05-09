@@ -570,7 +570,7 @@ protected:
         }
         return a;
     }
-    inline void prepare_division(jit_holder& jh, x86::Gp upper_half, x86::Gp dividend) {
+    inline void expand_division_operand(jit_holder& jh, x86::Gp upper_half, x86::Gp dividend) {
         x86::Compiler& cc = jh.cc;
         switch(dividend.size()) {
         case 2:
@@ -606,23 +606,29 @@ protected:
             return a;
         }
         case idiv: {
-            prepare_division(jh, overflow, a);
+            expand_division_operand(jh, overflow, a);
             cc.idiv(overflow, a, b);
             return a;
         }
         case div: {
-            prepare_division(jh, overflow, a);
+            cc.mov(overflow, 0);
             cc.div(overflow, a, b);
             return a;
         }
         case srem: {
-            prepare_division(jh, overflow, a);
-            cc.idiv(overflow, a, b);
+            // division changes the contents of the a register, in this case as a side effect
+            x86::Gp a_clone = get_reg(jh, a.size() * 8);
+            cc.mov(a_clone, a);
+            expand_division_operand(jh, overflow, a_clone);
+            cc.idiv(overflow, a_clone, b);
             return overflow;
         }
         case urem: {
-            prepare_division(jh, overflow, a);
-            cc.div(overflow, a, b);
+            // division changes the contents of the a register, in this case as a side effect
+            x86::Gp a_clone = get_reg(jh, a.size() * 8);
+            cc.mov(a_clone, a);
+            cc.mov(overflow, 0);
+            cc.div(overflow, a_clone, b);
             return overflow;
         }
 
