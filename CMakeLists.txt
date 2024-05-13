@@ -14,14 +14,42 @@ include(add_whole_library)
 
 find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(fmt)
-if(WITH_TCC)
-	find_package(tcc)
-endif()
+
 if(WITH_ASMJIT)
 	find_package(asmjit)
 endif()
 if(WITH_LLVM)
 	find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
+endif()
+
+#if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
+if(WITH_TCC)
+message("Adding TCC")
+	include(FetchContent)
+	FetchContent_Declare(
+	  	tcc_git
+	  	GIT_REPOSITORY git://repo.or.cz/tinycc.git
+	  	GIT_TAG        16456168430c9e185dd94b8215aa77d02bbb8a2c
+	  	UPDATE_DISCONNECTED ON
+		CONFIGURE_COMMAND ${tcc_git_SOURCE_DIR}/configure --prefix=${tcc_git_BINARY_DIR}/install
+		BUILD_COMMAND make
+		BUILD_BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/lib/libtcc.a
+	)
+	FetchContent_MakeAvailable(tcc_git)
+	FetchContent_GetProperties(tcc_git)
+	add_library(tcc::tcc STATIC IMPORTED GLOBAL)
+	set_property(TARGET tcc::tcc PROPERTY IMPORTED_LOCATION ${tcc_git_BINARY_DIR}/lib/libtcc.a)
+	add_dependencies(tcc::tcc tcc_git)	#	add_custom_target(myExternalTarget COMMAND <invoke the repo's build system>)
+#	FetchContent_GetProperties(tcc_git)
+#	if (NOT tcc_git)
+#	    FetchContent_Populate(tcc_git)
+#	
+#	    # here I would like to declare imported libraries:
+#	    add_library(tcc::tcc STATIC IMPORTED GLOBAL)
+#	    target_include_directories(tcc::tcc INTERFACE ${tcc_git_SOURCE_DIR})
+#	    set_property(TARGET tcc::tcc   PROPERTY IMPORTED_LOCATION ${tcc_git_SOURCE_DIR})
+#	
+#	endif()
 endif()
 
 set(LIB_NAME ${PROJECT_NAME})
@@ -62,7 +90,7 @@ endif()
 
 if(WITH_TCC)
     target_compile_definitions(${LIB_NAME} PUBLIC WITH_TCC)
-    target_link_libraries(${LIB_NAME} PUBLIC tcc::tcc)
+    target_link_libraries(${LIB_NAME} PUBLIC tcc)
 endif()
 if(WITH_ASMJIT)
     target_compile_definitions(${LIB_NAME} PUBLIC WITH_ASMJIT)
