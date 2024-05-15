@@ -22,34 +22,34 @@ if(WITH_LLVM)
 	find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
 endif()
 
-#if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
-if(WITH_TCC)
-message("Adding TCC")
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
 	include(FetchContent)
 	FetchContent_Declare(
-	  	tcc_git
-	  	GIT_REPOSITORY git://repo.or.cz/tinycc.git
+	    tcc_git
+	  	GIT_REPOSITORY https://github.com/mirror/tinycc.git
 	  	GIT_TAG        16456168430c9e185dd94b8215aa77d02bbb8a2c
-	  	UPDATE_DISCONNECTED ON
-		CONFIGURE_COMMAND ${tcc_git_SOURCE_DIR}/configure --prefix=${tcc_git_BINARY_DIR}/install
-		BUILD_COMMAND make
-		BUILD_BYPRODUCTS ${CMAKE_CURRENT_SOURCE_DIR}/lib/libtcc.a
 	)
-	FetchContent_MakeAvailable(tcc_git)
 	FetchContent_GetProperties(tcc_git)
+	
+	if(NOT tcc_git_POPULATED)
+	    FetchContent_Populate(tcc_git)
+		execute_process(
+		  	WORKING_DIRECTORY ${tcc_git_SOURCE_DIR}
+		  	COMMAND bash -c "./configure --prefix=${tcc_git_BINARY_DIR} --extra-cflags='-Wall -g -O2 -fPIC' && make -C ${tcc_git_SOURCE_DIR} -j && make -C ${tcc_git_SOURCE_DIR} install"
+		  	RESULT_VARIABLE TCC_RESULT
+		  	ECHO_OUTPUT_VARIABLE
+		  	ECHO_ERROR_VARIABLE
+		)
+		
+		if(NOT TCC_RESULT EQUAL 0)
+		  	message(FATAL_ERROR "Failed to build TCC: ${TCC_OUTPUT}")
+		endif()
+	endif()
+
+	
 	add_library(tcc::tcc STATIC IMPORTED GLOBAL)
+	target_include_directories(tcc::tcc INTERFACE ${tcc_git_BINARY_DIR}/include)
 	set_property(TARGET tcc::tcc PROPERTY IMPORTED_LOCATION ${tcc_git_BINARY_DIR}/lib/libtcc.a)
-	add_dependencies(tcc::tcc tcc_git)	#	add_custom_target(myExternalTarget COMMAND <invoke the repo's build system>)
-#	FetchContent_GetProperties(tcc_git)
-#	if (NOT tcc_git)
-#	    FetchContent_Populate(tcc_git)
-#	
-#	    # here I would like to declare imported libraries:
-#	    add_library(tcc::tcc STATIC IMPORTED GLOBAL)
-#	    target_include_directories(tcc::tcc INTERFACE ${tcc_git_SOURCE_DIR})
-#	    set_property(TARGET tcc::tcc   PROPERTY IMPORTED_LOCATION ${tcc_git_SOURCE_DIR})
-#	
-#	endif()
 endif()
 
 set(LIB_NAME ${PROJECT_NAME})
@@ -90,7 +90,7 @@ endif()
 
 if(WITH_TCC)
     target_compile_definitions(${LIB_NAME} PUBLIC WITH_TCC)
-    target_link_libraries(${LIB_NAME} PUBLIC tcc)
+    target_link_libraries(${LIB_NAME} PUBLIC tcc::tcc)
 endif()
 if(WITH_ASMJIT)
     target_compile_definitions(${LIB_NAME} PUBLIC WITH_ASMJIT)
