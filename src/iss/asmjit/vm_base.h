@@ -158,6 +158,8 @@ public:
                     do {
                         // execute the compiled function
                         pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
+                        if(core.should_stop())
+                            break;
                         // update last state
                         last_tb = cur_tb;
                         last_branch = core.get_last_branch();

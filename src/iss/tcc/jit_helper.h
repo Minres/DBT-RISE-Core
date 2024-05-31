@@ -90,7 +90,10 @@ struct alignas(4 * sizeof(void*)) translation_block {
         return *this;
     }
 
-    ~translation_block() { free(f_mem); }
+    ~translation_block() {
+        // FIXME: uncommenting the following line causes errors when continuing jitting
+        // free(f_mem);
+    }
 };
 
 using gen_func = std::function<std::tuple<std::string, std::string>(void)>;
