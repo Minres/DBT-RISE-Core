@@ -43,6 +43,7 @@
 #include <iss/tcc/code_builder.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
+#include <stdexcept>
 #include <util/ities.h>
 #include <util/logging.h>
 #include <util/range_lut.h>
@@ -252,6 +253,9 @@ protected:
     , func(nullptr)
     , tgt_adapter(nullptr) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+        if(arch::traits<ARCH>::XLEN > 32) {
+            throw std::runtime_error("No XLEN > 32 supported with tcc backend");
+        }
     }
 
     ~vm_base() override { delete tgt_adapter; }
