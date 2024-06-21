@@ -1,6 +1,6 @@
 #define BOOST_SPIRIT_NO_PREDEFINED_TERMINALS
 // Define this to enable debugging
-//#define BOOST_SPIRIT_QI_DEBUG
+// #define BOOST_SPIRIT_QI_DEBUG
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4345)
@@ -180,9 +180,9 @@ struct error_handler_ {
     template <typename, typename, typename> struct result { typedef void type; };
 
     template <typename Iterator> void operator()(qi::info const& what, Iterator err_pos, Iterator last) const {
-        LOG(ERR) << "Expecting " << what                      // what failed?
-                 << " here: \"" << std::string(err_pos, last) // iterators to error-pos, end
-                 << "\"" << std::endl;
+        CPPLOG(ERR) << "Expecting " << what                      // what failed?
+                    << " here: \"" << std::string(err_pos, last) // iterators to error-pos, end
+                    << "\"" << std::endl;
     }
 };
 

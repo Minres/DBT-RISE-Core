@@ -151,7 +151,7 @@ void gdb_session::send_completed(const boost::system::error_code& e) {
     if(!e) {
         conn_shptr->async_read();
     } else {
-        LOG(ERR) << e.message() << "(" << e << ")";
+        CPPLOG(ERR) << e.message() << "(" << e << ")";
     }
 }
 

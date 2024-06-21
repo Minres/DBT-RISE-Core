@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.18)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 cmake_policy(SET CMP0077 NEW)
 
@@ -14,25 +14,42 @@ include(add_whole_library)
 
 find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(fmt)
-if(WITH_TCC)
-	find_package(tcc)
-endif()
 
 if(WITH_ASMJIT)
 	find_package(asmjit)
 endif()
 if(WITH_LLVM)
-	if(DEFINED ENV{LLVM_HOME})
-		find_path (LLVM_DIR LLVM-Config.cmake $ENV{LLVM_HOME}/lib/cmake/llvm)
+	find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
+endif()
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
+	include(FetchContent)
+	FetchContent_Declare(
+	    tcc_git
+	  	GIT_REPOSITORY https://github.com/mirror/tinycc.git
+	  	GIT_TAG        16456168430c9e185dd94b8215aa77d02bbb8a2c
+	)
+	FetchContent_GetProperties(tcc_git)
+	
+	if(NOT tcc_git_POPULATED)
+	    FetchContent_Populate(tcc_git)
+		execute_process(
+		  	WORKING_DIRECTORY ${tcc_git_SOURCE_DIR}
+		  	COMMAND bash -c "./configure --prefix=${tcc_git_BINARY_DIR} --extra-cflags='-Wall -g -O2 -fPIC' && make -C ${tcc_git_SOURCE_DIR} -j && make -C ${tcc_git_SOURCE_DIR} install"
+		  	RESULT_VARIABLE TCC_RESULT
+		  	ECHO_OUTPUT_VARIABLE
+		  	ECHO_ERROR_VARIABLE
+		)
+		
+		if(NOT TCC_RESULT EQUAL 0)
+		  	message(FATAL_ERROR "Failed to build TCC: ${TCC_OUTPUT}")
+		endif()
 	endif()
-	find_package(LLVM QUIET CONFIG)
-	if(LLVM_FOUND)
-		message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-		message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-		llvm_map_components_to_libnames(llvm_libs support core mcjit x86codegen x86asmparser)
-	else()
-		find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
-	endif()
+
+	
+	add_library(tcc::tcc STATIC IMPORTED GLOBAL)
+	target_include_directories(tcc::tcc INTERFACE ${tcc_git_BINARY_DIR}/include)
+	set_property(TARGET tcc::tcc PROPERTY IMPORTED_LOCATION ${tcc_git_BINARY_DIR}/lib/libtcc.a)
 endif()
 
 set(LIB_NAME ${PROJECT_NAME})

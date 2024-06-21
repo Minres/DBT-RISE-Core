@@ -62,7 +62,7 @@ std::vector<uint8_t> encoder_decoder::dec_data(const char* in) {
     for(count = 0; *in; count++, in += 2) {
         if(*(in + 1) == '\0') {
             /* Odd number of nibbles. Discard the last one */
-            LOG(WARN) << __FUNCTION__ << ": odd number of nibbles";
+            CPPLOG(WARN) << __FUNCTION__ << ": odd number of nibbles";
             if(count == 0)
                 out.clear();
             return out;

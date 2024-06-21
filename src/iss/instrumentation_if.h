@@ -37,6 +37,7 @@
 
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 
 namespace iss {
 
@@ -167,7 +168,15 @@ struct instrumentation_if {
      *
      * @return size of register in bits
      */
-    virtual unsigned get_reg_size(unsigned) = 0;
+    virtual unsigned get_reg_size(unsigned num) = 0;
+    /**
+     * return the the symbol table
+     *
+     * @param name name of elffile to read the symtable from
+     *
+     * @return unordered map containing symbol name as key
+     */
+    virtual std::unordered_map<std::string, uint64_t> get_symbol_table(std::string name) = 0;
 };
 } // namespace v2
 } /* namespace iss */
