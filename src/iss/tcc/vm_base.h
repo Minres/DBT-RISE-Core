@@ -99,7 +99,7 @@ public:
     using func_ptr = uint64_t (*)(uint8_t*, void*, void*);
 
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
-              finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
+              finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
         if(this->debugging_enabled())
             sync_exec = PRE_SYNC;
