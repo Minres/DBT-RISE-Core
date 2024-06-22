@@ -44,7 +44,7 @@ namespace iss {
 class arch_if;
 class vm_plugin;
 
-enum class finish_cond_e { NONE = 0, JUMP_TO_SELF = 1, COUNT_LIMIT = 2 };
+enum class finish_cond_e { NONE = 0, JUMP_TO_SELF = 1, ICOUNT_LIMIT = 2, FCOUNT_LIMIT = 4 };
 
 inline finish_cond_e operator|(finish_cond_e a, finish_cond_e b) {
     return static_cast<finish_cond_e>(static_cast<int>(a) | static_cast<int>(b));
@@ -89,7 +89,7 @@ public:
      */
 
     virtual int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
-                      finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) = 0;
+                      finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) = 0;
     /**
      * reset the core
      *

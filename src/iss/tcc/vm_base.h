@@ -43,6 +43,7 @@
 #include <iss/tcc/code_builder.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
+#include <stdexcept>
 #include <util/ities.h>
 #include <util/logging.h>
 #include <util/range_lut.h>
@@ -98,7 +99,7 @@ public:
     using func_ptr = uint64_t (*)(uint8_t*, void*, void*);
 
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
-              finish_cond_e cond = finish_cond_e::COUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
+              finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
         if(this->debugging_enabled())
             sync_exec = PRE_SYNC;
@@ -252,6 +253,9 @@ protected:
     , func(nullptr)
     , tgt_adapter(nullptr) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+        if(arch::traits<ARCH>::XLEN > 32) {
+            throw std::runtime_error("No XLEN > 32 supported with tcc backend");
+        }
     }
 
     ~vm_base() override { delete tgt_adapter; }
