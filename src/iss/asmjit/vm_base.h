@@ -533,6 +533,7 @@ protected:
         x86::Compiler& cc = jh.cc;
         switch(op) {
         case add: {
+            // To fully comply with CoreDSL this should prepend the Carry Flag
             cc.add(a, b);
             break;
         }
@@ -570,6 +571,7 @@ protected:
         return a;
     }
     inline void expand_division_operand(jit_holder& jh, x86::Gp upper_half, x86::Gp dividend) {
+        // This function expands the dividend into the upper half, allowing correct division of negative values
         x86::Compiler& cc = jh.cc;
         switch(dividend.size()) {
         case 2:
@@ -598,11 +600,21 @@ protected:
         switch(op) {
         case imul: {
             cc.imul(overflow, a, b);
-            return a;
+            // In CoreDSL multiplication of two XLEN wide registers returns a value that is 2*XLEN wide
+            assert(a.size() < 64);
+            auto big_a = gen_ext(jh, a, a.size() * 8 * 2, false);
+            auto big_overflow = gen_ext(jh, overflow, overflow.size() * 8 * 2, false);
+            cc.shl(big_overflow, overflow.size() * 8);
+            cc.or_(big_a, big_overflow);
+            return big_a;
         }
         case mul: {
-            cc.mul(overflow, a, b);
-            return a;
+            assert(a.size() < 64);
+            auto big_a = gen_ext(jh, a, a.size() * 8 * 2, false);
+            auto big_overflow = gen_ext(jh, overflow, overflow.size() * 8 * 2, false);
+            cc.shl(big_overflow, overflow.size() * 8);
+            cc.or_(big_a, big_overflow);
+            return big_a;
         }
         case idiv: {
             expand_division_operand(jh, overflow, a);
@@ -615,7 +627,7 @@ protected:
             return a;
         }
         case srem: {
-            // division changes the contents of the a register, in this case as a side effect
+            // division changes the contents of the a register, in this case as a side effect. Move it out of the way
             x86::Gp a_clone = get_reg(jh, a.size() * 8);
             cc.mov(a_clone, a);
             expand_division_operand(jh, overflow, a_clone);
@@ -623,7 +635,6 @@ protected:
             return overflow;
         }
         case urem: {
-            // division changes the contents of the a register, in this case as a side effect
             x86::Gp a_clone = get_reg(jh, a.size() * 8);
             cc.mov(a_clone, a);
             cc.mov(overflow, 0);
