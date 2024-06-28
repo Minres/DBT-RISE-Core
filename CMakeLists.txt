@@ -22,8 +22,8 @@ if(WITH_LLVM)
 	find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
 endif()
 
+include(FetchContent)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
-	include(FetchContent)
 	FetchContent_Declare(
 	    tcc_git
 	  	GIT_REPOSITORY https://github.com/mirror/tinycc.git
@@ -51,6 +51,24 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
 	target_include_directories(tcc::tcc INTERFACE ${tcc_git_BINARY_DIR}/include)
 	set_property(TARGET tcc::tcc PROPERTY IMPORTED_LOCATION ${tcc_git_BINARY_DIR}/lib/libtcc.a)
 endif()
+if(NOT TARGET scc-util)
+	FetchContent_Declare(
+	    scc_git
+	  	GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
+    	GIT_TAG         "origin/main"
+    	GIT_SHALLOW    ON
+	)
+	FetchContent_GetProperties(scc_git)
+	
+	if(NOT scc_git_POPULATED)
+	    FetchContent_Populate(scc_git)
+	endif()
+	
+	add_subdirectory(${scc_git_SOURCE_DIR} ${scc_git_BINARY_DIR})
+	list(APPEND CMAKE_MODULE_PATH ${scc_git_SOURCE_DIR}/cmake)
+	
+endif()
+
 
 set(LIB_NAME ${PROJECT_NAME})
 set(LIB_SOURCES
