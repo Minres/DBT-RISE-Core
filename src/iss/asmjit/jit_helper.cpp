@@ -81,7 +81,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
 
     code.setErrorHandler(&myErrorHandler);
     x86::Compiler cc(&code);
-    FuncNode* funcNode = cc.addFunc(FuncSignatureT<uint64_t, uint8_t*, void*, void*>());
+    FuncNode* funcNode = cc.addFunc(FuncSignature::build<uint64_t, uint8_t*, void*, void*>());
     x86::Gp regs_base_ptr = cc.newUIntPtr("regs_base_ptr");
     x86::Gp arch_if_ptr = cc.newIntPtr("arch_if_ptr");
     x86::Gp vm_if_ptr = cc.newIntPtr("vm_if_ptr");

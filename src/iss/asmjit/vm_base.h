@@ -273,7 +273,7 @@ protected:
                 iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
                 InvokeNode* call_plugin_node;
                 jh.cc.comment("//Plugin call:");
-                jh.cc.invoke(&call_plugin_node, &call_plugin, FuncSignatureT<void, void*, uint64_t>());
+                jh.cc.invoke(&call_plugin_node, &call_plugin, FuncSignature::build<void, void*, uint64_t>());
                 call_plugin_node->setArg(0, e.plugin_ptr);
                 call_plugin_node->setArg(1, iinfo.backing.val);
             }
@@ -284,14 +284,14 @@ protected:
     inline void gen_wait(jit_holder& jh, unsigned type) {
         InvokeNode* call_wait;
         jh.cc.comment("//gen_wait");
-        jh.cc.invoke(&call_wait, &wait, FuncSignatureT<void, void*, uint64_t>());
+        jh.cc.invoke(&call_wait, &wait, FuncSignature::build<void, void*, uint64_t>());
         call_wait->setArg(0, this->get_arch());
         call_wait->setArg(1, type);
     }
     inline void gen_leave(jit_holder& jh, unsigned lvl) {
         InvokeNode* call_leave;
         jh.cc.comment("//gen_leave");
-        jh.cc.invoke(&call_leave, &leave_trap, FuncSignatureT<void, void*, uint64_t>());
+        jh.cc.invoke(&call_leave, &leave_trap, FuncSignature::build<void, void*, uint64_t>());
         call_leave->setArg(0, this->get_arch());
         call_leave->setArg(1, lvl);
         jh.next_pc = load_reg_from_mem(jh, traits::NEXT_PC);
@@ -432,22 +432,22 @@ protected:
 
         switch(length) {
         case 1: {
-            cc.invoke(&invokeNode, &read_mem1, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            cc.invoke(&invokeNode, &read_mem1, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
             read_res = x86::ptr_8(val_ptr);
             break;
         }
         case 2: {
-            cc.invoke(&invokeNode, &read_mem2, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            cc.invoke(&invokeNode, &read_mem2, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
             read_res = x86::ptr_16(val_ptr);
             break;
         }
         case 4: {
-            cc.invoke(&invokeNode, &read_mem4, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            cc.invoke(&invokeNode, &read_mem4, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
             read_res = x86::ptr_32(val_ptr);
             break;
         }
         case 8: {
-            cc.invoke(&invokeNode, &read_mem8, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
+            cc.invoke(&invokeNode, &read_mem8, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uintptr_t>());
             read_res = x86::ptr_64(val_ptr);
             break;
         }
@@ -485,16 +485,16 @@ protected:
         InvokeNode* invokeNode;
         switch(length) {
         case 1:
-            cc.invoke(&invokeNode, &write_mem1, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint8_t>());
+            cc.invoke(&invokeNode, &write_mem1, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint8_t>());
             break;
         case 2:
-            cc.invoke(&invokeNode, &write_mem2, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint16_t>());
+            cc.invoke(&invokeNode, &write_mem2, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint16_t>());
             break;
         case 4:
-            cc.invoke(&invokeNode, &write_mem4, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint32_t>());
+            cc.invoke(&invokeNode, &write_mem4, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint32_t>());
             break;
         case 8:
-            cc.invoke(&invokeNode, &write_mem8, FuncSignatureT<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint64_t>());
+            cc.invoke(&invokeNode, &write_mem8, FuncSignature::build<uint32_t, uint64_t, uint32_t, uint32_t, uint64_t, uint64_t>());
 
             break;
         default:
