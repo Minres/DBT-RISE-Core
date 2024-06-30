@@ -69,8 +69,6 @@ if(NOT TARGET scc-util)
 	
 endif()
 
-
-set(LIB_NAME ${PROJECT_NAME})
 set(LIB_SOURCES
 	src/iss/debugger/gdb_session.cpp
 	src/iss/debugger/encoderdecoder.cpp
@@ -93,40 +91,44 @@ endif()
 if(WITH_ASMJIT)
     list(APPEND LIB_SOURCES src/iss/asmjit/jit_helper.cpp)
 endif()
-add_library(${LIB_NAME} STATIC ${LIB_SOURCES})
-target_include_directories(${LIB_NAME} PUBLIC src) 
+add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
+target_include_directories(${PROJECT_NAME} PUBLIC src) 
 if (MSVC)
-    target_compile_definitions(${LIB_NAME} PUBLIC NOMINMAX)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
 endif()
-target_compile_definitions(${LIB_NAME} PRIVATE LIB_EXEC_DIR=${CMAKE_INSTALL_LIBEXECDIR})
+target_compile_definitions(${PROJECT_NAME} PRIVATE LIB_EXEC_DIR=${CMAKE_INSTALL_LIBEXECDIR})
 
 if(WITH_LLVM)
-	target_compile_definitions(${LIB_NAME} PUBLIC WITH_LLVM ${LLVM_DEFINITIONS})
-	target_include_directories(${LIB_NAME} PUBLIC ${LLVM_INCLUDE_DIRS})
-	target_link_libraries( ${LIB_NAME} PUBLIC ${LLVM_LIBRARIES})
+	target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_LLVM ${LLVM_DEFINITIONS})
+	target_include_directories(${PROJECT_NAME} PUBLIC ${LLVM_INCLUDE_DIRS})
+	target_link_libraries( ${PROJECT_NAME} PUBLIC ${LLVM_LIBRARIES})
 endif()
 
 if(WITH_TCC)
-    target_compile_definitions(${LIB_NAME} PUBLIC WITH_TCC)
-    target_link_libraries(${LIB_NAME} PUBLIC tcc::tcc)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_TCC)
+    target_link_libraries(${PROJECT_NAME} PUBLIC tcc::tcc)
 endif()
 if(WITH_ASMJIT)
-    target_compile_definitions(${LIB_NAME} PUBLIC WITH_ASMJIT)
-    target_link_libraries(${LIB_NAME} PUBLIC asmjit::asmjit)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_ASMJIT)
+    target_link_libraries(${PROJECT_NAME} PUBLIC asmjit::asmjit)
 endif()
-target_link_libraries(${LIB_NAME} PUBLIC scc-util)
-target_link_libraries(${LIB_NAME} PUBLIC fmt::fmt)
-target_link_libraries(${LIB_NAME} PUBLIC Boost::serialization Boost::thread)
-target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_DL_LIBS})
+target_link_libraries(${PROJECT_NAME} PUBLIC scc-util)
+if(TARGET fmt::fmt-header-only)
+	target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt-header-only)
+else()
+	target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt)
+endif()
+target_link_libraries(${PROJECT_NAME} PUBLIC Boost::serialization Boost::thread)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 
 set(LIB_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt_rise_common.h)
-set_target_properties(${LIB_NAME} PROPERTIES
+set_target_properties(${PROJECT_NAME} PROPERTIES
   VERSION ${PROJECT_VERSION}
   FRAMEWORK FALSE
   PUBLIC_HEADER "${LIB_HEADERS}"
 )
 
-install(TARGETS ${LIB_NAME} COMPONENT ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME} COMPONENT ${PROJECT_NAME}
   EXPORT ${PROJECT_NAME}Targets                         # for downstream dependencies
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
