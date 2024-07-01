@@ -72,7 +72,7 @@ using namespace ::asmjit;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 enum operation { add, sub, band, bor, bxor, shl, sar, shr };
-enum complex_operation { imul, mul, idiv, div, srem, urem };
+enum complex_operation { smul, umul, sumul, sdiv, udiv, srem, urem };
 enum comparison_operation { land, lor, eq, ne, lt, ltu, gt, gtu, lte, lteu, gte, gteu };
 enum unary_operation { lnot, inc, dec, bnot, neg };
 
@@ -598,30 +598,38 @@ protected:
         x86::Compiler& cc = jh.cc;
         x86::Gp overflow = get_reg(jh, a.size() * 8);
         switch(op) {
-        case imul: {
-            cc.imul(overflow, a, b);
-            // In CoreDSL multiplication of two XLEN wide registers returns a value that is 2*XLEN wide
+        case smul: {
+
+            // In CoreDSL umultiplication of two XLEN wide registers returns a value that is 2*XLEN wide
             assert(a.size() < 64);
-            auto big_a = gen_ext(jh, a, a.size() * 8 * 2, false);
-            auto big_overflow = gen_ext(jh, overflow, overflow.size() * 8 * 2, false);
-            cc.shl(big_overflow, overflow.size() * 8);
-            cc.or_(big_a, big_overflow);
+            auto big_a = gen_ext(jh, a, a.size() * 8 * 2, true);
+            auto big_b = gen_ext(jh, b, b.size() * 8 * 2, true);
+            auto big_overflow = get_reg(jh, overflow.size() * 8 * 2, false);
+            cc.imul(big_overflow, big_a, big_b);
             return big_a;
         }
-        case mul: {
+        case umul: {
             assert(a.size() < 64);
             auto big_a = gen_ext(jh, a, a.size() * 8 * 2, false);
-            auto big_overflow = gen_ext(jh, overflow, overflow.size() * 8 * 2, false);
-            cc.shl(big_overflow, overflow.size() * 8);
-            cc.or_(big_a, big_overflow);
+            auto big_b = gen_ext(jh, b, b.size() * 8 * 2, false);
+            auto big_overflow = get_reg(jh, overflow.size() * 8 * 2, false);
+            cc.mul(big_overflow, big_a, big_b);
             return big_a;
         }
-        case idiv: {
+        case sumul: {
+            assert(a.size() < 64);
+            auto big_a = gen_ext(jh, a, a.size() * 8 * 2, true);
+            auto big_b = gen_ext(jh, b, b.size() * 8 * 2, false);
+            auto big_overflow = get_reg(jh, overflow.size() * 8 * 2, false);
+            cc.imul(big_overflow, big_a, big_b);
+            return big_a;
+        }
+        case sdiv: {
             expand_division_operand(jh, overflow, a);
             cc.idiv(overflow, a, b);
             return a;
         }
-        case div: {
+        case udiv: {
             cc.mov(overflow, 0);
             cc.div(overflow, a, b);
             return a;
