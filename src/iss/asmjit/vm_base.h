@@ -589,7 +589,7 @@ protected:
     }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
     x86::Gp gen_operation(jit_holder& jh, complex_operation op, x86::Gp a, T b) {
-        x86::Gp b_reg = get_reg(jh, sizeof(b) * 8);
+        x86::Gp b_reg = get_reg(jh, a.size() * 8);
         jh.cc.mov(b_reg, b);
         return gen_operation(jh, op, a, b_reg);
     }
