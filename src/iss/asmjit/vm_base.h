@@ -323,12 +323,19 @@ protected:
             throw std::runtime_error("Variant not implemented in mov");
         }
     }
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Mem>>>
+    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
     inline void mov(x86::Compiler& cc, x86_reg_t dest, T source) {
         if(std::holds_alternative<x86::Gp>(dest)) {
             cc.mov(std::get<x86::Gp>(dest), source);
         } else {
-            throw std::runtime_error("Variant not implemented in mov (Integral and Mem)");
+            throw std::runtime_error("Variant not implemented in mov (Integral)");
+        }
+    }
+    inline void mov(x86::Compiler& cc, x86_reg_t dest, x86::Mem source) {
+        if(std::holds_alternative<x86::Gp>(dest)) {
+            cc.mov(std::get<x86::Gp>(dest), source);
+        } else {
+            throw std::runtime_error("Variant not implemented in mov (Mem)");
         }
     }
     inline void mov(x86::Compiler& cc, x86::Mem dest, x86_reg_t source) {
@@ -350,12 +357,19 @@ protected:
             throw std::runtime_error("Variant not implemented in cmp");
         }
     }
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Mem>>>
-    inline void cmp(x86::Compiler& cc, x86_reg_t a, T b) {
+    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> inline void cmp(x86::Compiler& cc, x86_reg_t _a, T b) {
+        if(std::holds_alternative<x86::Gp>(_a)) {
+            x86::Gp a = std::get<x86::Gp>(_a);
+            cc.cmp(a, b);
+        } else {
+            throw std::runtime_error("Variant not implemented in cmp (Integral)");
+        }
+    }
+    inline void cmp(x86::Compiler& cc, x86_reg_t a, x86::Mem b) {
         if(std::holds_alternative<x86::Gp>(a)) {
             cc.cmp(std::get<x86::Gp>(a), b);
         } else {
-            throw std::runtime_error("Variant not implemented in cmp (Integral and Mem)");
+            throw std::runtime_error("Variant not implemented in cmp (Mem)");
         }
     }
     inline void cmp(x86::Compiler& cc, x86::Mem a, x86_reg_t b) {
@@ -384,54 +398,54 @@ protected:
             throw std::runtime_error("Invalid reg size in get_ptr_for");
         }
     }
-    x86_reg_t get_reg(jit_holder& jh, unsigned size, bool is_signed = true) {
+    x86_reg_t get_reg(x86::Compiler& cc, unsigned size, bool is_signed = true) {
         if(is_signed)
             switch(size) {
             case 8:
-                return jh.cc.newInt8();
+                return cc.newInt8();
             case 16:
-                return jh.cc.newInt16();
+                return cc.newInt16();
             case 32:
-                return jh.cc.newInt32();
+                return cc.newInt32();
             case 64:
-                return jh.cc.newInt64();
+                return cc.newInt64();
             case 128:
-                return jh.cc.newXmmPd();
+                return cc.newXmmPd();
             default:
                 throw std::runtime_error("Invalid reg size in get_reg");
             }
         else
             switch(size) {
             case 8:
-                return jh.cc.newUInt8();
+                return cc.newUInt8();
             case 16:
-                return jh.cc.newUInt16();
+                return cc.newUInt16();
             case 32:
-                return jh.cc.newUInt32();
+                return cc.newUInt32();
             case 64:
-                return jh.cc.newUInt64();
+                return cc.newUInt64();
             case 128:
-                return jh.cc.newXmmPd();
+                return cc.newXmmPd();
             default:
                 throw std::runtime_error("Invalid reg size in get_reg");
             }
     }
-    inline x86::Gp get_reg_Gp(jit_holder& jh, unsigned size, bool is_signed = true) {
+    inline x86::Gp get_reg_Gp(x86::Compiler& cc, unsigned size, bool is_signed = true) {
         assert(size <= 64);
-        return std::get<x86::Gp>(get_reg(jh, size, is_signed));
+        return std::get<x86::Gp>(get_reg(cc, size, is_signed));
     }
-    inline x86::Xmm get_reg_Xmm(jit_holder& jh, unsigned size, bool is_signed = true) {
+    inline x86::Xmm get_reg_Xmm(x86::Compiler& cc, unsigned size, bool is_signed = true) {
         assert(size == 128);
-        return std::get<x86::Xmm>(get_reg(jh, size, is_signed));
+        return std::get<x86::Xmm>(get_reg(cc, size, is_signed));
     }
 
-    inline x86_reg_t get_reg_for(jit_holder& jh, unsigned idx) { return get_reg(jh, traits::reg_bit_widths[idx]); }
-    inline x86::Gp get_reg_for_Gp(jit_holder& jh, unsigned idx) { return get_reg_Gp(jh, traits::reg_bit_widths[idx]); }
-    inline x86::Xmm get_reg_for_Xmm(jit_holder& jh, unsigned idx) { return get_reg_Xmm(jh, traits::reg_bit_widths[idx]); }
+    inline x86_reg_t get_reg_for(x86::Compiler& cc, unsigned idx) { return get_reg(cc, traits::reg_bit_widths[idx]); }
+    inline x86::Gp get_reg_for_Gp(x86::Compiler& cc, unsigned idx) { return get_reg_Gp(cc, traits::reg_bit_widths[idx]); }
+    inline x86::Xmm get_reg_for_Xmm(x86::Compiler& cc, unsigned idx) { return get_reg_Xmm(cc, traits::reg_bit_widths[idx]); }
 
     inline x86_reg_t load_reg_from_mem(jit_holder& jh, unsigned idx) {
         auto ptr = get_ptr_for(jh, idx);
-        auto reg = get_reg_for(jh, idx);
+        auto reg = get_reg_for(jh.cc, idx);
         mov(jh.cc, reg, ptr);
         return reg;
     }
@@ -448,12 +462,12 @@ protected:
         mov(jh.cc, ptr, reg);
     }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    inline x86_reg_t gen_ext(jit_holder& jh, T val, unsigned size, bool is_signed) {
-        auto val_reg = get_reg(jh, sizeof(val) * 8, is_signed);
-        mov(jh.cc, val_reg, val);
-        return gen_ext(jh, val_reg, size, is_signed);
+    inline x86_reg_t gen_ext(x86::Compiler& cc, T val, unsigned size, bool is_signed) {
+        auto val_reg = get_reg(cc, sizeof(val) * 8, is_signed);
+        mov(cc, val_reg, val);
+        return gen_ext(cc, val_reg, size, is_signed);
     }
-    inline x86_reg_t gen_ext(jit_holder& jh, x86_reg_t _val, unsigned size, bool is_signed) {
+    inline x86_reg_t gen_ext(x86::Compiler& cc, x86_reg_t _val, unsigned size, bool is_signed) {
         // In case of x86::Gp
         if(std::holds_alternative<x86::Gp>(_val)) {
             auto val = std::get<x86::Gp>(_val);
@@ -470,22 +484,22 @@ protected:
                 default:
                     throw std::runtime_error("Invalid truncation size in gen_ext");
                 }
-            x86::Gp ret_val = get_reg_Gp(jh, size);
+            x86::Gp ret_val = get_reg_Gp(cc, size);
             if(is_signed) {
                 if(val.size() == 4 && size == 64)
-                    jh.cc.movsxd(ret_val, val);
+                    cc.movsxd(ret_val, val);
                 else
-                    jh.cc.movsx(ret_val, val);
+                    cc.movsx(ret_val, val);
             } else if(val.size() == 1 || val.size() == 2)
                 // movzx can extend 8 and 16 bit values
-                jh.cc.movzx(ret_val, val);
+                cc.movzx(ret_val, val);
             else {
                 assert(val.size() == 4);
                 // from: http://x86asm.net/articles/x86-64-tour-of-intel-manuals/
                 // Perhaps the most surprising fact is that an instruction such as MOV EAX, EBX automatically zeroes
                 // upper 32 bits of RAX register
-                ret_val = get_reg_Gp(jh, val.size() * 8);
-                jh.cc.mov(ret_val, val);
+                ret_val = get_reg_Gp(cc, val.size() * 8);
+                cc.mov(ret_val, val);
                 switch(size) {
                 case 32:
                     return ret_val.r32();
@@ -509,13 +523,13 @@ protected:
             return _val;
         }
     }
-    inline x86::Gp gen_ext_Gp(jit_holder& jh, x86_reg_t _val, unsigned size, bool is_signed) {
+    inline x86::Gp gen_ext_Gp(x86::Compiler& cc, x86_reg_t _val, unsigned size, bool is_signed) {
         assert(size <= 64);
-        return std::get<x86::Gp>(gen_ext(jh, _val, size, is_signed));
+        return std::get<x86::Gp>(gen_ext(cc, _val, size, is_signed));
     }
-    inline x86::Xmm gen_ext_Xmm(jit_holder& jh, x86_reg_t _val, unsigned size, bool is_signed) {
+    inline x86::Xmm gen_ext_Xmm(x86::Compiler& cc, x86_reg_t _val, unsigned size, bool is_signed) {
         assert(size == 128);
-        return std::get<x86::Xmm>(gen_ext(jh, _val, size, is_signed));
+        return std::get<x86::Xmm>(gen_ext(cc, _val, size, is_signed));
     }
 
     inline x86_reg_t gen_read_mem(jit_holder& jh, mem_type_e type, x86_reg_t _addr, uint32_t length) {
@@ -534,7 +548,7 @@ protected:
             cc.mov(val_ptr, read_mem_buf);
             x86::Mem read_res;
             InvokeNode* invokeNode;
-            x86::Gp val_reg = get_reg_Gp(jh, length * 8, true);
+            x86::Gp val_reg = get_reg_Gp(cc, length * 8, true);
 
             switch(length) {
             case 1: {
@@ -585,7 +599,7 @@ protected:
         }
     }
     inline x86_reg_t gen_read_mem(jit_holder& jh, mem_type_e type, uint64_t addr, uint32_t length) {
-        auto addr_reg = get_reg(jh, length * 8, true);
+        auto addr_reg = get_reg(jh.cc, length * 8, true);
         mov(jh.cc, addr_reg, addr);
         return gen_read_mem(jh, type, addr_reg, length);
     }
@@ -637,7 +651,7 @@ protected:
         gen_write_mem(jh, type, addr_reg, val, length);
     }
     inline void gen_write_mem(jit_holder& jh, mem_type_e type, uint64_t addr, int64_t val, uint32_t length) {
-        auto val_reg = get_reg_Gp(jh, length * 8, true);
+        auto val_reg = get_reg_Gp(jh.cc, length * 8, true);
         jh.cc.mov(val_reg, val);
 
         auto addr_reg = jh.cc.newUInt64();
@@ -645,15 +659,15 @@ protected:
         gen_write_mem(jh, type, addr_reg, val_reg, length);
     }
     inline void gen_write_mem(jit_holder& jh, mem_type_e type, x86_reg_t addr, int64_t val, uint32_t length) {
-        auto val_reg = get_reg_Gp(jh, length * 8, true);
+        auto val_reg = get_reg_Gp(jh.cc, length * 8, true);
         jh.cc.mov(val_reg, val);
         gen_write_mem(jh, type, addr, val_reg, length);
     }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    x86_reg_t gen_operation(jit_holder& jh, operation op, x86_reg_t _a, T b) {
+    x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, T b) {
         if(std::holds_alternative<x86::Gp>(_a)) {
             x86::Gp a = std::get<x86::Gp>(_a);
-            return _gen_operation(jh, op, a, b);
+            return _gen_operation(cc, op, a, b);
         } else if(std::holds_alternative<x86::Xmm>(_a)) {
             throw std::runtime_error("Variant not supported in gen_operation (operation w/ integral)");
             return _a;
@@ -665,11 +679,11 @@ protected:
         }
     }
 
-    x86_reg_t gen_operation(jit_holder& jh, operation op, x86_reg_t _a, x86_reg_t _b) {
+    x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, x86_reg_t _b) {
         if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
             x86::Gp a = std::get<x86::Gp>(_a);
             x86::Gp b = std::get<x86::Gp>(_b);
-            return _gen_operation(jh, op, a, b);
+            return _gen_operation(cc, op, a, b);
         }
         // Should not end here
         else {
@@ -678,8 +692,7 @@ protected:
         }
     }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
-    x86::Gp _gen_operation(jit_holder& jh, operation op, x86::Gp a, T b) {
-        x86::Compiler& cc = jh.cc;
+    x86::Gp _gen_operation(x86::Compiler& cc, operation op, x86::Gp a, T b) {
         switch(op) {
         case add: {
             // To fully comply with CoreDSL this should prepend the Carry Flag
@@ -720,9 +733,8 @@ protected:
         return a;
     }
 
-    inline void expand_division_operand(jit_holder& jh, x86::Gp upper_half, x86::Gp dividend) {
+    inline void expand_division_operand(x86::Compiler& cc, x86::Gp upper_half, x86::Gp dividend) {
         // This function expands the dividend into the upper half, allowing correct division of negative values
-        x86::Compiler& cc = jh.cc;
         switch(dividend.size()) {
         case 2:
             cc.cwd(upper_half, dividend);
@@ -738,7 +750,7 @@ protected:
         }
     }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    x86_reg_t gen_operation(jit_holder& jh, complex_operation op, x86_reg_t a, T b) {
+    x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t a, T b) {
         auto size = 0;
         if(std::holds_alternative<x86::Gp>(a))
             size = std::get<x86::Gp>(a).size() * 8;
@@ -746,42 +758,41 @@ protected:
             size = 128;
         else
             throw std::runtime_error("Invalid variant in gen_operation");
-        x86_reg_t b_reg = get_reg(jh, size);
-        mov(jh.cc, b_reg, b);
-        return gen_operation(jh, op, a, b_reg);
+        x86_reg_t b_reg = get_reg(cc, size);
+        mov(cc, b_reg, b);
+        return gen_operation(cc, op, a, b_reg);
     }
-    x86_reg_t gen_operation(jit_holder& jh, complex_operation op, x86_reg_t _a, x86_reg_t _b) {
+    x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_reg_t _b) {
         if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
             x86::Gp a = std::get<x86::Gp>(_a);
             x86::Gp b = std::get<x86::Gp>(_b);
             assert(a.size() == b.size());
-            x86::Compiler& cc = jh.cc;
-            x86::Gp overflow = get_reg_Gp(jh, a.size() * 8);
+            x86::Gp overflow = get_reg_Gp(cc, a.size() * 8);
             switch(op) {
             case smul: {
                 // In CoreDSL umultiplication of two XLEN wide registers returns a value that is 2*XLEN wide
-                x86::Gp big_a = gen_ext_Gp(jh, a, a.size() * 8 * 2, true);
-                x86::Gp big_b = gen_ext_Gp(jh, b, b.size() * 8 * 2, true);
-                x86::Gp big_overflow = get_reg_Gp(jh, overflow.size() * 8 * 2, false);
+                x86::Gp big_a = gen_ext_Gp(cc, a, a.size() * 8 * 2, true);
+                x86::Gp big_b = gen_ext_Gp(cc, b, b.size() * 8 * 2, true);
+                x86::Gp big_overflow = get_reg_Gp(cc, overflow.size() * 8 * 2, false);
                 cc.imul(big_overflow, big_a, big_b);
                 return big_a;
             }
             case umul: {
-                x86::Gp big_a = gen_ext_Gp(jh, a, a.size() * 8 * 2, false);
-                x86::Gp big_b = gen_ext_Gp(jh, b, b.size() * 8 * 2, false);
-                x86::Gp big_overflow = get_reg_Gp(jh, overflow.size() * 8 * 2, false);
+                x86::Gp big_a = gen_ext_Gp(cc, a, a.size() * 8 * 2, false);
+                x86::Gp big_b = gen_ext_Gp(cc, b, b.size() * 8 * 2, false);
+                x86::Gp big_overflow = get_reg_Gp(cc, overflow.size() * 8 * 2, false);
                 cc.mul(big_overflow, big_a, big_b);
                 return big_a;
             }
             case sumul: {
-                x86::Gp big_a = gen_ext_Gp(jh, a, a.size() * 8 * 2, true);
-                x86::Gp big_b = gen_ext_Gp(jh, b, b.size() * 8 * 2, false);
-                x86::Gp big_overflow = get_reg_Gp(jh, overflow.size() * 8 * 2, false);
+                x86::Gp big_a = gen_ext_Gp(cc, a, a.size() * 8 * 2, true);
+                x86::Gp big_b = gen_ext_Gp(cc, b, b.size() * 8 * 2, false);
+                x86::Gp big_overflow = get_reg_Gp(cc, overflow.size() * 8 * 2, false);
                 cc.imul(big_overflow, big_a, big_b);
                 return big_a;
             }
             case sdiv: {
-                expand_division_operand(jh, overflow, a);
+                expand_division_operand(cc, overflow, a);
                 cc.idiv(overflow, a, b);
                 return a;
             }
@@ -792,14 +803,14 @@ protected:
             }
             case srem: {
                 // division changes the contents of the a register, in this case as a side effect. Move it out of the way
-                x86::Gp a_clone = get_reg_Gp(jh, a.size() * 8);
+                x86::Gp a_clone = get_reg_Gp(cc, a.size() * 8);
                 cc.mov(a_clone, a);
-                expand_division_operand(jh, overflow, a_clone);
+                expand_division_operand(cc, overflow, a_clone);
                 cc.idiv(overflow, a_clone, b);
                 return overflow;
             }
             case urem: {
-                x86::Gp a_clone = get_reg_Gp(jh, a.size() * 8);
+                x86::Gp a_clone = get_reg_Gp(cc, a.size() * 8);
                 cc.mov(a_clone, a);
                 cc.mov(overflow, 0);
                 cc.div(overflow, a_clone, b);
@@ -815,27 +826,26 @@ protected:
     }
 
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    x86_reg_t gen_operation(jit_holder& jh, comparison_operation op, x86_reg_t _a, T b) {
+    x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, T b) {
         if(std::holds_alternative<x86::Gp>(_a)) {
             x86::Gp a = std::get<x86::Gp>(_a);
-            return _gen_operation(jh, op, a, b);
+            return _gen_operation(cc, op, a, b);
         } else {
             throw std::runtime_error("Variant not supported in gen_operation (comparison)");
         }
     }
 
-    x86_reg_t gen_operation(jit_holder& jh, comparison_operation op, x86_reg_t _a, x86_reg_t _b) {
+    x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, x86_reg_t _b) {
         if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
             x86::Gp a = std::get<x86::Gp>(_a);
             x86::Gp b = std::get<x86::Gp>(_b);
-            return _gen_operation(jh, op, a, b);
+            return _gen_operation(cc, op, a, b);
         } else {
             throw std::runtime_error("Variant combination not supported in gen_operation (comparison)");
         }
     }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
-    x86::Gp _gen_operation(jit_holder& jh, comparison_operation op, x86::Gp a, T b) {
-        x86::Compiler& cc = jh.cc;
+    x86::Gp _gen_operation(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b) {
         x86::Gp tmp = cc.newInt8();
         cc.mov(tmp, 1);
         Label label_then = cc.newLabel();
@@ -899,10 +909,9 @@ protected:
         cc.bind(label_then);
         return tmp;
     }
-    x86_reg_t gen_operation(jit_holder& jh, unary_operation op, x86_reg_t _a) {
+    x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a) {
         if(std::holds_alternative<x86::Gp>(_a)) {
             x86::Gp a = std::get<x86::Gp>(_a);
-            x86::Compiler& cc = jh.cc;
             switch(op) {
             case lnot:
                 throw std::runtime_error("Current operation not supported in gen_operation(lnot)");
