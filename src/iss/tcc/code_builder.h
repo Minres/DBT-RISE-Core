@@ -209,7 +209,11 @@ template <typename ARCH> struct code_builder {
     }
 
     inline value mul(value const& left, value const& right) {
-        return value(fmt::format("({}) * ({})", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
+        auto target_size = std::max(left.size(), right.size()) * 2;
+        auto target_type_left = left.is_signed() ? fmt::format("(int{}_t)", target_size) : fmt::format("(uint{}_t)", target_size);
+        auto target_type_right = right.is_signed() ? fmt::format("(int{}_t)", target_size) : fmt::format("(uint{}_t)", target_size);
+        return value(fmt::format("({}{}) * ({}{})", target_type_left, left, target_type_right, right), target_size,
+                     left.is_signed() && right.is_signed());
     }
 
     inline value sdiv(value const& left, value const& right) {
