@@ -184,15 +184,9 @@ public:
                         else // if not we need to compile one
                             cur_tb = nullptr;
                     } while(cur_tb != nullptr);
-                    if(cont == FLUSH) {
+                    if(cont == FLUSH)
                         func_map.clear();
-                    }
-                    if(cont == TRAP) {
-                        auto it = func_map.find(pc_p.val);
-                        if(it != func_map.end()) {
-                            func_map.erase(it);
-                        }
-                    }
+
                 } catch(trap_access& ta) {
                     pc.val = core.enter_trap(ta.id, ta.addr, 0);
                 }
