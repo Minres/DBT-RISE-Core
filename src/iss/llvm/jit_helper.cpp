@@ -165,7 +165,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
     if(!ee)
         throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);
-    return translation_block(ee->getFunctionAddress(f->getName().str()), {nullptr, nullptr}, ee);
+    return std::move(translation_block(ee->getFunctionAddress(f->getName().str()), {nullptr, nullptr}, ee));
 }
 } // namespace llvm
 } // namespace iss
