@@ -80,7 +80,7 @@ struct alignas(4 * sizeof(void*)) translation_block {
     translation_block(translation_block&&) = default;
     translation_block& operator=(translation_block const& other) = default;
     translation_block& operator=(translation_block&& other) = default;
-    ~translation_block() { delete(mod_eng); }
+    ~translation_block() = default; // FIXME this possibly leaks the mod_eng, check ownership
 };
 
 using gen_func = std::function<::llvm::Function*(::llvm::Module*)>;
