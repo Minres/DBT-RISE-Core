@@ -68,6 +68,7 @@ template <typename ARCH> struct code_builder {
         os << add_reg_ptr("icount", arch::traits<ARCH>::ICOUNT);
         os << add_reg_ptr("last_branch", arch::traits<ARCH>::LAST_BRANCH);
         os << "*last_branch = 0;\n";
+        os << "uint64_t tval = 0;\n";
 
         for(size_t i = 0; i < arch::traits<ARCH>::NUM_REGS; ++i) {
             if(defined_regs[i]) {
