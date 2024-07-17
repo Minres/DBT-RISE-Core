@@ -304,6 +304,19 @@ protected:
         call_leave->setArg(1, lvl);
         jh.next_pc = load_reg_from_mem_Gp(jh, traits::NEXT_PC);
     }
+    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> inline void gen_set_tval(jit_holder& jh, T new_tval) {
+        mov(jh.cc, jh.tval, new_tval);
+    }
+    inline void gen_set_tval(jit_holder& jh, x86_reg_t _new_tval) {
+        if(std::holds_alternative<x86::Gp>(_new_tval)) {
+            x86::Gp new_tval = std::get<x86::Gp>(_new_tval);
+            if(new_tval.size() < 8)
+                new_tval = gen_ext_Gp(jh.cc, new_tval, 64, false);
+            mov(jh.cc, jh.tval, new_tval);
+        } else {
+            throw std::runtime_error("Variant not supported in gen_set_tval");
+        }
+    }
 
     ARCH& core;
     unsigned core_id = 0;
@@ -320,9 +333,12 @@ protected:
         write_reg_to_mem(jh, jh.pc, traits::PC);
         write_reg_to_mem(jh, jh.next_pc, traits::NEXT_PC);
     }
-    inline void mov(x86::Compiler& cc, x86_reg_t dest, x86_reg_t source) {
-        if(std::holds_alternative<x86::Gp>(dest) && std::holds_alternative<x86::Gp>(source)) {
-            cc.mov(std::get<x86::Gp>(dest), std::get<x86::Gp>(source));
+    inline void mov(x86::Compiler& cc, x86_reg_t _dest, x86_reg_t _source) {
+        if(std::holds_alternative<x86::Gp>(_dest) && std::holds_alternative<x86::Gp>(_source)) {
+            x86::Gp dest = std::get<x86::Gp>(_dest);
+            x86::Gp source = std::get<x86::Gp>(_source);
+            assert(dest.size() == source.size());
+            cc.mov(dest, source);
         } else {
             throw std::runtime_error("Variant not implemented in mov");
         }
@@ -863,6 +879,14 @@ protected:
         default:
             throw std::runtime_error(fmt::format("Cannot prepare division for operand of size {}", dividend.size()));
         }
+    }
+    template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
+    x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, V a, W b) {
+        x86_reg_t a_reg = get_reg(cc, sizeof(a) * 8);
+        x86_reg_t b_reg = get_reg(cc, sizeof(b) * 8);
+        mov(cc, a_reg, a);
+        mov(cc, b_reg, b);
+        return gen_operation(cc, op, a_reg, b_reg);
     }
     template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
     x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t a, T b) {

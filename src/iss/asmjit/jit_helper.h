@@ -89,6 +89,7 @@ struct jit_holder {
     ::asmjit::Label trap_entry;
     ::asmjit::x86::Gp pc;
     ::asmjit::x86::Gp next_pc;
+    ::asmjit::x86::Gp tval;
     std::vector<char*> disass_collection;
 };
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<void(jit_holder&)>& generator,
