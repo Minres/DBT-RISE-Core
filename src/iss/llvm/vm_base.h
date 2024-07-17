@@ -42,6 +42,7 @@
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
+#include <llvm-14/llvm/IR/GlobalVariable.h>
 #include <util/ities.h>
 #include <util/logging.h>
 #include <util/range_lut.h>
@@ -217,11 +218,14 @@ protected:
         func = this->open_block_func(phys_pc);
         leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
-        trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
-        gen_trap_behavior(trap_blk);
         BasicBlock* bb = BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
         builder.SetInsertPoint(bb);
+        // this needs to happen before calling gen_trap_behavior
+        tval = new llvm::GlobalVariable(*mod, llvm::Type::getInt64Ty(mod->getContext()), false, llvm::GlobalValue::ExternalLinkage,
+                                        llvm::ConstantInt::get(llvm::Type::getInt64Ty(mod->getContext()), 0), "tval");
         builder.CreateStore(this->gen_const(32, 0), get_reg_ptr(arch::traits<ARCH>::LAST_BRANCH), false);
+        trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
+        gen_trap_behavior(trap_blk);
         continuation_e cont = CONT;
         try {
             while(cont == CONT && cur_blk < blk_size) {
@@ -532,6 +536,7 @@ protected:
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base* tgt_adapter;
     std::vector<plugin_entry> plugins;
+    GlobalVariable* tval;
 };
 } // namespace llvm
 } // namespace iss
