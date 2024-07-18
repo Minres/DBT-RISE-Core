@@ -444,6 +444,13 @@ protected:
     inline Value* gen_ext(T val, unsigned size, bool isSigned) const {
         return ConstantInt::get(::iss::llvm::getContext(), APInt(size, val, isSigned));
     }
+    inline Value* gen_bool(Value* val) {
+        if(val->getType()->isIntegerTy(1)) {
+            return val;
+        }
+        Constant* zero = ConstantInt::get(val->getType(), 0);
+        return builder.CreateICmpNE(val, zero, "tobool");
+    }
 
     template <typename T, typename std::enable_if<std::is_pointer<T>::value, int>::type* = nullptr>
     inline Value* gen_ext(T val, unsigned size, bool isSigned) {
