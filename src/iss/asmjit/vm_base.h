@@ -302,6 +302,7 @@ protected:
         jh.cc.invoke(&call_leave, &leave_trap, FuncSignature::build<void, void*, uint64_t>());
         call_leave->setArg(0, this->get_arch());
         call_leave->setArg(1, lvl);
+        mov(jh.cc, get_ptr_for(jh, traits::LAST_BRANCH), std::numeric_limits<uint32_t>::max());
         jh.next_pc = load_reg_from_mem_Gp(jh, traits::NEXT_PC);
     }
     template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> inline void gen_set_tval(jit_holder& jh, T new_tval) {
