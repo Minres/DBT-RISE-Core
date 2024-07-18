@@ -475,17 +475,6 @@ protected:
 
     inline void gen_sync(sync_type s, unsigned inst_id) {
         if(s == PRE_SYNC) {
-            // update icount
-            auto* icount_val = builder.CreateAdd(
-                builder.CreateLoad(get_typeptr(arch::traits<ARCH>::ICOUNT), get_reg_ptr(arch::traits<ARCH>::ICOUNT)), gen_const(64U, 1));
-            builder.CreateStore(icount_val, get_reg_ptr(arch::traits<ARCH>::ICOUNT), false);
-            // set PC
-            auto* pc_val = builder.CreateLoad(get_typeptr(arch::traits<ARCH>::NEXT_PC), get_reg_ptr(arch::traits<ARCH>::NEXT_PC));
-            builder.CreateStore(pc_val, get_reg_ptr(arch::traits<ARCH>::PC), false);
-            // copy over trap state
-            auto* trap_val =
-                builder.CreateLoad(get_typeptr(arch::traits<ARCH>::PENDING_TRAP), get_reg_ptr(arch::traits<ARCH>::PENDING_TRAP));
-            builder.CreateStore(trap_val, get_reg_ptr(arch::traits<ARCH>::TRAP_STATE), false);
             if(debugging_enabled())
                 builder.CreateCall(mod->getFunction("pre_instr_sync"), std::vector<Value*>{vm_ptr});
         }

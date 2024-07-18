@@ -75,7 +75,7 @@ void add_functions_2_module(Module* mod) {
     FDECL(write_mem, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
     FDECL(read_mem_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
     FDECL(write_mem_dbg, INT_TYPE(8), THIS_PTR_TYPE, INT_TYPE(32), INT_TYPE(32), INT_TYPE(64), INT_TYPE(32), INT_TYPE(8)->getPointerTo());
-    FDECL(enter_trap, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(64), INT_TYPE(64));
+    FDECL(enter_trap, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(64), INT_TYPE(64), INT_TYPE(64));
     FDECL(leave_trap, INT_TYPE(64), THIS_PTR_TYPE, INT_TYPE(64));
     FDECL(wait, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(64));
     FDECL(print_string, VOID_TYPE, THIS_PTR_TYPE, INT_TYPE(8)->getPointerTo());
