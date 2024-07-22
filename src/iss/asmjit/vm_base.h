@@ -85,6 +85,7 @@ struct dGp {
 using x86_reg_t = std::variant<x86::Gp, dGp>;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
 enum operation { add, sub, band, bor, bxor, shl, sar, shr };
 enum complex_operation { smul, umul, sumul, sdiv, udiv, srem, urem };
 enum comparison_operation { land, lor, eq, ne, lt, ltu, gt, gtu, lte, lteu, gte, gteu };
@@ -302,7 +303,7 @@ protected:
         jh.cc.invoke(&call_leave, &leave_trap, FuncSignature::build<void, void*, uint64_t>());
         call_leave->setArg(0, this->get_arch());
         call_leave->setArg(1, lvl);
-        mov(jh.cc, get_ptr_for(jh, traits::LAST_BRANCH), std::numeric_limits<uint32_t>::max());
+        mov(jh.cc, get_ptr_for(jh, traits::LAST_BRANCH), static_cast<int>(UNKNOWN_JUMP));
         jh.next_pc = load_reg_from_mem_Gp(jh, traits::NEXT_PC);
     }
     template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> inline void gen_set_tval(jit_holder& jh, T new_tval) {
@@ -497,6 +498,7 @@ protected:
         }
     }
     inline void write_reg_to_mem(jit_holder& jh, x86_reg_t reg, unsigned idx) {
+        // TODO sanitize this, needs checking which variant is in reg
         auto ptr = get_ptr_for(jh, idx);
         mov(jh.cc, ptr, reg);
     }
@@ -813,9 +815,7 @@ protected:
         if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
             x86::Gp a = std::get<x86::Gp>(_a);
             x86::Gp b = std::get<x86::Gp>(_b);
-            size_t a_size = a.size();
-            size_t b_size = b.size();
-            assert(a_size == b_size);
+            assert(a.size() == b.size());
             return _gen_operation(cc, op, a, b);
         }
         // Should not end here
@@ -824,7 +824,7 @@ protected:
             return _a;
         }
     }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
+    template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Gp>>>
     x86::Gp _gen_operation(x86::Compiler& cc, operation op, x86::Gp a, T b) {
         switch(op) {
         case add: {

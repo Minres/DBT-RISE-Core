@@ -61,6 +61,7 @@ namespace iss {
 namespace tcc {
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
     struct plugin_entry {
@@ -164,12 +165,6 @@ public:
                     } while(cur_tb != nullptr);
                     if(cont == FLUSH) {
                         func_map.clear();
-                    }
-                    if(cont == TRAP) {
-                        auto it = func_map.find(pc_p.val);
-                        if(it != func_map.end()) {
-                            func_map.erase(it);
-                        }
                     }
                 } catch(trap_access& ta) {
                     pc.val = core.enter_trap(ta.id, ta.addr, 0);

@@ -67,6 +67,7 @@ namespace llvm {
 using namespace ::llvm;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
 
 void add_functions_2_module(Module* mod);
 
@@ -223,7 +224,6 @@ protected:
         // this needs to happen before calling gen_trap_behavior
         tval = new llvm::GlobalVariable(*mod, llvm::Type::getInt64Ty(mod->getContext()), false, llvm::GlobalValue::ExternalLinkage,
                                         llvm::ConstantInt::get(llvm::Type::getInt64Ty(mod->getContext()), 0), "tval");
-        builder.CreateStore(this->gen_const(32, 0), get_reg_ptr(arch::traits<ARCH>::LAST_BRANCH), false);
         trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
         gen_trap_behavior(trap_blk);
         continuation_e cont = CONT;
