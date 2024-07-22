@@ -56,6 +56,7 @@
 
 #include "jit_helper.h"
 #include <asmjit/asmjit.h>
+#include <iss/asmjit/vm_util.h>
 extern "C" {
 #include <iss/vm_jit_funcs.h>
 }
@@ -74,22 +75,9 @@ namespace iss {
 
 namespace asmjit {
 using namespace ::asmjit;
-struct dGp {
-    x86::Gp upper;
-    x86::Gp lower;
-    dGp(x86::Compiler& cc)
-    : upper(cc.newInt64())
-    , lower(cc.newInt64()) {}
-    dGp() = delete;
-};
-using x86_reg_t = std::variant<x86::Gp, dGp>;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
 enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
-enum operation { add, sub, band, bor, bxor, shl, sar, shr };
-enum complex_operation { smul, umul, sumul, sdiv, udiv, srem, urem };
-enum comparison_operation { land, lor, eq, ne, lt, ltu, gt, gtu, lte, lteu, gte, gteu };
-enum unary_operation { lnot, inc, dec, bnot, neg };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
     struct plugin_entry {
@@ -117,7 +105,7 @@ public:
         return idx < 0 ? arch::traits<ARCH>::NUM_REGS : arch::traits<ARCH>::reg_bit_widths[(reg_e)idx];
     }
 
-    template <typename T> inline T get_reg(unsigned r) {
+    template <typename T> inline T obtain_reg(unsigned r) {
         std::vector<uint8_t> res(sizeof(T), 0);
         uint8_t* reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
         auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
@@ -133,7 +121,7 @@ public:
         if(this->debugging_enabled())
             sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
-        virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
+        virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, obtain_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
         CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             continuation_e cont = CONT;
@@ -218,7 +206,7 @@ public:
     void reset(uint64_t address) override { core.reset(address); }
 
     void pre_instr_sync() override {
-        uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
+        uint64_t pc = obtain_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
         tgt_adapter->check_continue(pc);
     }
 
@@ -290,36 +278,6 @@ protected:
         // TODO: handle Debugger
     }
 
-    inline void gen_wait(jit_holder& jh, unsigned type) {
-        InvokeNode* call_wait;
-        jh.cc.comment("//gen_wait");
-        jh.cc.invoke(&call_wait, &wait, FuncSignature::build<void, void*, uint64_t>());
-        call_wait->setArg(0, this->get_arch());
-        call_wait->setArg(1, type);
-    }
-    inline void gen_leave(jit_holder& jh, unsigned lvl) {
-        InvokeNode* call_leave;
-        jh.cc.comment("//gen_leave");
-        jh.cc.invoke(&call_leave, &leave_trap, FuncSignature::build<void, void*, uint64_t>());
-        call_leave->setArg(0, this->get_arch());
-        call_leave->setArg(1, lvl);
-        mov(jh.cc, get_ptr_for(jh, traits::LAST_BRANCH), static_cast<int>(UNKNOWN_JUMP));
-        jh.next_pc = load_reg_from_mem_Gp(jh, traits::NEXT_PC);
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> inline void gen_set_tval(jit_holder& jh, T new_tval) {
-        mov(jh.cc, jh.tval, new_tval);
-    }
-    inline void gen_set_tval(jit_holder& jh, x86_reg_t _new_tval) {
-        if(std::holds_alternative<x86::Gp>(_new_tval)) {
-            x86::Gp new_tval = std::get<x86::Gp>(_new_tval);
-            if(new_tval.size() < 8)
-                new_tval = gen_ext_Gp(jh.cc, new_tval, 64, false);
-            mov(jh.cc, jh.tval, new_tval);
-        } else {
-            throw std::runtime_error("Variant not supported in gen_set_tval");
-        }
-    }
-
     ARCH& core;
     unsigned core_id = 0;
     unsigned cluster_id = 0;
@@ -331,99 +289,40 @@ protected:
     std::vector<char*> global_disass_collection;
 
     // Asmjit generator functions for commonly used expressions
+
+    void gen_wait(jit_holder& jh, unsigned type) {
+        InvokeNode* call_wait;
+        jh.cc.comment("//gen_wait");
+        jh.cc.invoke(&call_wait, &wait, FuncSignature::build<void, void*, uint64_t>());
+        call_wait->setArg(0, this->get_arch());
+        call_wait->setArg(1, type);
+    }
+    void gen_leave(jit_holder& jh, unsigned lvl) {
+        InvokeNode* call_leave;
+        jh.cc.comment("//gen_leave");
+        jh.cc.invoke(&call_leave, &leave_trap, FuncSignature::build<void, void*, uint64_t>());
+        call_leave->setArg(0, this->get_arch());
+        call_leave->setArg(1, lvl);
+        mov(jh.cc, get_ptr_for(jh, traits::LAST_BRANCH), static_cast<int>(UNKNOWN_JUMP));
+        jh.next_pc = load_reg_from_mem_Gp(jh, traits::NEXT_PC);
+    }
+    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> void gen_set_tval(jit_holder& jh, T new_tval) {
+        mov(jh.cc, jh.tval, new_tval);
+    }
+    void gen_set_tval(jit_holder& jh, x86_reg_t _new_tval) {
+        if(std::holds_alternative<x86::Gp>(_new_tval)) {
+            x86::Gp new_tval = std::get<x86::Gp>(_new_tval);
+            if(new_tval.size() < 8)
+                new_tval = gen_ext_Gp(jh.cc, new_tval, 64, false);
+            mov(jh.cc, jh.tval, new_tval);
+        } else {
+            throw std::runtime_error("Variant not supported in gen_set_tval");
+        }
+    }
     void write_back(jit_holder& jh) {
         write_reg_to_mem(jh, jh.pc, traits::PC);
         write_reg_to_mem(jh, jh.next_pc, traits::NEXT_PC);
     }
-    inline void mov(x86::Compiler& cc, x86_reg_t _dest, x86_reg_t _source) {
-        if(std::holds_alternative<x86::Gp>(_dest) && std::holds_alternative<x86::Gp>(_source)) {
-            x86::Gp dest = std::get<x86::Gp>(_dest);
-            x86::Gp source = std::get<x86::Gp>(_source);
-            assert(dest.size() == source.size());
-            cc.mov(dest, source);
-        } else {
-            throw std::runtime_error("Variant not implemented in mov");
-        }
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    inline void mov(x86::Compiler& cc, x86_reg_t dest, T source) {
-        if(std::holds_alternative<x86::Gp>(dest)) {
-            cc.mov(std::get<x86::Gp>(dest), source);
-        } else {
-            throw std::runtime_error("Variant not implemented in mov (Integral)");
-        }
-    }
-    inline void mov(x86::Compiler& cc, x86_reg_t dest, x86::Mem source) {
-        if(std::holds_alternative<x86::Gp>(dest)) {
-            cc.mov(std::get<x86::Gp>(dest), source);
-        } else {
-            throw std::runtime_error("Variant not implemented in mov (Mem)");
-        }
-    }
-    inline void mov(x86::Compiler& cc, x86::Mem dest, x86_reg_t source) {
-        if(std::holds_alternative<x86::Gp>(source)) {
-            cc.mov(dest, std::get<x86::Gp>(source));
-        } else {
-            throw std::runtime_error("Variant not implemented in mov (Mem as dest)");
-        }
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    inline void mov(x86::Compiler& cc, x86::Mem dest, T source) {
-        // immediates larger than 32 bits need to be moved into a register first
-        if(sizeof(T) <= 4) {
-            cc.mov(dest, source);
-        } else {
-            x86::Gp imm_reg = get_reg_Gp(cc, sizeof(T) * 8);
-            cc.mov(imm_reg, source);
-            mov(cc, dest, imm_reg);
-        }
-    }
-    inline void mov(x86::Compiler& cc, x86::Mem dest, x86::Gp source) { cc.mov(dest, source); }
-
-    inline void cmp(x86::Compiler& cc, x86_reg_t a, x86_reg_t b) {
-        if(std::holds_alternative<x86::Gp>(a) && std::holds_alternative<x86::Gp>(b)) {
-            cc.cmp(std::get<x86::Gp>(a), std::get<x86::Gp>(b));
-        } else {
-            throw std::runtime_error("Variant not implemented in cmp");
-        }
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>> inline void cmp(x86::Compiler& cc, x86_reg_t _a, T b) {
-        if(std::holds_alternative<x86::Gp>(_a)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            // cmp only allows 32-bit immediates
-            if(sizeof(b) <= 4)
-                cc.cmp(a, b);
-            else if(sizeof(b) <= 8) {
-                x86::Gp b_reg = get_reg_Gp(cc, sizeof(b) * 8);
-                cc.mov(b_reg, b);
-                cc.cmp(a, b_reg);
-            } else {
-                throw std::runtime_error("Size not allowed in cmp (Integral)");
-            }
-
-        } else {
-            throw std::runtime_error("Variant not implemented in cmp (Integral)");
-        }
-    }
-    inline void cmp(x86::Compiler& cc, x86_reg_t a, x86::Mem b) {
-        if(std::holds_alternative<x86::Gp>(a)) {
-            cc.cmp(std::get<x86::Gp>(a), b);
-        } else {
-            throw std::runtime_error("Variant not implemented in cmp (Mem)");
-        }
-    }
-    inline void cmp(x86::Compiler& cc, x86::Mem a, x86_reg_t b) {
-        if(std::holds_alternative<x86::Gp>(b)) {
-            cc.cmp(a, std::get<x86::Gp>(b));
-        } else {
-            throw std::runtime_error("Variant not implemented in cmp (Mem as dest)");
-        }
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Mem> || std::is_same_v<T, x86::Gp>>>
-    inline void cmp(x86::Compiler& cc, x86::Mem a, T b) {
-        cc.cmp(a, b);
-    }
-
     x86::Mem get_ptr_for(jit_holder& jh, unsigned idx) {
         switch(traits::reg_bit_widths[idx]) {
         case 8:
@@ -437,46 +336,6 @@ protected:
         default:
             throw std::runtime_error("Invalid reg size in get_ptr_for");
         }
-    }
-    x86_reg_t get_reg(x86::Compiler& cc, unsigned size, bool is_signed = true) {
-        if(is_signed)
-            switch(size) {
-            case 8:
-                return cc.newInt8();
-            case 16:
-                return cc.newInt16();
-            case 32:
-                return cc.newInt32();
-            case 64:
-                return cc.newInt64();
-            case 128:
-                return dGp(cc);
-            default:
-                throw std::runtime_error("Invalid reg size in get_reg");
-            }
-        else
-            switch(size) {
-            case 8:
-                return cc.newUInt8();
-            case 16:
-                return cc.newUInt16();
-            case 32:
-                return cc.newUInt32();
-            case 64:
-                return cc.newUInt64();
-            case 128:
-                return dGp(cc);
-            default:
-                throw std::runtime_error("Invalid reg size in get_reg");
-            }
-    }
-    inline x86::Gp get_reg_Gp(x86::Compiler& cc, unsigned size, bool is_signed = true) {
-        assert(size <= 64);
-        return std::get<x86::Gp>(get_reg(cc, size, is_signed));
-    }
-    inline dGp get_reg_dGp(x86::Compiler& cc, unsigned size, bool is_signed = true) {
-        assert(size == 128);
-        return std::get<dGp>(get_reg(cc, size, is_signed));
     }
 
     inline x86_reg_t get_reg_for(x86::Compiler& cc, unsigned idx) { return get_reg(cc, traits::reg_bit_widths[idx]); }
@@ -498,110 +357,11 @@ protected:
         }
     }
     inline void write_reg_to_mem(jit_holder& jh, x86_reg_t reg, unsigned idx) {
-        // TODO sanitize this, needs checking which variant is in reg
+        if(std::holds_alternative<dGp>(reg)) {
+            throw std::runtime_error("Writing dGp to memory not implemented");
+        }
         auto ptr = get_ptr_for(jh, idx);
         mov(jh.cc, ptr, reg);
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    inline x86_reg_t gen_ext(x86::Compiler& cc, T val, unsigned target_size, bool is_signed) {
-        auto val_reg = get_reg(cc, sizeof(val) * 8, is_signed);
-        mov(cc, val_reg, val);
-        return gen_ext(cc, val_reg, target_size, is_signed);
-    }
-    inline x86_reg_t gen_ext(x86::Compiler& cc, x86_reg_t _val, unsigned target_size, bool is_signed) {
-        // In case of x86::Gp
-        if(std::holds_alternative<x86::Gp>(_val)) {
-            auto val = std::get<x86::Gp>(_val);
-            if(target_size <= 64) {
-                if(val.size() * 8 == target_size) // identity cast
-                    return val;
-                else if(val.size() * 8 > target_size) // truncation
-                    switch(target_size) {
-                    case 8:
-                        return val.r8();
-                    case 16:
-                        return val.r16();
-                    case 32:
-                        return val.r32();
-                    default:
-                        throw std::runtime_error(fmt::format("Invalid truncation size ({}) in gen_ext", target_size));
-                    }
-                x86::Gp ret_val = get_reg_Gp(cc, target_size);
-                if(is_signed) {
-                    if(val.size() == 4 && target_size == 64)
-                        cc.movsxd(ret_val, val);
-                    else
-                        cc.movsx(ret_val, val);
-                } else if(val.size() == 1 || val.size() == 2)
-                    // movzx can extend 8 and 16 bit values
-                    cc.movzx(ret_val, val);
-                else {
-                    assert(val.size() == 4);
-                    // from: http://x86asm.net/articles/x86-64-tour-of-intel-manuals/
-                    // Perhaps the most surprising fact is that an instruction such as MOV EAX, EBX automatically zeroes
-                    // upper 32 bits of RAX register
-                    ret_val = get_reg_Gp(cc, val.size() * 8);
-                    cc.mov(ret_val, val);
-                    switch(target_size) {
-                    case 32:
-                        return ret_val.r32();
-                    case 64:
-                        return ret_val.r64();
-                    default:
-                        throw std::runtime_error("Invalid size in gen_ext");
-                    }
-                }
-                return ret_val;
-            } else if(target_size == 128) {
-                val = gen_ext_Gp(cc, val, 64, is_signed);
-                if(is_signed) {
-                    dGp ret_val = dGp(cc);
-                    x86::Gp sign_reg = get_reg_Gp(cc, 64);
-                    cc.mov(sign_reg, val);
-                    cc.sar(sign_reg, 63);
-                    cc.mov(ret_val.lower, val);
-                    cc.mov(ret_val.upper, sign_reg);
-                    return ret_val;
-                } else {
-                    dGp ret_val = dGp(cc);
-                    cc.mov(ret_val.lower, val);
-                    cc.mov(ret_val.upper, 0);
-                    return ret_val;
-                }
-            } else {
-                throw std::runtime_error(fmt::format("target size {} not supported in gen_ext", target_size));
-            }
-        }
-        // In case of dGp
-        else if(std::holds_alternative<dGp>(_val)) {
-            auto val = std::get<dGp>(_val);
-            if(target_size < 128) {
-                // truncation
-                if(target_size < 64) {
-                    return gen_ext_Gp(cc, val.lower, target_size, is_signed);
-                } else if(target_size == 64) {
-                    return val.lower;
-                } else {
-                    val.upper = gen_ext_Gp(cc, val.upper, target_size - 64, is_signed);
-                    return val;
-                }
-            }
-            throw std::runtime_error(fmt::format("Does not support gen_ext from dGp to {}", target_size));
-            return _val;
-        }
-        // Should not end here
-        else {
-            throw std::runtime_error("Invalid variant encountered in gen_ext");
-            return _val;
-        }
-    }
-    inline x86::Gp gen_ext_Gp(x86::Compiler& cc, x86_reg_t _val, unsigned size, bool is_signed) {
-        assert(size <= 64);
-        return std::get<x86::Gp>(gen_ext(cc, _val, size, is_signed));
-    }
-    inline dGp gen_ext_dGp(x86::Compiler& cc, x86_reg_t _val, unsigned size, bool is_signed) {
-        assert(size == 128);
-        return std::get<dGp>(gen_ext(cc, _val, size, is_signed));
     }
 
     inline x86_reg_t gen_read_mem(jit_holder& jh, mem_type_e type, x86_reg_t _addr, uint32_t length) {
@@ -734,425 +494,6 @@ protected:
         auto val_reg = get_reg_Gp(jh.cc, length * 8, true);
         jh.cc.mov(val_reg, val);
         gen_write_mem(jh, type, addr, val_reg, length);
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, T b) {
-        if(std::holds_alternative<x86::Gp>(_a)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            return _gen_operation(cc, op, a, b);
-        } else if(std::holds_alternative<dGp>(_a)) {
-            dGp a = std::get<dGp>(_a);
-            dGp ret_val = dGp(cc);
-            switch(op) {
-            case add:
-            case sub:
-            case band:
-            case bor:
-            case bxor: {
-                ret_val.upper = _gen_operation(cc, op, a.upper, b >> 64);
-                ret_val.lower = _gen_operation(cc, op, a.lower, b & 0xffffffff);
-                return ret_val;
-            }
-            case shl: {
-                if(b >= 64) { // shl gets masked to 8 bits, so we need to shift by more than 63 manually
-                    assert(b <= 128);
-                    cc.mov(ret_val.lower, 0);
-                    ret_val.upper = _gen_operation(cc, shl, a.lower, b - 64);
-                    return ret_val;
-                } else {
-                    x86::Gp upper_shifted = _gen_operation(cc, shl, a.upper, b);
-                    x86::Gp shifted_out_of_lower = _gen_operation(cc, shr, a.lower, 64 - b);
-                    cc.or_(upper_shifted, shifted_out_of_lower);
-                    ret_val.upper = upper_shifted;
-                    ret_val.lower = _gen_operation(cc, shl, a.lower, b);
-                    return ret_val;
-                }
-            }
-            case sar: {
-                if(b >= 64) { // sar gets masked to 8 bits, so we need to shift by more than 63 manually
-                    assert(b <= 128);
-                    cc.mov(ret_val.upper, a.upper);
-                    cc.sar(ret_val.upper, 63);
-                    ret_val.lower = _gen_operation(cc, sar, a.upper, b - 64);
-                    return ret_val;
-                } else {
-                    x86::Gp lower_shifted = _gen_operation(cc, shr, a.upper, b);
-                    x86::Gp shifted_out_of_upper = _gen_operation(cc, shl, a.upper, 64 - b);
-                    cc.or_(lower_shifted, shifted_out_of_upper);
-                    ret_val.lower = lower_shifted;
-                    ret_val.upper = _gen_operation(cc, sar, a.upper, b);
-                    return ret_val;
-                }
-            }
-            case shr: {
-                if(b >= 64) { // sar gets masked to 8 bits, so we need to shift by more than 63 manually
-                    assert(b <= 128);
-                    cc.mov(ret_val.upper, 0);
-                    ret_val.lower = _gen_operation(cc, shr, a.upper, b - 64);
-                    return ret_val;
-                } else {
-                    x86::Gp lower_shifted = _gen_operation(cc, shr, a.upper, b);
-                    x86::Gp shifted_out_of_upper = _gen_operation(cc, shl, a.upper, 64 - b);
-                    cc.or_(lower_shifted, shifted_out_of_upper);
-                    ret_val.lower = lower_shifted;
-                    ret_val.upper = _gen_operation(cc, shr, a.upper, b);
-                    return ret_val;
-                }
-            }
-            default:
-                throw std::runtime_error(fmt::format("Operation {} not handled in gen_operation for dGp variant", op));
-            }
-        }
-
-        // Should not end here
-        else {
-            throw std::runtime_error("Invalid variant in in gen_operation (operation w/ integral)");
-            return _a;
-        }
-    }
-
-    x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, x86_reg_t _b) {
-        if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            x86::Gp b = std::get<x86::Gp>(_b);
-            assert(a.size() == b.size());
-            return _gen_operation(cc, op, a, b);
-        }
-        // Should not end here
-        else {
-            throw std::runtime_error("Invalid variant combination in in gen_operation (operation)");
-            return _a;
-        }
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Gp>>>
-    x86::Gp _gen_operation(x86::Compiler& cc, operation op, x86::Gp a, T b) {
-        switch(op) {
-        case add: {
-            cc.add(a, b);
-            break;
-        }
-        case sub: {
-            cc.sub(a, b);
-            break;
-        }
-        case band: {
-            cc.and_(a, b);
-            break;
-        }
-        case bor: {
-            cc.or_(a, b);
-            break;
-        }
-        case bxor: {
-            cc.xor_(a, b);
-            break;
-        }
-        case shl: {
-            cc.shl(a, b);
-            break;
-        }
-        case sar: {
-            cc.sar(a, b);
-            break;
-        }
-        case shr: {
-            cc.shr(a, b);
-            break;
-        }
-        default:
-            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (operation)", op));
-        }
-        return a;
-    }
-
-    inline void expand_division_operand(x86::Compiler& cc, x86::Gp upper_half, x86::Gp dividend) {
-        // This function expands the dividend into the upper half, allowing correct division of negative values
-        switch(dividend.size()) {
-        case 2:
-            cc.cwd(upper_half, dividend);
-            return;
-        case 4:
-            cc.cdq(upper_half, dividend);
-            return;
-        case 8:
-            cc.cqo(upper_half, dividend);
-            return;
-        default:
-            throw std::runtime_error(fmt::format("Cannot prepare division for operand of size {}", dividend.size()));
-        }
-    }
-    template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
-    x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, V a, W b) {
-        x86_reg_t a_reg = get_reg(cc, sizeof(a) * 8);
-        x86_reg_t b_reg = get_reg(cc, sizeof(b) * 8);
-        mov(cc, a_reg, a);
-        mov(cc, b_reg, b);
-        return gen_operation(cc, op, a_reg, b_reg);
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t a, T b) {
-        auto size = 0;
-        if(std::holds_alternative<x86::Gp>(a))
-            size = std::get<x86::Gp>(a).size() * 8;
-        else if(std::holds_alternative<dGp>(a))
-            size = 128;
-        else
-            throw std::runtime_error("Invalid variant in gen_operation");
-        x86_reg_t b_reg = get_reg(cc, size);
-        mov(cc, b_reg, b);
-        return gen_operation(cc, op, a, b_reg);
-    }
-    x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_reg_t _b) {
-        if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            x86::Gp b = std::get<x86::Gp>(_b);
-            assert(a.size() == b.size());
-            x86::Gp overflow = get_reg_Gp(cc, a.size() * 8);
-            switch(op) {
-            case smul: {
-                return _multiply(cc, op, a, b);
-            }
-            case umul: {
-                return _multiply(cc, op, a, b);
-            }
-            case sumul: {
-                if(a.size() <= 4) {
-                    // As there is no mixed multiplication in x86, sign extend the signed value and zero extend the unsigned value
-                    // then we can use normal signed multiplication
-                    x86::Gp big_a = gen_ext_Gp(cc, a, a.size() * 8 * 2, true);
-                    x86::Gp big_b = gen_ext_Gp(cc, b, b.size() * 8 * 2, false);
-                    x86::Gp big_overflow = get_reg_Gp(cc, overflow.size() * 8 * 2, false); // This should always be empty
-                    cc.imul(big_overflow, big_a, big_b);
-                    return big_a;
-                } else if(a.size() == 8) {
-                    /*
-                    The following algorithm was obtained by running godbolt on a function that looks like this:
-                    __int128 multiply_signed_unsigned(int64_t num1, uint64_t num2) { return (__int128)num1 * (__int128)num2; }
-
-                    Input rdi (num1) and rsi (num2)
-
-                    mov     rax, rdi
-                    cqo                 // sign extend rax into rdx:rax
-                    mov     rcx, rdx
-                    imul    rcx, rsi    // rcx * rsi -> rcx (truncate)
-                    mul     rsi         // rsi * rax -> rdx:rax
-                    add     rcx, rdx
-
-                    Output in rcx:rax
-                    */
-                    x86::Gp rdi = a;
-                    x86::Gp rsi = b;
-                    x86::Gp rax = get_reg_Gp(cc, 64);
-                    x86::Gp rdx = get_reg_Gp(cc, 64);
-                    x86::Gp rcx = get_reg_Gp(cc, 64);
-                    x86::Gp overflow = get_reg_Gp(cc, 64);
-                    cc.mov(rax, rdi);
-                    cc.cqo(rdx, rax);
-                    cc.mov(rcx, rdx);
-                    cc.imul(overflow, rcx, rsi);
-                    cc.mul(rdx, rax, rsi);
-                    cc.add(rcx, rdx);
-                    dGp ret_val = get_reg_dGp(cc, 128);
-                    ret_val.upper = rcx;
-                    ret_val.lower = rax;
-                    return ret_val;
-                }
-            }
-            case sdiv: {
-                expand_division_operand(cc, overflow, a);
-                cc.idiv(overflow, a, b);
-                return a;
-            }
-            case udiv: {
-                cc.mov(overflow, 0);
-                cc.div(overflow, a, b);
-                return a;
-            }
-            case srem: {
-                // division changes the contents of the a register, in this case as a side effect. Move it out of the way
-                x86::Gp a_clone = get_reg_Gp(cc, a.size() * 8);
-                cc.mov(a_clone, a);
-                expand_division_operand(cc, overflow, a_clone);
-                cc.idiv(overflow, a_clone, b);
-                return overflow;
-            }
-            case urem: {
-                x86::Gp a_clone = get_reg_Gp(cc, a.size() * 8);
-                cc.mov(a_clone, a);
-                cc.mov(overflow, 0);
-                cc.div(overflow, a_clone, b);
-                return overflow;
-            }
-
-            default:
-                throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (complex_operation)", op));
-            }
-        } else {
-            throw std::runtime_error("Variant combination not supported in gen_operation (complex_operation)");
-        }
-    }
-    x86_reg_t _multiply(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_reg_t _b) {
-        if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            x86::Gp b = std::get<x86::Gp>(_b);
-            x86::Gp overflow = get_reg_Gp(cc, a.size() * 8, false);
-            // Multiplication of two XLEN wide registers returns a value that is 2*XLEN wide
-            // do the multiplication and piece together the return register
-            switch(op) {
-            case smul: {
-                cc.imul(overflow, a, b);
-                break;
-            }
-            case umul: {
-                cc.mul(overflow, a, b);
-                break;
-            }
-            default:
-                throw std::runtime_error(fmt::format("Current operation {} not supported in _multiply", op));
-            }
-            if(a.size() <= 4) {
-                // Still return a single Gp
-                // Obtain regs twice as big so that we can shift for the entire length
-                x86::Gp big_a = gen_ext_Gp(cc, a, a.size() * 8 * 2, false);
-                x86::Gp big_o = gen_ext_Gp(cc, overflow, overflow.size() * 8 * 2, false);
-                cc.shl(big_o, overflow.size() * 8);
-                cc.or_(big_a, big_o);
-                return big_a;
-            } else if(a.size() == 8) {
-                dGp ret_val = get_reg_dGp(cc, 128);
-                ret_val.upper = overflow;
-                ret_val.lower = a;
-                return ret_val;
-            }
-        } else if(std::holds_alternative<dGp>(_a) && std::holds_alternative<dGp>(_b)) {
-            throw std::runtime_error("Multiplication with input operands >64-bit not yet implemented");
-            return _b;
-        }
-        throw std::runtime_error("Variant combination not handled in _gen_operation (complex)");
-        return _b;
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
-    x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, T b) {
-        if(std::holds_alternative<x86::Gp>(_a)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            return _gen_operation(cc, op, a, b);
-        } else {
-            throw std::runtime_error("Variant not supported in gen_operation (comparison)");
-        }
-    }
-
-    x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, x86_reg_t _b) {
-        if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            x86::Gp b = std::get<x86::Gp>(_b);
-            return _gen_operation(cc, op, a, b);
-        } else {
-            throw std::runtime_error("Variant combination not supported in gen_operation (comparison)");
-        }
-    }
-    x86::Gp _gen_operation(x86::Compiler& cc, comparison_operation op, x86::Gp a, x86::Gp b) {
-        size_t a_size = a.size();
-        size_t b_size = b.size();
-        assert(a.size() == b.size());
-        x86::Gp tmp = cc.newInt8();
-        cc.mov(tmp, 1);
-        Label label_then = cc.newLabel();
-        cmp(cc, a, b);
-        switch(op) {
-        case eq:
-            cc.je(label_then);
-            break;
-        case ne:
-            cc.jne(label_then);
-            break;
-        case lt:
-            cc.jl(label_then);
-            break;
-        case ltu:
-            cc.jb(label_then);
-            break;
-        case gt:
-            cc.jg(label_then);
-            break;
-        case gtu:
-            cc.ja(label_then);
-            break;
-        case lte:
-            cc.jle(label_then);
-            break;
-        case lteu:
-            cc.jbe(label_then);
-            break;
-        case gte:
-            cc.jge(label_then);
-            break;
-        case gteu:
-            cc.jae(label_then);
-            break;
-        case land: {
-            Label label_false = cc.newLabel();
-            cc.cmp(a, 0);
-            cc.je(label_false);
-            auto b_reg = cc.newInt8();
-            cc.mov(b_reg, b);
-            cc.cmp(b_reg, 0);
-            cc.je(label_false);
-            cc.jmp(label_then);
-            cc.bind(label_false);
-            break;
-        }
-        case lor: {
-            cc.cmp(a, 0);
-            cc.jne(label_then);
-            auto b_reg = cc.newInt8();
-            cc.mov(b_reg, b);
-            cc.cmp(b_reg, 0);
-            cc.jne(label_then);
-            break;
-        }
-        default:
-            throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (comparison)", op));
-        }
-        cc.mov(tmp, 0);
-        cc.bind(label_then);
-        return tmp;
-    }
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same<T, x86::Gp>::value>>
-    x86::Gp _gen_operation(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b) {
-        x86::Gp b_reg = get_reg_Gp(cc, sizeof(T) * 8);
-        cc.mov(b_reg, b);
-        x86::Gp big_b = gen_ext_Gp(cc, b_reg, a.size() * 8, std::is_signed_v<T>);
-        return _gen_operation(cc, op, a, big_b);
-    }
-    x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a) {
-        if(std::holds_alternative<x86::Gp>(_a)) {
-            x86::Gp a = std::get<x86::Gp>(_a);
-            switch(op) {
-            case lnot:
-                throw std::runtime_error("Current operation not supported in gen_operation(lnot)");
-            case inc: {
-                cc.inc(a);
-                break;
-            }
-            case dec: {
-                cc.dec(a);
-                break;
-            }
-            case bnot: {
-                cc.not_(a);
-                break;
-            }
-            case neg: {
-                cc.neg(a);
-                break;
-            }
-            default:
-                throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (unary)", op));
-            }
-            return a;
-        } else {
-            throw std::runtime_error("Variant not supported in gen_operation (unary)");
-        }
     }
 };
 } // namespace asmjit
