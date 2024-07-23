@@ -81,7 +81,7 @@ public:
     using tu_builder = typename iss::tcc::code_builder<ARCH>;
     using dbg_if = iss::debugger_if;
 
-    constexpr static unsigned blk_size = 128; // std::numeric_limits<unsigned>::max();
+    constexpr static unsigned blk_size = std::numeric_limits<unsigned>::max();
 
     arch_if* get_arch() override { return &core; };
 
