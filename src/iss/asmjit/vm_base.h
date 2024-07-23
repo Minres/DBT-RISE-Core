@@ -306,19 +306,6 @@ protected:
         mov(jh.cc, get_ptr_for(jh, traits::LAST_BRANCH), static_cast<int>(UNKNOWN_JUMP));
         jh.next_pc = load_reg_from_mem_Gp(jh, traits::NEXT_PC);
     }
-    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> void gen_set_tval(jit_holder& jh, T new_tval) {
-        mov(jh.cc, jh.tval, new_tval);
-    }
-    void gen_set_tval(jit_holder& jh, x86_reg_t _new_tval) {
-        if(std::holds_alternative<x86::Gp>(_new_tval)) {
-            x86::Gp new_tval = std::get<x86::Gp>(_new_tval);
-            if(new_tval.size() < 8)
-                new_tval = gen_ext_Gp(jh.cc, new_tval, 64, false);
-            mov(jh.cc, jh.tval, new_tval);
-        } else {
-            throw std::runtime_error("Variant not supported in gen_set_tval");
-        }
-    }
     void write_back(jit_holder& jh) {
         write_reg_to_mem(jh, jh.pc, traits::PC);
         write_reg_to_mem(jh, jh.next_pc, traits::NEXT_PC);
