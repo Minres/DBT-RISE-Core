@@ -211,7 +211,7 @@ public:
     }
 
 protected:
-    continuation_e translate(virt_addr_t& pc, jit_holder& jh) {
+    continuation_e translate(virt_addr_t const& pc, jit_holder& jh) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         phys_addr_t phys_pc(pc.access, pc.space, pc.val);

@@ -199,7 +199,7 @@ public:
 
     void reset() override { core.reset(); }
 
-    void reset(uint64_t address) { core.reset(address); }
+    void reset(uint64_t address) override { core.reset(address); }
 
     void pre_instr_sync() override {
         uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
@@ -207,7 +207,7 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, Function*> translate(virt_addr_t& pc) {
+    std::tuple<continuation_e, Function*> translate(virt_addr_t const& pc) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         phys_addr_t phys_pc(pc.access, pc.space, pc.val);
@@ -287,7 +287,7 @@ protected:
 
     ~vm_base() override { delete tgt_adapter; }
 
-    void register_plugin(vm_plugin& plugin) {
+    void register_plugin(vm_plugin& plugin) override {
         if(plugin.registration("1.0", *this)) {
             // This is wrong, needs ptrType
             auto* plugin_addr = ConstantInt::get(::iss::llvm::getContext(), APInt(64, (uint64_t)&plugin));
