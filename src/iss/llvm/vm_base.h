@@ -128,7 +128,7 @@ public:
                 Function* func;
                 param.vm->mod = m;
                 param.vm->setup_module(m);
-                std::tie(param.cont, func) = param.vm->disass(param.pc);
+                std::tie(param.cont, func) = param.vm->translate(param.pc);
                 param.vm->mod = nullptr;
                 param.vm->func = nullptr;
                 return func;
@@ -207,7 +207,7 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, Function*> disass(virt_addr_t& pc) {
+    std::tuple<continuation_e, Function*> translate(virt_addr_t& pc) {
         unsigned cur_blk = 0;
         virt_addr_t cur_pc = pc;
         phys_addr_t phys_pc(pc.access, pc.space, pc.val);
