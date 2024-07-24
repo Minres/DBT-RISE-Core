@@ -37,8 +37,12 @@
 
 #include <util/logging.h>
 namespace logging {
-struct connection {constexpr static char const* name = "connection";};
-struct disass {constexpr static char const* name = "disass";};
+struct connection {
+    constexpr static char const* name = "connection";
+};
+struct disass {
+    constexpr static char const* name = "disass";
+};
 } // namespace logging
 
 #endif /* DBT_CORE_INCL_ISS_LOG_CATEGORIES_H_ */
