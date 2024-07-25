@@ -78,6 +78,7 @@ set(LIB_SOURCES
 	src/iss/vm_jit_funcs.cpp
 	src/iss/plugin/loader.cpp
 	src/iss/plugin/caculator.cpp
+	src/iss/instruction_decoder.cpp
 )
 if (UNIX)
     list(APPEND LIB_SOURCES  src/iss/plugin/loader.cpp)
