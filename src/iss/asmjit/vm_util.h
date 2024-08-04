@@ -39,7 +39,16 @@
 #include <cassert>
 #include <fmt/core.h>
 #include <stdexcept>
-#include <variant>
+#include <nonstd/variant.hpp>
+#include <type_traits>
+#if __cplusplus<201703L
+namespace std {
+template<bool _Cond, typename _Tp = void>
+  using enable_if_t = typename std::enable_if<_Cond, _Tp>::type;
+template <typename _Tp>
+  using is_integral_v = typename is_integral<_Tp>::value;
+}
+#endif
 
 namespace iss {
 namespace asmjit {
@@ -53,7 +62,7 @@ struct dGp {
     , lower(cc.newInt64()) {}
     dGp() = delete;
 };
-using x86_reg_t = std::variant<x86::Gp, dGp>;
+using x86_reg_t = nonstd::variant<x86::Gp, dGp>;
 
 // Wrapper for cc.mov to allow more flexible types
 void mov(x86::Compiler& cc, x86_reg_t _dest, x86_reg_t _source);
@@ -61,18 +70,18 @@ void mov(x86::Compiler& cc, x86_reg_t dest, x86::Mem source);
 void mov(x86::Compiler& cc, x86::Mem dest, x86_reg_t source);
 void mov(x86::Compiler& cc, x86::Mem dest, x86::Gp source);
 // Integral -> x86_reg_t
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> void mov(x86::Compiler& cc, x86_reg_t dest, T source);
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>> void mov(x86::Compiler& cc, x86_reg_t dest, T source);
 // Integral -> x86::Mem
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> void mov(x86::Compiler& cc, x86::Mem dest, T source);
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>> void mov(x86::Compiler& cc, x86::Mem dest, T source);
 
 // Wrapper for cc.cmp to allow more flexible types
 void cmp(x86::Compiler& cc, x86_reg_t a, x86_reg_t b);
 void cmp(x86::Compiler& cc, x86_reg_t a, x86::Mem b);
 void cmp(x86::Compiler& cc, x86::Mem a, x86_reg_t b);
 // cmp x86_reg_t and Integral
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> void cmp(x86::Compiler& cc, x86_reg_t _a, T b);
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>> void cmp(x86::Compiler& cc, x86_reg_t _a, T b);
 // cmp x86::Mem and Integral || x86::Mem || x86:.Gp
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Mem> || std::is_same_v<T, x86::Gp>>>
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Mem>::value || std::is_same<T, x86::Gp>::value>>
 void cmp(x86::Compiler& cc, x86::Mem a, T b);
 
 // Functions for creation of x86::Gp and dGp
@@ -104,10 +113,10 @@ Type operation
 */
 x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, x86_reg_t _b);
 // x86_reg_t and Integral
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, T b);
 // x86::Gp and Integral || x86::Gp
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Gp>>>
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
 x86::Gp gen_operation_Gp(x86::Compiler& cc, operation op, x86::Gp a, T b);
 
 /*
@@ -115,13 +124,13 @@ Type complex_operation
 */
 x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_reg_t _b);
 // Integral and Integral
-template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
+template <typename V, typename W, typename = std::enable_if_t<std::is_integral<V>::value && std::is_integral<W>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, V a, W b);
 // x86_reg_t and Integral
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t a, T b);
 // x86::Gp and Integral || x86::Gp
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T> || std::is_same_v<T, x86::Gp>>>
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
 x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b);
 
 /*
@@ -130,7 +139,7 @@ Type comparison_operation
 x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, x86_reg_t _b);
 x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, x86::Gp b);
 // x86_reg_t and Integral
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, T b);
 
 /*
@@ -140,15 +149,15 @@ x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a);
 
 // Inline functions
 inline void mov(x86::Compiler& cc, x86_reg_t dest, x86::Mem source) {
-    if(std::holds_alternative<x86::Gp>(dest)) {
-        cc.mov(std::get<x86::Gp>(dest), source);
+    if(nonstd::holds_alternative<x86::Gp>(dest)) {
+        cc.mov(nonstd::get<x86::Gp>(dest), source);
     } else {
         throw std::runtime_error("Variant not implemented in mov (Mem)");
     }
 }
 inline void mov(x86::Compiler& cc, x86::Mem dest, x86_reg_t source) {
-    if(std::holds_alternative<x86::Gp>(source)) {
-        cc.mov(dest, std::get<x86::Gp>(source));
+    if(nonstd::holds_alternative<x86::Gp>(source)) {
+        cc.mov(dest, nonstd::get<x86::Gp>(source));
     } else {
         throw std::runtime_error("Variant not implemented in mov (Mem as dest)");
     }
@@ -157,48 +166,48 @@ inline void mov(x86::Compiler& cc, x86::Mem dest, x86_reg_t source) {
 inline void mov(x86::Compiler& cc, x86::Mem dest, x86::Gp source) { cc.mov(dest, source); }
 
 inline void cmp(x86::Compiler& cc, x86_reg_t a, x86_reg_t b) {
-    if(std::holds_alternative<x86::Gp>(a) && std::holds_alternative<x86::Gp>(b)) {
-        cc.cmp(std::get<x86::Gp>(a), std::get<x86::Gp>(b));
+    if(nonstd::holds_alternative<x86::Gp>(a) && nonstd::holds_alternative<x86::Gp>(b)) {
+        cc.cmp(nonstd::get<x86::Gp>(a), nonstd::get<x86::Gp>(b));
     } else {
         throw std::runtime_error("Variant not implemented in cmp");
     }
 }
 
 inline void cmp(x86::Compiler& cc, x86_reg_t a, x86::Mem b) {
-    if(std::holds_alternative<x86::Gp>(a)) {
-        cc.cmp(std::get<x86::Gp>(a), b);
+    if(nonstd::holds_alternative<x86::Gp>(a)) {
+        cc.cmp(nonstd::get<x86::Gp>(a), b);
     } else {
         throw std::runtime_error("Variant not implemented in cmp (Mem)");
     }
 }
 inline void cmp(x86::Compiler& cc, x86::Mem a, x86_reg_t b) {
-    if(std::holds_alternative<x86::Gp>(b)) {
-        cc.cmp(a, std::get<x86::Gp>(b));
+    if(nonstd::holds_alternative<x86::Gp>(b)) {
+        cc.cmp(a, nonstd::get<x86::Gp>(b));
     } else {
         throw std::runtime_error("Variant not implemented in cmp (Mem as dest)");
     }
 }
 inline x86::Gp get_reg_Gp(x86::Compiler& cc, unsigned size, bool is_signed) {
     assert(size <= 64);
-    return std::get<x86::Gp>(get_reg(cc, size, is_signed));
+    return nonstd::get<x86::Gp>(get_reg(cc, size, is_signed));
 }
 inline dGp get_reg_dGp(x86::Compiler& cc, unsigned size, bool is_signed) {
     assert(size == 128);
-    return std::get<dGp>(get_reg(cc, size, is_signed));
+    return nonstd::get<dGp>(get_reg(cc, size, is_signed));
 }
 inline x86::Gp gen_ext_Gp(x86::Compiler& cc, x86_reg_t _val, unsigned size, bool is_signed) {
     assert(size <= 64);
-    return std::get<x86::Gp>(gen_ext(cc, _val, size, is_signed));
+    return nonstd::get<x86::Gp>(gen_ext(cc, _val, size, is_signed));
 }
 inline dGp gen_ext_dGp(x86::Compiler& cc, x86_reg_t _val, unsigned size, bool is_signed) {
     assert(size == 128);
-    return std::get<dGp>(gen_ext(cc, _val, size, is_signed));
+    return nonstd::get<dGp>(gen_ext(cc, _val, size, is_signed));
 }
 
 // Templates
 template <typename T, typename> inline void mov(x86::Compiler& cc, x86_reg_t dest, T source) {
-    if(std::holds_alternative<x86::Gp>(dest)) {
-        cc.mov(std::get<x86::Gp>(dest), source);
+    if(nonstd::holds_alternative<x86::Gp>(dest)) {
+        cc.mov(nonstd::get<x86::Gp>(dest), source);
     } else {
         throw std::runtime_error("Variant not implemented in mov (Integral)");
     }
@@ -214,8 +223,8 @@ template <typename T, typename> inline void mov(x86::Compiler& cc, x86::Mem dest
     }
 }
 template <typename T, typename> void cmp(x86::Compiler& cc, x86_reg_t _a, T b) {
-    if(std::holds_alternative<x86::Gp>(_a)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
+    if(nonstd::holds_alternative<x86::Gp>(_a)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
         // cmp only allows 32-bit immediates
         if(sizeof(b) <= 4)
             cc.cmp(a, b);
@@ -239,11 +248,11 @@ template <typename T, typename> inline x86_reg_t gen_ext(x86::Compiler& cc, T va
     return gen_ext(cc, val_reg, target_size, is_signed);
 }
 template <typename T, typename> x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, T b) {
-    if(std::holds_alternative<x86::Gp>(_a)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
+    if(nonstd::holds_alternative<x86::Gp>(_a)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
         return gen_operation_Gp(cc, op, a, b);
-    } else if(std::holds_alternative<dGp>(_a)) {
-        dGp a = std::get<dGp>(_a);
+    } else if(nonstd::holds_alternative<dGp>(_a)) {
+        dGp a = nonstd::get<dGp>(_a);
         dGp ret_val = dGp(cc);
         switch(op) {
         case add:
@@ -360,9 +369,9 @@ template <typename V, typename W, typename> x86_reg_t gen_operation(x86::Compile
 }
 template <typename T, typename> x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t a, T b) {
     auto size = 0;
-    if(std::holds_alternative<x86::Gp>(a))
-        size = std::get<x86::Gp>(a).size() * 8;
-    else if(std::holds_alternative<dGp>(a))
+    if(nonstd::holds_alternative<x86::Gp>(a))
+        size = nonstd::get<x86::Gp>(a).size() * 8;
+    else if(nonstd::holds_alternative<dGp>(a))
         size = 128;
     else
         throw std::runtime_error("Invalid variant in gen_operation");
@@ -371,8 +380,8 @@ template <typename T, typename> x86_reg_t gen_operation(x86::Compiler& cc, compl
     return gen_operation(cc, op, a, b_reg);
 }
 template <typename T, typename> x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, T b) {
-    if(std::holds_alternative<x86::Gp>(_a)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
+    if(nonstd::holds_alternative<x86::Gp>(_a)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
         return gen_operation_Gp(cc, op, a, b);
     } else {
         throw std::runtime_error("Variant not supported in gen_operation (comparison)");
@@ -381,7 +390,7 @@ template <typename T, typename> x86_reg_t gen_operation(x86::Compiler& cc, compa
 template <typename T, typename> x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b) {
     x86::Gp b_reg = get_reg_Gp(cc, sizeof(T) * 8);
     cc.mov(b_reg, b);
-    x86::Gp big_b = gen_ext_Gp(cc, b_reg, a.size() * 8, std::is_signed_v<T>);
+    x86::Gp big_b = gen_ext_Gp(cc, b_reg, a.size() * 8, std::is_signed<T>::value);
     return gen_operation_Gp(cc, op, a, big_b);
 }
 } // namespace asmjit

@@ -44,9 +44,9 @@ namespace asmjit {
 using namespace ::asmjit;
 
 void mov(x86::Compiler& cc, x86_reg_t _dest, x86_reg_t _source) {
-    if(std::holds_alternative<x86::Gp>(_dest) && std::holds_alternative<x86::Gp>(_source)) {
-        x86::Gp dest = std::get<x86::Gp>(_dest);
-        x86::Gp source = std::get<x86::Gp>(_source);
+    if(nonstd::holds_alternative<x86::Gp>(_dest) && nonstd::holds_alternative<x86::Gp>(_source)) {
+        x86::Gp dest = nonstd::get<x86::Gp>(_dest);
+        x86::Gp source = nonstd::get<x86::Gp>(_source);
         assert(dest.size() == source.size());
         cc.mov(dest, source);
     } else {
@@ -89,8 +89,8 @@ x86_reg_t get_reg(x86::Compiler& cc, unsigned size, bool is_signed) {
 
 x86_reg_t gen_ext(x86::Compiler& cc, x86_reg_t _val, unsigned target_size, bool is_signed) {
     // In case of x86::Gp
-    if(std::holds_alternative<x86::Gp>(_val)) {
-        auto val = std::get<x86::Gp>(_val);
+    if(nonstd::holds_alternative<x86::Gp>(_val)) {
+        auto val = nonstd::get<x86::Gp>(_val);
         if(target_size <= 64) {
             if(val.size() * 8 == target_size) // identity cast
                 return val;
@@ -152,8 +152,8 @@ x86_reg_t gen_ext(x86::Compiler& cc, x86_reg_t _val, unsigned target_size, bool 
         }
     }
     // In case of dGp
-    else if(std::holds_alternative<dGp>(_val)) {
-        auto val = std::get<dGp>(_val);
+    else if(nonstd::holds_alternative<dGp>(_val)) {
+        auto val = nonstd::get<dGp>(_val);
         if(target_size < 128) {
             // truncation
             if(target_size < 64) {
@@ -176,9 +176,9 @@ x86_reg_t gen_ext(x86::Compiler& cc, x86_reg_t _val, unsigned target_size, bool 
 }
 
 x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, x86_reg_t _b) {
-    if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
-        x86::Gp b = std::get<x86::Gp>(_b);
+    if(nonstd::holds_alternative<x86::Gp>(_a) && nonstd::holds_alternative<x86::Gp>(_b)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
+        x86::Gp b = nonstd::get<x86::Gp>(_b);
         assert(a.size() == b.size());
         return gen_operation_Gp(cc, op, a, b);
     }
@@ -207,9 +207,9 @@ void expand_division_operand(x86::Compiler& cc, x86::Gp upper_half, x86::Gp divi
 }
 
 x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_reg_t _b) {
-    if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
-        x86::Gp b = std::get<x86::Gp>(_b);
+    if(nonstd::holds_alternative<x86::Gp>(_a) && nonstd::holds_alternative<x86::Gp>(_b)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
+        x86::Gp b = nonstd::get<x86::Gp>(_b);
         assert(a.size() == b.size());
         x86::Gp overflow = get_reg_Gp(cc, a.size() * 8);
         switch(op) {
@@ -296,9 +296,9 @@ x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x
     }
 }
 x86_reg_t _multiply(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_reg_t _b) {
-    if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
-        x86::Gp b = std::get<x86::Gp>(_b);
+    if(nonstd::holds_alternative<x86::Gp>(_a) && nonstd::holds_alternative<x86::Gp>(_b)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
+        x86::Gp b = nonstd::get<x86::Gp>(_b);
         x86::Gp overflow = get_reg_Gp(cc, a.size() * 8, false);
         // Multiplication of two XLEN wide registers returns a value that is 2*XLEN wide
         // do the multiplication and piece together the return register
@@ -328,7 +328,7 @@ x86_reg_t _multiply(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_r
             ret_val.lower = a;
             return ret_val;
         }
-    } else if(std::holds_alternative<dGp>(_a) && std::holds_alternative<dGp>(_b)) {
+    } else if(nonstd::holds_alternative<dGp>(_a) && nonstd::holds_alternative<dGp>(_b)) {
         throw std::runtime_error("Multiplication with input operands >64-bit not yet implemented");
         return _b;
     }
@@ -337,9 +337,9 @@ x86_reg_t _multiply(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_r
 }
 
 x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, x86_reg_t _b) {
-    if(std::holds_alternative<x86::Gp>(_a) && std::holds_alternative<x86::Gp>(_b)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
-        x86::Gp b = std::get<x86::Gp>(_b);
+    if(nonstd::holds_alternative<x86::Gp>(_a) && nonstd::holds_alternative<x86::Gp>(_b)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
+        x86::Gp b = nonstd::get<x86::Gp>(_b);
         return gen_operation_Gp(cc, op, a, b);
     } else {
         throw std::runtime_error("Variant combination not supported in gen_operation (comparison)");
@@ -414,8 +414,8 @@ x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, 
 }
 
 x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a) {
-    if(std::holds_alternative<x86::Gp>(_a)) {
-        x86::Gp a = std::get<x86::Gp>(_a);
+    if(nonstd::holds_alternative<x86::Gp>(_a)) {
+        x86::Gp a = nonstd::get<x86::Gp>(_a);
         switch(op) {
         case lnot:
             throw std::runtime_error("Current operation not supported in gen_operation(lnot)");

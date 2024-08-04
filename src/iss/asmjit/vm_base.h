@@ -337,14 +337,14 @@ protected:
     }
     inline x86::Gp load_reg_from_mem_Gp(jit_holder& jh, unsigned idx) {
         x86_reg_t return_reg = load_reg_from_mem(jh, idx);
-        if(std::holds_alternative<x86::Gp>(return_reg)) {
-            return std::get<x86::Gp>(return_reg);
+        if(nonstd::holds_alternative<x86::Gp>(return_reg)) {
+            return nonstd::get<x86::Gp>(return_reg);
         } else {
             throw std::runtime_error("Invalid variation returned in load_reg_from_mem_Gp");
         }
     }
     inline void write_reg_to_mem(jit_holder& jh, x86_reg_t reg, unsigned idx) {
-        if(std::holds_alternative<dGp>(reg)) {
+        if(nonstd::holds_alternative<dGp>(reg)) {
             throw std::runtime_error("Writing dGp to memory not implemented");
         }
         auto ptr = get_ptr_for(jh, idx);
@@ -352,8 +352,8 @@ protected:
     }
 
     inline x86_reg_t gen_read_mem(jit_holder& jh, mem_type_e type, x86_reg_t _addr, uint32_t length) {
-        if(std::holds_alternative<x86::Gp>(_addr)) {
-            auto addr = std::get<x86::Gp>(_addr);
+        if(nonstd::holds_alternative<x86::Gp>(_addr)) {
+            auto addr = nonstd::get<x86::Gp>(_addr);
             x86::Compiler& cc = jh.cc;
             auto ret_reg = cc.newInt32();
 
@@ -407,7 +407,7 @@ protected:
             return val_reg;
         }
         // In case of dGp
-        else if(std::holds_alternative<dGp>(_addr)) {
+        else if(nonstd::holds_alternative<dGp>(_addr)) {
             throw std::runtime_error("Variant not supported in gen_read_mem");
             return _addr;
         }
@@ -424,9 +424,9 @@ protected:
     }
 
     inline void gen_write_mem(jit_holder& jh, mem_type_e type, x86_reg_t _addr, x86_reg_t _val, uint32_t length) {
-        if(std::holds_alternative<x86::Gp>(_addr) && std::holds_alternative<x86::Gp>(_val)) {
-            auto addr = std::get<x86::Gp>(_addr);
-            auto val = std::get<x86::Gp>(_val);
+        if(nonstd::holds_alternative<x86::Gp>(_addr) && nonstd::holds_alternative<x86::Gp>(_val)) {
+            auto addr = nonstd::get<x86::Gp>(_addr);
+            auto val = nonstd::get<x86::Gp>(_val);
             x86::Compiler& cc = jh.cc;
             assert(val.size() == length);
             auto mem_type_reg = cc.newInt32();

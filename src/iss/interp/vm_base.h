@@ -115,11 +115,14 @@ public:
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
-        if(this->debugging_enabled())
-            sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::FETCH, arch::traits<ARCH>::MEM, get_reg<addr_t>(arch::traits<ARCH>::PC));
-        CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
+        if(this->debugging_enabled()) {
+            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec<<", waiting for debugger";
+            sync_exec |= PRE_SYNC;
+            tgt_adapter->check_continue(pc.val);
+        } else
+            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             execute_inst(cond, pc, icount);
         } catch(simulation_stopped& e) {
