@@ -211,6 +211,7 @@ protected:
         std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, phys_pc);
         unsigned int num_inst = 0;
         tu_builder tu;
+        add_prologue(tu);
         open_block_func(tu, phys_pc);
         continuation_e cont = CONT;
         try {
@@ -291,6 +292,7 @@ protected:
         tu("return *next_pc;");
         gen_trap_behavior(tu);
     }
+    virtual void add_prologue(tu_builder&){};
 
     ARCH& core;
     unsigned core_id = 0;
