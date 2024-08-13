@@ -443,5 +443,27 @@ x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a) {
         throw std::runtime_error("Variant not supported in gen_operation (unary)");
     }
 }
+
+void setArg(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg) {
+    if(nonstd::holds_alternative<x86::Gp>(_arg)) {
+        x86::Gp arg = nonstd::get<x86::Gp>(_arg);
+        setArg(f_node, argPos, arg);
+    } else {
+        throw std::runtime_error("Variant not supported in setArg");
+    }
+}
+
+void setArg(InvokeNode* f_node, uint64_t argPos, x86::Gp arg) { f_node->setArg(argPos, arg); }
+
+void setRet(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg) {
+    if(nonstd::holds_alternative<x86::Gp>(_arg)) {
+        x86::Gp arg = nonstd::get<x86::Gp>(_arg);
+        setRet(f_node, argPos, arg);
+    } else {
+        throw std::runtime_error("Variant not supported in setRet");
+    }
+}
+
+void setRet(InvokeNode* f_node, uint64_t argPos, x86::Gp arg) { f_node->setRet(argPos, arg); }
 } // namespace asmjit
 } // namespace iss

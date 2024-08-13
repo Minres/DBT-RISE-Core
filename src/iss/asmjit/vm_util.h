@@ -38,16 +38,14 @@
 #include <asmjit/asmjit.h>
 #include <cassert>
 #include <fmt/core.h>
-#include <stdexcept>
 #include <nonstd/variant.hpp>
+#include <stdexcept>
 #include <type_traits>
-#if __cplusplus<201703L
+#if __cplusplus < 201703L
 namespace std {
-template<bool _Cond, typename _Tp = void>
-  using enable_if_t = typename std::enable_if<_Cond, _Tp>::type;
-template <typename _Tp>
-  using is_integral_v = typename is_integral<_Tp>::value;
-}
+template <bool _Cond, typename _Tp = void> using enable_if_t = typename std::enable_if<_Cond, _Tp>::type;
+template <typename _Tp> using is_integral_v = typename is_integral<_Tp>::value;
+} // namespace std
 #endif
 
 namespace iss {
@@ -81,7 +79,8 @@ void cmp(x86::Compiler& cc, x86::Mem a, x86_reg_t b);
 // cmp x86_reg_t and Integral
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>> void cmp(x86::Compiler& cc, x86_reg_t _a, T b);
 // cmp x86::Mem and Integral || x86::Mem || x86:.Gp
-template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Mem>::value || std::is_same<T, x86::Gp>::value>>
+template <typename T,
+          typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Mem>::value || std::is_same<T, x86::Gp>::value>>
 void cmp(x86::Compiler& cc, x86::Mem a, T b);
 
 // Functions for creation of x86::Gp and dGp
@@ -129,9 +128,6 @@ x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, V a, W b);
 // x86_reg_t and Integral
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t a, T b);
-// x86::Gp and Integral || x86::Gp
-template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
-x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b);
 
 /*
 Type comparison_operation
@@ -141,11 +137,38 @@ x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, 
 // x86_reg_t and Integral
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, T b);
+// x86::Gp and Integral || x86::Gp
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
+x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b);
 
 /*
 Type unary_operation
 */
 x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a);
+
+/*
+Slicing
+*/
+// x86_reg_t, Integral and Integral
+template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
+x86_reg_t gen_slice(x86::Compiler& cc, x86_reg_t _val, V a, W b);
+// x86::Gp, Integral and Integral
+template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
+x86_reg_t gen_slice(x86::Compiler& cc, x86::Gp val, V a, W b);
+
+/*
+Function calling
+*/
+// x86_reg_t
+void setArg(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
+// x86::Gp
+void setArg(InvokeNode* f_node, uint64_t argPos, x86::Gp arg);
+// Integral
+template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> void setArg(InvokeNode* f_node, uint64_t argPos, T arg);
+// x86_reg_t
+void setRet(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
+// x86::Gp
+void setRet(InvokeNode* f_node, uint64_t argPos, x86::Gp arg);
 
 // Inline functions
 inline void mov(x86::Compiler& cc, x86_reg_t dest, x86::Mem source) {
@@ -393,6 +416,23 @@ template <typename T, typename> x86::Gp gen_operation_Gp(x86::Compiler& cc, comp
     x86::Gp big_b = gen_ext_Gp(cc, b_reg, a.size() * 8, std::is_signed<T>::value);
     return gen_operation_Gp(cc, op, a, big_b);
 }
+template <typename V, typename W, typename> x86_reg_t gen_slice(x86::Compiler& cc, x86_reg_t _val, V a, W b) {
+    if(nonstd::holds_alternative<x86::Gp>(_val)) {
+        x86::Gp val = nonstd::get<x86::Gp>(_val);
+        return gen_slice(cc, val, a, b);
+    } else {
+        throw std::runtime_error("Variant not supported in gen_operation (comparison)");
+    }
+}
+template <typename V, typename W, typename> x86_reg_t gen_slice(x86::Compiler& cc, x86::Gp val, V bit, W width) {
+    assert(((bit + width) <= val.size() * 8) && "Invalid slice range");
+    // analog to bit_sub in scc util
+    // T res = (v >> bit) & ((T(1) << width) - 1);
+    x86_reg_t res = gen_operation(cc, band, gen_operation(cc, shr, val, bit), ((1 << width) - 1));
+    return res;
+}
+template <typename T, typename> void setArg(InvokeNode* f_node, uint64_t argPos, T arg) { f_node->setArg(argPos, arg); }
+
 } // namespace asmjit
 } // namespace iss
 #endif /* ASMJIT_VM_UTIL_H_ */
