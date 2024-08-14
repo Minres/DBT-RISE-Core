@@ -286,15 +286,8 @@ protected:
     std::vector<plugin_entry> plugins;
     std::vector<char*> global_disass_collection;
 
-    // Asmjit generator functions for commonly used expressions
+    // Asmjit generator functions
 
-    void gen_wait(jit_holder& jh, unsigned type) {
-        InvokeNode* call_wait;
-        jh.cc.comment("//gen_wait");
-        jh.cc.invoke(&call_wait, &wait, FuncSignature::build<void, void*, uint64_t>());
-        call_wait->setArg(0, this->get_arch());
-        call_wait->setArg(1, type);
-    }
     void gen_leave(jit_holder& jh, unsigned lvl) {
         InvokeNode* call_leave;
         jh.cc.comment("//gen_leave");
