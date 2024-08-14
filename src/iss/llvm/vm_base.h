@@ -66,7 +66,7 @@ namespace iss {
 namespace llvm {
 using namespace ::llvm;
 
-enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum continuation_e { CONT, BRANCH, FLUSH, TRAP, ILLEGAL_INSTR, JUMP_TO_SELF, ILLEGAL_FETCH };
 enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
 
 void add_functions_2_module(Module* mod);
@@ -111,6 +111,7 @@ public:
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
+        uint32_t was_illegal = 0;
         if(this->debugging_enabled())
             sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
@@ -173,8 +174,18 @@ public:
                     } while(cur_tb != nullptr);
                     if(cont == FLUSH)
                         func_map.clear();
+                    if(cont == ILLEGAL_INSTR) {
+                        if(was_illegal > 2) {
+                            CPPLOG(ERR) << "ISS execution aborted after trying to execute illegal instructions 3 times in a row";
+                            error = -1;
+                            break;
+                        }
+                        was_illegal++;
+                    } else {
+                        was_illegal = 0;
+                    }
                 } catch(trap_access& ta) {
-                    pc.val = core.enter_trap(ta.id, ta.addr, 0);
+                    pc.val = core.enter_trap(1 << 16, ta.addr, 0);
                 }
 #ifndef NDEBUG
                 CPPLOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
@@ -207,16 +218,11 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, Function*> translate(virt_addr_t const& pc) {
-        unsigned cur_blk = 0;
-        virt_addr_t cur_pc = pc;
-        phys_addr_t phys_pc(pc.access, pc.space, pc.val);
-        if(this->core.has_mmu())
-            phys_pc = this->core.virt2phys(pc);
-        std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, phys_pc);
+    std::tuple<continuation_e, Function*> translate(virt_addr_t pc) {
+        unsigned cur_blk_size = 0;
         unsigned int num_inst = 0;
         // loaded_regs.clear();
-        func = this->open_block_func(phys_pc);
+        func = this->open_block_func(pc);
         leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
         BasicBlock* bb = BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
@@ -227,28 +233,19 @@ protected:
         trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
         gen_trap_behavior(trap_blk);
         continuation_e cont = CONT;
-        try {
-            while(cont == CONT && cur_blk < blk_size) {
-                builder.SetInsertPoint(bb);
-                std::tie(cont, bb) = gen_single_inst_behavior(cur_pc, num_inst, bb);
-                cur_blk++;
-            }
-            if(bb != nullptr) {
-                builder.SetInsertPoint(bb);
-                builder.CreateBr(leave_blk);
-            }
-            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
-            assert(cur_pc_mark.first.val <= cur_pc.val);
-            return std::make_tuple(cont, func);
-        } catch(trap_access& ta) {
-            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
-            if(cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
-                builder.SetInsertPoint(bb);
-                builder.CreateBr(leave_blk);
-                return std::make_tuple(cont, func);
-            } else // re-throw if it was the first instruction
-                throw ta;
+        while(cont == CONT && cur_blk_size < blk_size) {
+            builder.SetInsertPoint(bb);
+            std::tie(cont, bb) = gen_single_inst_behavior(pc, num_inst, bb);
+            cur_blk_size++;
         }
+        if(bb != nullptr) {
+            builder.SetInsertPoint(bb);
+            builder.CreateBr(leave_blk);
+        }
+        if(cont == ILLEGAL_FETCH && cur_blk_size == 1) {
+            throw trap_access(0, pc.val);
+        }
+        return std::make_tuple(cont, func);
     }
 
     void GenerateUniqueName(std::string& str, uint64_t mod) const {

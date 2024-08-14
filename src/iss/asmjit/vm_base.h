@@ -76,7 +76,7 @@ namespace iss {
 namespace asmjit {
 using namespace ::asmjit;
 
-enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum continuation_e { CONT, BRANCH, FLUSH, TRAP, ILLEGAL_INSTR, JUMP_TO_SELF, ILLEGAL_FETCH };
 enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
@@ -118,6 +118,7 @@ public:
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
+        uint32_t was_illegal = 0;
         if(this->debugging_enabled())
             sync_exec = PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
@@ -175,14 +176,22 @@ public:
                     } while(cur_tb != nullptr);
                     if(cont == FLUSH)
                         func_map.clear();
-
+                    if(cont == ILLEGAL_INSTR) {
+                        if(was_illegal > 2) {
+                            CPPLOG(ERR) << "ISS execution aborted after trying to execute illegal instructions 3 times in a row";
+                            error = -1;
+                            break;
+                        }
+                        was_illegal++;
+                    } else {
+                        was_illegal = 0;
+                    }
                 } catch(trap_access& ta) {
-                    pc.val = core.enter_trap(ta.id, ta.addr, 0);
+                    pc.val = core.enter_trap(1 << 16, ta.addr, 0);
                 }
 #ifndef NDEBUG
                 CPPLOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
 #endif
-                // break; //for testing, only exec first block and end sim
             }
         } catch(simulation_stopped& e) {
             CPPLOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
@@ -211,27 +220,16 @@ public:
     }
 
 protected:
-    continuation_e translate(virt_addr_t const& pc, jit_holder& jh) {
-        unsigned cur_blk = 0;
-        virt_addr_t cur_pc = pc;
-        phys_addr_t phys_pc(pc.access, pc.space, pc.val);
-        if(this->core.has_mmu())
-            phys_pc = this->core.virt2phys(pc);
-        std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, phys_pc);
+    continuation_e translate(virt_addr_t pc, jit_holder& jh) {
+        unsigned cur_blk_size = 0;
         unsigned int num_inst = 0;
         continuation_e cont = CONT;
-        try {
-            while(cont == CONT && cur_blk < blk_size) {
-                cont = gen_single_inst_behavior(cur_pc, num_inst, jh);
-                cur_blk++;
-            }
-            assert(cur_pc_mark.first.val <= cur_pc.val);
-            return cont;
-        } catch(trap_access& ta) {
-            if(cur_pc_mark.first.val <= cur_pc.val) {
-                return cont;
-            } else
-                throw ta;
+        while(cont == CONT && cur_blk_size < blk_size) {
+            cont = gen_single_inst_behavior(pc, num_inst, jh);
+            cur_blk_size++;
+        }
+        if(cont == ILLEGAL_FETCH && cur_blk_size == 1) {
+            throw trap_access(0, pc.val);
         }
         return cont;
     }
