@@ -167,9 +167,11 @@ public:
                         last_branch = core.get_last_branch();
                         auto cur_icount = core.get_icount();
                         // if the current tb has a successor assign to current tb
-                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount)
+                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount) {
                             cur_tb = cur_tb->cont[last_branch];
-                        else // if not we need to compile one
+                            // update cont, as it only gets set when a new fptr gets created
+                            cont = static_cast<continuation_e>(last_branch);
+                        } else // if not we need to compile one
                             cur_tb = nullptr;
                     } while(cur_tb != nullptr);
                     if(cont == FLUSH)
