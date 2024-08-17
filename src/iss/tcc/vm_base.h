@@ -223,10 +223,10 @@ protected:
             std::tie(cont) = gen_single_inst_behavior(pc, num_inst, tu);
             cur_blk_size++;
         }
+        close_block_func(tu);
         if(cont == ILLEGAL_FETCH && cur_blk_size == 1) {
             throw trap_access(0, pc.val);
         }
-        close_block_func(tu);
         return std::make_tuple(cont, tu.fname, tu.finish());
     }
 
