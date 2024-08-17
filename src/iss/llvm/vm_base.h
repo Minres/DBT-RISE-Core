@@ -424,12 +424,23 @@ protected:
         return ConstantInt::get(::iss::llvm::getContext(), APInt(size, (uint64_t)val, false));
     }
 
-    template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
+    template <typename V, typename W, typename = std::enable_if_t<std::is_integral<V>::value && std::is_integral<W>::value>>
     inline Value* gen_slice(Value* val, V bit, W width) {
+        auto res_width = 8;
+        if(width > 8)
+            res_width = 16;
+        if(width > 16)
+            res_width = 32;
+        if(width > 32)
+            res_width = 64;
         // analog to bit_sub in scc util
         // T res = (v >> bit) & ((T(1) << width) - 1);
-        return builder.CreateAnd(builder.CreateLShr(val, gen_const(32, bit)),
-                                 builder.CreateSub(builder.CreateShl(gen_const(32, 1), gen_const(32, width)), gen_const(32, 1)));
+        auto val_size = val->getType()->getPrimitiveSizeInBits();
+        Value* rhs = this->gen_const(val_size, (1ULL << width) - 1);
+        if(!bit)
+            return gen_ext(builder.CreateAnd(val, rhs), res_width);
+        else
+            return gen_ext(builder.CreateAnd(builder.CreateLShr(val, gen_const(val_size, bit)), rhs), res_width);
     }
 
     template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type* = nullptr>
