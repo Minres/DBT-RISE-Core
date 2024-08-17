@@ -428,8 +428,7 @@ template <typename V, typename W, typename> x86_reg_t gen_slice(x86::Compiler& c
     assert(((bit + width) <= val.size() * 8) && "Invalid slice range");
     // analog to bit_sub in scc util
     // T res = (v >> bit) & ((T(1) << width) - 1);
-    x86_reg_t res = gen_operation(cc, band, gen_operation(cc, shr, val, bit), ((1 << width) - 1));
-    return res;
+    return gen_operation(cc, band, gen_operation(cc, shr, val, bit), ((1 << width) - 1));
 }
 template <typename T, typename> void setArg(InvokeNode* f_node, uint64_t argPos, T arg) { f_node->setArg(argPos, arg); }
 
