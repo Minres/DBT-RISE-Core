@@ -99,7 +99,7 @@ std::vector<uint8_t> encoder_decoder::dec_reg_assignment(const char* in, unsigne
 }
 
 /* Decode memory transfer parameter in the form of AA..A,LL..L */
-int encoder_decoder::dec_mem(const char* in, uint64_t* addr, size_t* len) {
+int encoder_decoder::dec_mem(const char* in, uint64_t* addr, size_t* len, char break_char) {
     assert(in != nullptr);
     assert(addr != nullptr);
     assert(len != nullptr);
@@ -107,7 +107,7 @@ int encoder_decoder::dec_mem(const char* in, uint64_t* addr, size_t* len) {
         return false;
 
     *len = 0;
-    return dec_uint32(&in, (unsigned*)len, '\0');
+    return dec_uint32(&in, (unsigned*)len, break_char);
 }
 
 /* Decode process query. Format: 'MMMMMMMMRRRRRRRRRRRRRRRR'
