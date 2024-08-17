@@ -150,10 +150,10 @@ x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a);
 Slicing
 */
 // x86_reg_t, Integral and Integral
-template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
+template <typename V, typename W, typename = typename std::enable_if<std::is_integral<V>::value && std::is_integral<W>::value>::type>
 x86_reg_t gen_slice(x86::Compiler& cc, x86_reg_t _val, V a, W b);
 // x86::Gp, Integral and Integral
-template <typename V, typename W, typename = std::enable_if_t<std::is_integral_v<V> && std::is_integral_v<W>>>
+template <typename V, typename W, typename = typename std::enable_if<std::is_integral<V>::value && std::is_integral<W>::value>::type>
 x86_reg_t gen_slice(x86::Compiler& cc, x86::Gp val, V a, W b);
 
 /*
@@ -164,7 +164,7 @@ void setArg(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
 // x86::Gp
 void setArg(InvokeNode* f_node, uint64_t argPos, x86::Gp arg);
 // Integral
-template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>> void setArg(InvokeNode* f_node, uint64_t argPos, T arg);
+template <typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type> void setArg(InvokeNode* f_node, uint64_t argPos, T arg);
 // x86_reg_t
 void setRet(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
 // x86::Gp
