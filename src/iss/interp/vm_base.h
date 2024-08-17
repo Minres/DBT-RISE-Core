@@ -118,7 +118,7 @@ public:
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::FETCH, arch::traits<ARCH>::MEM, get_reg<addr_t>(arch::traits<ARCH>::PC));
         if(this->debugging_enabled()) {
-            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec<<", waiting for debugger";
+            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec << ", waiting for debugger";
         } else
             CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {

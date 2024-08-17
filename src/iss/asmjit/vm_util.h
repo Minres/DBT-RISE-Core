@@ -164,7 +164,8 @@ void setArg(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
 // x86::Gp
 void setArg(InvokeNode* f_node, uint64_t argPos, x86::Gp arg);
 // Integral
-template <typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type> void setArg(InvokeNode* f_node, uint64_t argPos, T arg);
+template <typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+void setArg(InvokeNode* f_node, uint64_t argPos, T arg);
 // x86_reg_t
 void setRet(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
 // x86::Gp
