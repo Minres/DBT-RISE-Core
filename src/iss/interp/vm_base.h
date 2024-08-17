@@ -118,9 +118,7 @@ public:
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::FETCH, arch::traits<ARCH>::MEM, get_reg<addr_t>(arch::traits<ARCH>::PC));
         if(this->debugging_enabled()) {
-            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec << ", waiting for debugger";
-            sync_exec |= PRE_SYNC;
-            tgt_adapter->check_continue(pc.val);
+            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec<<", waiting for debugger";
         } else
             CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
@@ -158,8 +156,10 @@ protected:
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
     , sync_exec(NO_SYNC)
+    , core_sync(NO_SYNC)
     , tgt_adapter(nullptr) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+        core_sync = static_cast<sync_type>(core_sync | core.needed_sync());
     }
 
     ~vm_base() override { delete tgt_adapter; }
@@ -180,13 +180,8 @@ protected:
         {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
 
     inline void do_sync(sync_type s, unsigned inst_id) {
-        if(s == PRE_SYNC) {
-            if(debugging_enabled())
-                tgt_adapter->check_continue(get_reg<addr_t>(arch::traits<ARCH>::PC)); // pre_instr_sync();
-        }
-        if((s & sync_exec))
+        if((s & core_sync))
             core.notify_phase(notifier_mapping[s]);
-
         iss::instr_info_t iinfo{cluster_id, core_id, inst_id, static_cast<unsigned>(s)};
         if(s & PRE_SYNC)
             for(plugin_entry e : pre_plugins)
@@ -227,6 +222,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
     sync_type sync_exec;
+    sync_type core_sync;
     // non-owning pointers
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base* tgt_adapter;
