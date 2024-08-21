@@ -41,6 +41,8 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h> //outs()
 // needed to get the execution engine linked in
+#include <llvm/ExecutionEngine/MCJIT.h>
+
 #include "llvm/Support/CodeGen.h"
 
 #include <array>
