@@ -176,7 +176,7 @@ struct instrumentation_if {
      *
      * @return unordered map containing symbol name as key
      */
-    virtual std::unordered_map<std::string, uint64_t> get_symbol_table(std::string name) = 0;
+    virtual std::unordered_map<std::string, uint64_t> const& get_symbol_table(std::string name) = 0;
 };
 } // namespace v2
 } /* namespace iss */
