@@ -315,7 +315,7 @@ template <typename ARCH> struct code_builder {
         assert(((bit + width) <= val.size()) && "Invalid slice range");
         // analog to bit_sub in scc util
         // T res = (v >> bit) & ((T(1) << width) - 1);
-        value res = bitwise_and(lshr(val, bit), ((1 << width) - 1));
+        value res = bitwise_and(lshr(val, bit), (((uint64_t)1 << width) - 1));
         return res;
     }
 
