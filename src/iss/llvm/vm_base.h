@@ -480,8 +480,8 @@ protected:
 
     inline Value* gen_cond_assign(Value* cond, Value* t, Value* f) { // cond must be 1 or 0
         using namespace llvm;
-        Value* const f_mask = builder.CreateSub(builder.CreateZExt(cond, get_type(f->getType()->getPrimitiveSizeInBits())),
-                                                gen_const(f->getType()->getPrimitiveSizeInBits(), 1));
+        auto f_size = f->getType()->getPrimitiveSizeInBits();
+        Value* const f_mask = builder.CreateSub(builder.CreateZExt(cond, get_type(f_size)), gen_const(f_size, 1));
         Value* const t_mask = builder.CreateXor(f_mask, gen_const(f_mask->getType()->getScalarSizeInBits(), -1));
         return builder.CreateOr(builder.CreateAnd(t, t_mask), builder.CreateAnd(f, f_mask)); // (t & ~t_mask) | (f & f_mask)
     }
