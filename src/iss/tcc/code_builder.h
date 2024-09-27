@@ -264,7 +264,7 @@ template <typename ARCH> struct code_builder {
     inline value preIncrement(value const& val) { return value(fmt::format("++({})", val), val.size(), val.is_signed()); }
     inline value preDecrement(value const& val) { return value(fmt::format("--({})", val), val.size(), val.is_signed()); }
     inline value shl(value const& val, value const& shift) {
-        return value(fmt::format("({})<<({})", val, shift), val.size(), val.is_signed());
+        return value(fmt::format("(uint64_t)({})<<({})", val, shift), val.size(), val.is_signed());
     }
 
     inline value lshr(value const& val, value const& shift) {
@@ -315,7 +315,21 @@ template <typename ARCH> struct code_builder {
         assert(((bit + width) <= val.size()) && "Invalid slice range");
         // analog to bit_sub in scc util
         // T res = (v >> bit) & ((T(1) << width) - 1);
-        value res = bitwise_and(lshr(val, bit), (((uint64_t)1 << width) - 1));
+
+        unsigned long v = width;
+        if(width <= 8)
+            v = 8;
+        else if(width <= 16)
+            v = 16;
+        else if(width <= 32)
+            v = 32;
+        else if(width <= 64)
+            v = 64;
+        else if(width <= 128)
+            v = 128;
+        if(val.size() != v) {
+        }
+        value res = ext(bitwise_and(lshr(val, bit), (((uint64_t)1 << width) - 1)), v, false);
         return res;
     }
 
