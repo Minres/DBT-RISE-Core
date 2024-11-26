@@ -120,7 +120,7 @@ public:
         int error = 0;
         uint32_t was_illegal = 0;
         if(this->debugging_enabled())
-            sync_exec = PRE_SYNC;
+            sync_exec |= PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, obtain_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
         CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
@@ -155,6 +155,8 @@ public:
                             std::make_pair(pc_p.val, iss::asmjit::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
+                    if(cont == JUMP_TO_SELF)
+                        throw simulation_stopped(0);
                     cur_tb = &(it->second);
                     // if we have a previous block link the just compiled one as successor of the last tb
                     if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
