@@ -52,7 +52,7 @@ public:
     int dec_reg(const char* in, unsigned int* reg_no);
 
     std::vector<uint8_t> dec_reg_assignment(const char* in, unsigned int* reg_no);
-    int dec_mem(const char* in, uint64_t* addr, size_t* len);
+    int dec_mem(const char* in, uint64_t* addr, size_t* len, char break_char = 0);
     int dec_process_query(const char* in, unsigned int* mask, rp_thread_ref* ref);
     int dec_break(const char* in, int* type, uint64_t* addr, unsigned int* len);
     int dec_list_query(const char* in, int* first, size_t* max, rp_thread_ref* arg);

@@ -82,13 +82,13 @@ public:
     /**
      * start the simulation
      *
-     * @param icount number of instructions to be simulated
+     * @param count number of instructions or fetches to be simulated, depending on cond
      * @param dump intermediate code if any
      * @param cond conditions to stop execution
      * @return number of executed instructions
      */
 
-    virtual int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
+    virtual int start(uint64_t count = std::numeric_limits<uint64_t>::max(), bool dump = false,
                       finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) = 0;
     /**
      * reset the core

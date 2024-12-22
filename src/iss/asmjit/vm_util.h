@@ -38,16 +38,14 @@
 #include <asmjit/asmjit.h>
 #include <cassert>
 #include <fmt/core.h>
-#include <stdexcept>
 #include <nonstd/variant.hpp>
+#include <stdexcept>
 #include <type_traits>
-#if __cplusplus<201703L
+#if __cplusplus < 201703L
 namespace std {
-template<bool _Cond, typename _Tp = void>
-  using enable_if_t = typename std::enable_if<_Cond, _Tp>::type;
-template <typename _Tp>
-  using is_integral_v = typename is_integral<_Tp>::value;
-}
+template <bool _Cond, typename _Tp = void> using enable_if_t = typename std::enable_if<_Cond, _Tp>::type;
+template <typename _Tp> using is_integral_v = typename is_integral<_Tp>::value;
+} // namespace std
 #endif
 
 namespace iss {
@@ -63,6 +61,8 @@ struct dGp {
     dGp() = delete;
 };
 using x86_reg_t = nonstd::variant<x86::Gp, dGp>;
+// Utilty function
+uint32_t get_native_size(uint32_t value);
 
 // Wrapper for cc.mov to allow more flexible types
 void mov(x86::Compiler& cc, x86_reg_t _dest, x86_reg_t _source);
@@ -81,7 +81,8 @@ void cmp(x86::Compiler& cc, x86::Mem a, x86_reg_t b);
 // cmp x86_reg_t and Integral
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>> void cmp(x86::Compiler& cc, x86_reg_t _a, T b);
 // cmp x86::Mem and Integral || x86::Mem || x86:.Gp
-template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Mem>::value || std::is_same<T, x86::Gp>::value>>
+template <typename T,
+          typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Mem>::value || std::is_same<T, x86::Gp>::value>>
 void cmp(x86::Compiler& cc, x86::Mem a, T b);
 
 // Functions for creation of x86::Gp and dGp
@@ -129,9 +130,6 @@ x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, V a, W b);
 // x86_reg_t and Integral
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t a, T b);
-// x86::Gp and Integral || x86::Gp
-template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
-x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b);
 
 /*
 Type comparison_operation
@@ -141,11 +139,39 @@ x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, 
 // x86_reg_t and Integral
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 x86_reg_t gen_operation(x86::Compiler& cc, comparison_operation op, x86_reg_t _a, T b);
+// x86::Gp and Integral || x86::Gp
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value || std::is_same<T, x86::Gp>::value>>
+x86::Gp gen_operation_Gp(x86::Compiler& cc, comparison_operation op, x86::Gp a, T b);
 
 /*
 Type unary_operation
 */
 x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a);
+
+/*
+Slicing
+*/
+// x86_reg_t, Integral and Integral
+template <typename V, typename W, typename = typename std::enable_if<std::is_integral<V>::value && std::is_integral<W>::value>::type>
+x86_reg_t gen_slice(x86::Compiler& cc, x86_reg_t _val, V a, W b);
+// x86::Gp, Integral and Integral
+template <typename V, typename W, typename = typename std::enable_if<std::is_integral<V>::value && std::is_integral<W>::value>::type>
+x86_reg_t gen_slice(x86::Compiler& cc, x86::Gp val, V a, W b);
+
+/*
+Function calling
+*/
+// x86_reg_t
+void setArg(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
+// x86::Gp
+void setArg(InvokeNode* f_node, uint64_t argPos, x86::Gp arg);
+// Integral
+template <typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
+void setArg(InvokeNode* f_node, uint64_t argPos, T arg);
+// x86_reg_t
+void setRet(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg);
+// x86::Gp
+void setRet(InvokeNode* f_node, uint64_t argPos, x86::Gp arg);
 
 // Inline functions
 inline void mov(x86::Compiler& cc, x86_reg_t dest, x86::Mem source) {
@@ -250,6 +276,22 @@ template <typename T, typename> inline x86_reg_t gen_ext(x86::Compiler& cc, T va
 template <typename T, typename> x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, T b) {
     if(nonstd::holds_alternative<x86::Gp>(_a)) {
         x86::Gp a = nonstd::get<x86::Gp>(_a);
+
+        // when shifting, ensure the register is big enough to contain the resulting value
+        if(op >= shl && b > a.size() * 8) {
+            x86::Gp a_reg = gen_ext_Gp(cc, a, get_native_size(b), false);
+            return gen_operation_Gp(cc, op, a_reg, b);
+        }
+        // increase size of a when needed, but do not sign extend
+        if(sizeof(T) > a.size()) {
+            a = gen_ext_Gp(cc, a, sizeof(T) * 8, false);
+        }
+        // x86 can only take immediates up to 4 bytes in size, any bigger values require a register
+        if(sizeof(T) > 4 && (op < shl)) {
+            x86::Gp b_reg = get_reg_Gp(cc, a.size() * 8, false);
+            cc.mov(b_reg, b);
+            return gen_operation_Gp(cc, op, a, b_reg);
+        }
         return gen_operation_Gp(cc, op, a, b);
     } else if(nonstd::holds_alternative<dGp>(_a)) {
         dGp a = nonstd::get<dGp>(_a);
@@ -322,43 +364,46 @@ template <typename T, typename> x86_reg_t gen_operation(x86::Compiler& cc, opera
     }
 }
 template <typename T, typename> x86::Gp gen_operation_Gp(x86::Compiler& cc, operation op, x86::Gp a, T b) {
+    // move a to the side as side effects on a are not wanted
+    x86::Gp c = get_reg_Gp(cc, a.size() * 8);
+    cc.mov(c, a);
     switch(op) {
     case add: {
-        cc.add(a, b);
+        cc.add(c, b);
         break;
     }
     case sub: {
-        cc.sub(a, b);
+        cc.sub(c, b);
         break;
     }
     case band: {
-        cc.and_(a, b);
+        cc.and_(c, b);
         break;
     }
     case bor: {
-        cc.or_(a, b);
+        cc.or_(c, b);
         break;
     }
     case bxor: {
-        cc.xor_(a, b);
+        cc.xor_(c, b);
         break;
     }
     case shl: {
-        cc.shl(a, b);
+        cc.shl(c, b);
         break;
     }
     case sar: {
-        cc.sar(a, b);
+        cc.sar(c, b);
         break;
     }
     case shr: {
-        cc.shr(a, b);
+        cc.shr(c, b);
         break;
     }
     default:
         throw std::runtime_error(fmt::format("Current operation {} not supported in gen_operation (operation)", op));
     }
-    return a;
+    return c;
 }
 template <typename V, typename W, typename> x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, V a, W b) {
     x86_reg_t a_reg = get_reg(cc, sizeof(a) * 8);
@@ -393,6 +438,34 @@ template <typename T, typename> x86::Gp gen_operation_Gp(x86::Compiler& cc, comp
     x86::Gp big_b = gen_ext_Gp(cc, b_reg, a.size() * 8, std::is_signed<T>::value);
     return gen_operation_Gp(cc, op, a, big_b);
 }
+template <typename V, typename W, typename> x86_reg_t gen_slice(x86::Compiler& cc, x86_reg_t _val, V a, W b) {
+    if(nonstd::holds_alternative<x86::Gp>(_val)) {
+        x86::Gp val = nonstd::get<x86::Gp>(_val);
+        return gen_slice(cc, val, a, b);
+    } else {
+        throw std::runtime_error("Variant not supported in gen_slice");
+    }
+}
+template <typename V, typename W, typename> x86_reg_t gen_slice(x86::Compiler& cc, x86::Gp val, V bit, const W width) {
+    assert(((bit + width) <= val.size() * 8) && "Invalid slice range");
+    // analog to bit_sub in scc util
+    // T res = (v >> bit) & ((T(1) << width) - 1);
+    auto mask = (1ULL << width) - 1;
+    // and takes at most 32 bits as an immediate
+    x86_reg_t ret_val;
+    if(width > 32) {
+        x86::Gp mask_reg = get_reg_Gp(cc, val.size() * 8, false);
+        cc.mov(mask_reg, mask);
+        ret_val = gen_operation(cc, band, gen_operation(cc, shr, val, bit), mask_reg);
+    } else {
+        ret_val = gen_operation(cc, band, gen_operation(cc, shr, val, bit), mask);
+    }
+    // find the target size
+    auto v = get_native_size(width);
+    return gen_ext(cc, ret_val, v, false);
+}
+template <typename T, typename> void setArg(InvokeNode* f_node, uint64_t argPos, T arg) { f_node->setArg(argPos, arg); }
+
 } // namespace asmjit
 } // namespace iss
 #endif /* ASMJIT_VM_UTIL_H_ */

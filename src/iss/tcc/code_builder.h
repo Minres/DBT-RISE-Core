@@ -1,9 +1,12 @@
 #include <array>
+#include <cassert>
+#include <cstdint>
 #include <fmt/format.h>
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/vm_jit_funcs.h>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace iss {
@@ -50,7 +53,8 @@ template <typename ARCH> struct code_builder {
     inline void operator()(std::string&& s) { lines.push_back(s); }
     std::string fname;
     std::vector<std::string> lines{};
-    std::array<bool, arch::traits<ARCH>::NEXT_PC + 5> defined_regs{false};
+    std::unordered_set<std::string> additional_prologue;
+    std::array<bool, arch::traits<ARCH>::NUM_REGS> defined_regs{false};
     inline std::string add_reg_ptr(std::string const& name, unsigned reg_num) {
         return fmt::format("  uint{0}_t* {2} = (uint{0}_t*)(regs_ptr+{1:#x});\n", arch::traits<ARCH>::reg_bit_widths[reg_num],
                            arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
@@ -86,6 +90,7 @@ template <typename ARCH> struct code_builder {
     void open_scope() { lines.push_back("{"); }
 
     void close_scope() { lines.push_back("}"); }
+    void add_prologue(std::string const& str) { additional_prologue.insert(str); }
     inline void open_if(value const& cond) { lines.push_back(fmt::format("if({}){{", cond)); }
     inline void open_else() { lines.push_back("}else{"); }
 
@@ -226,23 +231,23 @@ template <typename ARCH> struct code_builder {
     }
 
     inline value srem(value const& left, value const& right) {
-        return value(fmt::format("({}) % ({})", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
+        return value(fmt::format("(({}) % ({}))", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
     }
 
     inline value urem(value const& left, value const& right) {
-        return value(fmt::format("({}) % ({})", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
+        return value(fmt::format("(({}) % ({}))", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
     }
 
     inline value bitwise_and(value const& left, value const& right) {
-        return value(fmt::format("({}) & ({})", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
+        return value(fmt::format("(({}) & ({}))", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
     }
 
     inline value bitwise_or(value const& left, value const& right) {
-        return value(fmt::format("({}) | ({})", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
+        return value(fmt::format("(({}) | ({}))", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
     }
 
     inline value bitwise_xor(value const& left, value const& right) {
-        return value(fmt::format("({}) ^ ({})", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
+        return value(fmt::format("(({}) ^ ({}))", left, right), std::max(left.size(), right.size()), left.is_signed() && right.is_signed());
     }
 
     inline value logical_and(value const& left, value const& right) { return value(fmt::format("({}) && ({})", left, right), 1, false); }
@@ -259,7 +264,7 @@ template <typename ARCH> struct code_builder {
     inline value preIncrement(value const& val) { return value(fmt::format("++({})", val), val.size(), val.is_signed()); }
     inline value preDecrement(value const& val) { return value(fmt::format("--({})", val), val.size(), val.is_signed()); }
     inline value shl(value const& val, value const& shift) {
-        return value(fmt::format("({})<<({})", val, shift), val.size(), val.is_signed());
+        return value(fmt::format("(uint64_t)({})<<({})", val, shift), val.size(), val.is_signed());
     }
 
     inline value lshr(value const& val, value const& shift) {
@@ -304,6 +309,28 @@ template <typename ARCH> struct code_builder {
             return value(fmt::format("{} != {}", left, right), 1, false);
         }
         return value("", 1, false);
+    }
+
+    inline value slice(value val, uint32_t bit, uint32_t width) {
+        assert(((bit + width) <= val.size()) && "Invalid slice range");
+        // analog to bit_sub in scc util
+        // T res = (v >> bit) & ((T(1) << width) - 1);
+
+        unsigned long v = width;
+        if(width <= 8)
+            v = 8;
+        else if(width <= 16)
+            v = 16;
+        else if(width <= 32)
+            v = 32;
+        else if(width <= 64)
+            v = 64;
+        else if(width <= 128)
+            v = 128;
+        if(val.size() != v) {
+        }
+        value res = ext(bitwise_and(lshr(val, bit), (((uint64_t)1 << width) - 1)), v, false);
+        return res;
     }
 
     inline value read_mem(mem_type_e type, uint64_t addr, uint32_t size) {
@@ -438,32 +465,9 @@ template <typename ARCH> inline std::ostream& code_builder<ARCH>::write_prologue
     os << "void (*pre_instr_sync)(void*)=" << (uintptr_t)&pre_instr_sync << ";\n";
     os << "void (*notify_phase)(void*, uint32_t)=" << (uintptr_t)&notify_phase << ";\n";
     os << "void (*call_plugin)(void*, uint64_t)=" << (uintptr_t)&call_plugin << ";\n";
-    //    os<<"uint32_t (*fget_flags)()="<<(uintptr_t)&fget_flags<<";\n";
-    //    os<<"uint32_t (*fadd_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fadd_s<<";\n";
-    //    os<<"uint32_t (*fsub_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fsub_s<<";\n";
-    //    os<<"uint32_t (*fmul_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fmul_s<<";\n";
-    //    os<<"uint32_t (*fdiv_s)(uint32_t v1, uint32_t v2, uint8_t mode)="<<(uintptr_t)&fdiv_s<<";\n";
-    //    os<<"uint32_t (*fsqrt_s)(uint32_t v1, uint8_t mode)="<<(uintptr_t)&fsqrt_s<<";\n";
-    //    os<<"uint32_t (*fcmp_s)(uint32_t v1, uint32_t v2, uint32_t op)="<<(uintptr_t)&fcmp_s<<";\n";
-    //    os<<"uint32_t (*fcvt_s)(uint32_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_s<<";\n";
-    //    os<<"uint32_t (*fmadd_s)(uint32_t v1, uint32_t v2, uint32_t v3, uint32_t op, uint8_t
-    //    mode)="<<(uintptr_t)&fmadd_s<<";\n"; os<<"uint32_t (*fsel_s)(uint32_t v1, uint32_t v2, uint32_t
-    //    op)="<<(uintptr_t)&fsel_s<<";\n"; os<<"uint32_t (*fclass_s)( uint32_t v1 )="<<(uintptr_t)&fclass_s<<";\n";
-    //    os<<"uint32_t (*fconv_d2f)(uint64_t v1, uint8_t mode)="<<(uintptr_t)&fconv_d2f<<";\n";
-    //    os<<"uint64_t (*fconv_f2d)(uint32_t v1, uint8_t mode)="<<(uintptr_t)&fconv_f2d<<";\n";
-    //    os<<"uint64_t (*fadd_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fadd_d<<";\n";
-    //    os<<"uint64_t (*fsub_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fsub_d<<";\n";
-    //    os<<"uint64_t (*fmul_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fmul_d<<";\n";
-    //    os<<"uint64_t (*fdiv_d)(uint64_t v1, uint64_t v2, uint8_t mode)="<<(uintptr_t)&fdiv_d<<";\n";
-    //    os<<"uint64_t (*fsqrt_d)(uint64_t v1, uint8_t mode)="<<(uintptr_t)&fsqrt_d<<";\n";
-    //    os<<"uint64_t (*fcmp_d)(uint64_t v1, uint64_t v2, uint32_t op)="<<(uintptr_t)&fcmp_d<<";\n";
-    //    os<<"uint64_t (*fcvt_d)(uint64_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_d<<";\n";
-    //    os<<"uint64_t (*fmadd_d)(uint64_t v1, uint64_t v2, uint64_t v3, uint32_t op, uint8_t
-    //    mode)="<<(uintptr_t)&fmadd_d<<";\n"; os<<"uint64_t (*fsel_d)(uint64_t v1, uint64_t v2, uint32_t
-    //    op)="<<(uintptr_t)&fsel_d<<";\n"; os<<"uint64_t (*fclass_d)(uint64_t v1  )="<<(uintptr_t)&fclass_d<<";\n";
-    //    os<<"uint64_t (*fcvt_32_64)(uint32_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_32_64<<";\n";
-    //    os<<"uint32_t (*fcvt_64_32)(uint64_t v1, uint32_t op, uint8_t mode)="<<(uintptr_t)&fcvt_64_32<<";\n";
-    //    os<<"uint32_t (*unbox_s)(uint64_t v)="<<(uintptr_t)&unbox_s<<";\n";
+    for(auto& line : additional_prologue) {
+        os << line << "\n";
+    }
     return os;
 }
 } // namespace tcc

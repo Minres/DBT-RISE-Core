@@ -38,6 +38,7 @@
 
 #include <boost/tokenizer.hpp>
 #include <cstdarg>
+#include <cstdlib>
 #include <numeric>
 #include <sstream>
 #include <stdexcept>
@@ -221,12 +222,12 @@ std::string cmd_handler::write_memory(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     size_t cp;
     /* Write memory format: 'mAA..A,LL..LL:XX..XX' */
-    if((cp = in_buf.find_first_of(':', 1)) < in_buf.npos)
+    if((cp = in_buf.find_first_of(':', 1)) == in_buf.npos)
         return "E00";
 
     size_t len;
     uint64_t addr;
-    int ret = encdec.dec_mem(&in_buf[1], &addr, &len);
+    int ret = encdec.dec_mem(&in_buf[1], &addr, &len, ':');
     if(!ret || len > MAX_DATABYTES)
         return "E00";
 
@@ -574,17 +575,18 @@ std::string cmd_handler::query(std::string const& in_buf) {
     }
     if(strncmp(in_buf.c_str() + 1, "Xfer:features:read:", 19) == 0) {
         /* query features 'Xfer:features:read:annex:offset,length*/
+        auto token = util::split(in_buf, ':');
+        char* ptr = nullptr;
+        auto offset = strtoul(token[4].c_str(), &ptr, 16);
+        auto length = strtoul(ptr + 1, nullptr, 16);
         static std::string buf;
-        const std::string start("l"); // last packet otherwise 'm'
         if(buf.size() == 0)
             t->target_xml_query(buf);
-        auto col_pos = in_buf.find_first_of(':', 20);
-        auto annex = in_buf.substr(20, col_pos - 20);
-        auto cpos = in_buf.find_first_of(',', col_pos);
-        auto offset_str = in_buf.substr(col_pos + 1, cpos - col_pos - 1);
-        auto length_str = in_buf.substr(cpos + 1);
-        // TODO: implement xml handling properly
-        return start + buf;
+        if((offset + length) > buf.size()) {
+            return std::string("l") + buf.substr(offset);
+        } else {
+            return std::string("m") + buf.substr(offset, length);
+        }
     }
     if(strncmp(in_buf.c_str() + 1, "Supported", 9) == 0 && (in_buf[10] == ':' || in_buf[10] == '\0')) {
         std::string stdFeat("vContSupported+;hwbreak+;swbreak+;qXfer:features:read+");

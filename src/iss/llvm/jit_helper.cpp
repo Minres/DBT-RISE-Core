@@ -41,33 +41,19 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h> //outs()
 // needed to get the execution engine linked in
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
 #include <llvm/ExecutionEngine/MCJIT.h>
 
-#include "llvm/Analysis/Passes.h"
+#include "llvm/Support/CodeGen.h"
+
 #include <array>
 #include <iostream>
 #include <memory>
 
-#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/MCJIT.h>
-#include <llvm/ExecutionEngine/SectionMemoryManager.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/InitializePasses.h>
 #include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Support/raw_ostream.h>
-#include <memory>
-
-#include <llvm/IR/PassManager.h>
-#include <llvm/Passes/PassBuilder.h>
 
 using namespace llvm;
 using namespace logging;
@@ -117,51 +103,13 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
         os.flush();
     }
     mod->setTargetTriple(sys::getProcessTriple());
-#if 0
-// commit 95e3ccb2241ef3c7aed7c15452fd1309d225ec58 broke this
-    if(false) {
-        // Create a new pass manager attached to it.
-        auto fpm = std::make_unique<legacy::FunctionPassManager>(mod.get());
-        fpm->add(createInstructionCombiningPass()); // Do simple "peephole" optimizations and bit-twiddling optzns.
-        fpm->add(createReassociatePass());          // Reassociate expressions.
-        fpm->add(createGVNPass());                  // Eliminate Common SubExpressions.
-        fpm->add(createCFGSimplificationPass());    // Simplify the control flow graph
-        fpm->doInitialization();
-    }
-
-    if(false) { // Create the analysis managers.
-        LoopAnalysisManager LAM;
-        FunctionAnalysisManager FAM;
-        CGSCCAnalysisManager CGAM;
-        ModuleAnalysisManager MAM;
-
-        // Create the new pass manager builder.
-        // Take a look at the PassBuilder constructor parameters for more
-        // customization, e.g. specifying a TargetMachine or various debugging
-        // options.
-        PassBuilder PB;
-
-        // Register all the basic analyses with the managers.
-        PB.registerModuleAnalyses(MAM);
-        PB.registerCGSCCAnalyses(CGAM);
-        PB.registerFunctionAnalyses(FAM);
-        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
-
-        // Create the pass manager.
-        // This one corresponds to a typical -O2 optimization pipeline.
-        ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(PassBuilder::OptimizationLevel::O2);
-
-        // Optimize the IR!
-        MPM.run(*mod, MAM);
-    }
-#endif
     std::string ErrStr;
     EngineBuilder eb(std::move(mod)); // eb and ee take ownership of module
     TargetOptions to;
     to.EnableFastISel = true;
     to.GuaranteedTailCallOpt = false;
     ExecutionEngine* ee =
-        eb.setEngineKind(EngineKind::JIT).setTargetOptions(to).setErrorStr(&ErrStr).setOptLevel(CodeGenOpt::Aggressive).create();
+        eb.setEngineKind(EngineKind::JIT).setTargetOptions(to).setErrorStr(&ErrStr).setOptLevel(CodeGenOpt::None).create();
     if(!ee)
         throw std::runtime_error(ErrStr);
     ee->setVerifyModules(false);

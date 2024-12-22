@@ -60,7 +60,7 @@ namespace iss {
 
 namespace tcc {
 
-enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum continuation_e { CONT, BRANCH, FLUSH, TRAP, ILLEGAL_INSTR, JUMP_TO_SELF, ILLEGAL_FETCH };
 enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
@@ -102,8 +102,9 @@ public:
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
+        uint32_t was_illegal = 0;
         if(this->debugging_enabled())
-            sync_exec = PRE_SYNC;
+            sync_exec |= PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
         CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
@@ -144,6 +145,8 @@ public:
                         auto res = func_map.insert(std::make_pair(pc_p.val, getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
+                    if(cont == JUMP_TO_SELF)
+                        throw simulation_stopped(0);
                     cur_tb = &(it->second);
                     // if we have a previous block link the just compiled one as successor of the last tb
                     if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
@@ -158,16 +161,27 @@ public:
                         last_branch = core.get_last_branch();
                         auto cur_icount = core.get_icount();
                         // if the current tb has a successor assign to current tb
-                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount)
+                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount) {
                             cur_tb = cur_tb->cont[last_branch];
-                        else // if not we need to compile one
+                            // update cont, as it only gets set when a new fptr gets created
+                            cont = static_cast<continuation_e>(last_branch);
+                        } else // if not we need to compile one
                             cur_tb = nullptr;
                     } while(cur_tb != nullptr);
-                    if(cont == FLUSH) {
+                    if(cont == FLUSH)
                         func_map.clear();
+                    if(cont == ILLEGAL_INSTR) {
+                        if(was_illegal > 2) {
+                            CPPLOG(ERR) << "ISS execution aborted after trying to execute illegal instructions 3 times in a row";
+                            error = -1;
+                            break;
+                        }
+                        was_illegal++;
+                    } else {
+                        was_illegal = 0;
                     }
                 } catch(trap_access& ta) {
-                    pc.val = core.enter_trap(ta.id, ta.addr, 0);
+                    pc.val = core.enter_trap(1 << 16, ta.addr, 0);
                 }
 #ifndef NDEBUG
                 CPPLOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
@@ -202,34 +216,22 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, std::string, std::string> translate(virt_addr_t const& pc) {
-        unsigned cur_blk = 0;
-        virt_addr_t cur_pc = pc;
-        phys_addr_t phys_pc(pc.access, pc.space, pc.val);
-        if(this->core.has_mmu())
-            phys_pc = this->core.virt2phys(pc);
-        std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, phys_pc);
+    std::tuple<continuation_e, std::string, std::string> translate(virt_addr_t pc) {
+        unsigned cur_blk_size = 0;
         unsigned int num_inst = 0;
         tu_builder tu;
-        open_block_func(tu, phys_pc);
+        add_prologue(tu);
+        open_block_func(tu, pc);
         continuation_e cont = CONT;
-        try {
-            while(cont == CONT && cur_blk < blk_size) {
-                std::tie(cont) = gen_single_inst_behavior(cur_pc, num_inst, tu);
-                cur_blk++;
-            }
-            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
-            assert(cur_pc_mark.first.val <= cur_pc.val);
-            close_block_func(tu);
-            return std::make_tuple(cont, tu.fname, tu.finish());
-        } catch(trap_access& ta) {
-            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
-            if(cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
-                close_block_func(tu);
-                return std::make_tuple(cont, tu.fname, tu.finish());
-            } else // re-throw if it was the first instruction
-                throw ta;
+        while(cont == CONT && cur_blk_size < blk_size) {
+            std::tie(cont) = gen_single_inst_behavior(pc, num_inst, tu);
+            cur_blk_size++;
         }
+        close_block_func(tu);
+        if(cont == ILLEGAL_FETCH && cur_blk_size == 1) {
+            throw trap_access(0, pc.val);
+        }
+        return std::make_tuple(cont, tu.fname, tu.finish());
     }
 
     virtual void setup_module(std::string m) {}
@@ -291,6 +293,7 @@ protected:
         tu("return *next_pc;");
         gen_trap_behavior(tu);
     }
+    virtual void add_prologue(tu_builder&){};
 
     ARCH& core;
     unsigned core_id = 0;

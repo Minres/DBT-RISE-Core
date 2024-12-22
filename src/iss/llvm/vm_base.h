@@ -66,7 +66,7 @@ namespace iss {
 namespace llvm {
 using namespace ::llvm;
 
-enum continuation_e { CONT, BRANCH, FLUSH, TRAP };
+enum continuation_e { CONT, BRANCH, FLUSH, TRAP, ILLEGAL_INSTR, JUMP_TO_SELF, ILLEGAL_FETCH };
 enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
 
 void add_functions_2_module(Module* mod);
@@ -90,7 +90,7 @@ public:
     using dbg_if = iss::debugger_if;
     using translation_block = iss::llvm::translation_block;
 
-    constexpr static unsigned blk_size = std::numeric_limits<unsigned>::max();
+    constexpr static unsigned blk_size = 128; // std::numeric_limits<unsigned>::max();
 
     arch_if* get_arch() override { return &core; };
 
@@ -111,8 +111,9 @@ public:
     int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
+        uint32_t was_illegal = 0;
         if(this->debugging_enabled())
-            sync_exec = PRE_SYNC;
+            sync_exec |= PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
         CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
@@ -152,6 +153,8 @@ public:
                             std::make_pair(pc_p.val, iss::llvm::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
+                    if(cont == JUMP_TO_SELF)
+                        throw simulation_stopped(0);
                     cur_tb = &(it->second);
                     // if we have a previous block link the just compiled one as successor of the last tb
                     if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
@@ -166,15 +169,27 @@ public:
                         last_branch = core.get_last_branch();
                         auto cur_icount = core.get_icount();
                         // if the current tb has a successor assign to current tb
-                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount)
+                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount) {
                             cur_tb = cur_tb->cont[last_branch];
-                        else // if not we need to compile one
+                            // update cont, as it only gets set when a new fptr gets created
+                            cont = static_cast<continuation_e>(last_branch);
+                        } else // if not we need to compile one
                             cur_tb = nullptr;
                     } while(cur_tb != nullptr);
                     if(cont == FLUSH)
                         func_map.clear();
+                    if(cont == ILLEGAL_INSTR) {
+                        if(was_illegal > 2) {
+                            CPPLOG(ERR) << "ISS execution aborted after trying to execute illegal instructions 3 times in a row";
+                            error = -1;
+                            break;
+                        }
+                        was_illegal++;
+                    } else {
+                        was_illegal = 0;
+                    }
                 } catch(trap_access& ta) {
-                    pc.val = core.enter_trap(ta.id, ta.addr, 0);
+                    pc.val = core.enter_trap(1 << 16, ta.addr, 0);
                 }
 #ifndef NDEBUG
                 CPPLOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
@@ -207,16 +222,11 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, Function*> translate(virt_addr_t const& pc) {
-        unsigned cur_blk = 0;
-        virt_addr_t cur_pc = pc;
-        phys_addr_t phys_pc(pc.access, pc.space, pc.val);
-        if(this->core.has_mmu())
-            phys_pc = this->core.virt2phys(pc);
-        std::pair<virt_addr_t, phys_addr_t> cur_pc_mark(pc, phys_pc);
+    std::tuple<continuation_e, Function*> translate(virt_addr_t pc) {
+        unsigned cur_blk_size = 0;
         unsigned int num_inst = 0;
         // loaded_regs.clear();
-        func = this->open_block_func(phys_pc);
+        func = this->open_block_func(pc);
         leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
         gen_leave_behavior(leave_blk);
         BasicBlock* bb = BasicBlock::Create(mod->getContext(), "entry", func, leave_blk);
@@ -227,28 +237,19 @@ protected:
         trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
         gen_trap_behavior(trap_blk);
         continuation_e cont = CONT;
-        try {
-            while(cont == CONT && cur_blk < blk_size) {
-                builder.SetInsertPoint(bb);
-                std::tie(cont, bb) = gen_single_inst_behavior(cur_pc, num_inst, bb);
-                cur_blk++;
-            }
-            if(bb != nullptr) {
-                builder.SetInsertPoint(bb);
-                builder.CreateBr(leave_blk);
-            }
-            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
-            assert(cur_pc_mark.first.val <= cur_pc.val);
-            return std::make_tuple(cont, func);
-        } catch(trap_access& ta) {
-            // const phys_addr_t end_pc(this->core.virt2phys(--cur_pc));
-            if(cur_pc_mark.first.val <= cur_pc.val) { // close the block and return result up to here
-                builder.SetInsertPoint(bb);
-                builder.CreateBr(leave_blk);
-                return std::make_tuple(cont, func);
-            } else // re-throw if it was the first instruction
-                throw ta;
+        while(cont == CONT && cur_blk_size < blk_size) {
+            builder.SetInsertPoint(bb);
+            std::tie(cont, bb) = gen_single_inst_behavior(pc, num_inst, bb);
+            cur_blk_size++;
         }
+        if(bb != nullptr) {
+            builder.SetInsertPoint(bb);
+            builder.CreateBr(leave_blk);
+        }
+        if(cont == ILLEGAL_FETCH && cur_blk_size == 1) {
+            throw trap_access(0, pc.val);
+        }
+        return std::make_tuple(cont, func);
     }
 
     void GenerateUniqueName(std::string& str, uint64_t mod) const {
@@ -425,6 +426,25 @@ protected:
         return ConstantInt::get(::iss::llvm::getContext(), APInt(size, (uint64_t)val, false));
     }
 
+    template <typename V, typename W, typename = std::enable_if_t<std::is_integral<V>::value && std::is_integral<W>::value>>
+    inline Value* gen_slice(Value* val, V bit, W width) {
+        auto res_width = 8;
+        if(width > 8)
+            res_width = 16;
+        if(width > 16)
+            res_width = 32;
+        if(width > 32)
+            res_width = 64;
+        // analog to bit_sub in scc util
+        // T res = (v >> bit) & ((T(1) << width) - 1);
+        auto val_size = val->getType()->getPrimitiveSizeInBits();
+        Value* rhs = this->gen_const(val_size, (1ULL << width) - 1);
+        if(!bit)
+            return gen_ext(builder.CreateAnd(val, rhs), res_width);
+        else
+            return gen_ext(builder.CreateAnd(builder.CreateLShr(val, gen_const(val_size, bit)), rhs), res_width);
+    }
+
     template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type* = nullptr>
     inline Value* gen_ext(T val, unsigned size) const {
         return ConstantInt::get(::iss::llvm::getContext(), APInt(size, val, false));
@@ -462,8 +482,8 @@ protected:
 
     inline Value* gen_cond_assign(Value* cond, Value* t, Value* f) { // cond must be 1 or 0
         using namespace llvm;
-        Value* const f_mask = builder.CreateSub(builder.CreateZExt(cond, get_type(f->getType()->getPrimitiveSizeInBits())),
-                                                gen_const(f->getType()->getPrimitiveSizeInBits(), 1));
+        auto f_size = f->getType()->getPrimitiveSizeInBits();
+        Value* const f_mask = builder.CreateSub(builder.CreateZExt(cond, get_type(f_size)), gen_const(f_size, 1));
         Value* const t_mask = builder.CreateXor(f_mask, gen_const(f_mask->getType()->getScalarSizeInBits(), -1));
         return builder.CreateOr(builder.CreateAnd(t, t_mask), builder.CreateAnd(f, f_mask)); // (t & ~t_mask) | (f & f_mask)
     }

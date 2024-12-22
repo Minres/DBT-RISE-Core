@@ -43,10 +43,27 @@ namespace iss {
 namespace asmjit {
 using namespace ::asmjit;
 
+uint32_t get_native_size(uint32_t value) {
+    unsigned long v = value;
+    if(value <= 8)
+        v = 8;
+    else if(value <= 16)
+        v = 16;
+    else if(value <= 32)
+        v = 32;
+    else if(value <= 64)
+        v = 64;
+    else if(value <= 128)
+        v = 128;
+    return v;
+}
+
 void mov(x86::Compiler& cc, x86_reg_t _dest, x86_reg_t _source) {
     if(nonstd::holds_alternative<x86::Gp>(_dest) && nonstd::holds_alternative<x86::Gp>(_source)) {
         x86::Gp dest = nonstd::get<x86::Gp>(_dest);
         x86::Gp source = nonstd::get<x86::Gp>(_source);
+        auto ds = dest.size();
+        auto ss = source.size();
         assert(dest.size() == source.size());
         cc.mov(dest, source);
     } else {
@@ -179,6 +196,8 @@ x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, x86_reg_t
     if(nonstd::holds_alternative<x86::Gp>(_a) && nonstd::holds_alternative<x86::Gp>(_b)) {
         x86::Gp a = nonstd::get<x86::Gp>(_a);
         x86::Gp b = nonstd::get<x86::Gp>(_b);
+        auto as = a.size();
+        auto bs = b.size();
         assert(a.size() == b.size());
         return gen_operation_Gp(cc, op, a, b);
     }
@@ -443,5 +462,27 @@ x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a) {
         throw std::runtime_error("Variant not supported in gen_operation (unary)");
     }
 }
+
+void setArg(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg) {
+    if(nonstd::holds_alternative<x86::Gp>(_arg)) {
+        x86::Gp arg = nonstd::get<x86::Gp>(_arg);
+        setArg(f_node, argPos, arg);
+    } else {
+        throw std::runtime_error("Variant not supported in setArg");
+    }
+}
+
+void setArg(InvokeNode* f_node, uint64_t argPos, x86::Gp arg) { f_node->setArg(argPos, arg); }
+
+void setRet(InvokeNode* f_node, uint64_t argPos, x86_reg_t _arg) {
+    if(nonstd::holds_alternative<x86::Gp>(_arg)) {
+        x86::Gp arg = nonstd::get<x86::Gp>(_arg);
+        setRet(f_node, argPos, arg);
+    } else {
+        throw std::runtime_error("Variant not supported in setRet");
+    }
+}
+
+void setRet(InvokeNode* f_node, uint64_t argPos, x86::Gp arg) { f_node->setRet(argPos, arg); }
 } // namespace asmjit
 } // namespace iss
