@@ -59,6 +59,10 @@ template <typename ARCH> struct code_builder {
         return fmt::format("  uint{0}_t* {2} = (uint{0}_t*)(regs_ptr+{1:#x});\n", arch::traits<ARCH>::reg_bit_widths[reg_num],
                            arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
     }
+    inline std::string add_reg_ptr(std::string const& name, unsigned reg_num, uint8_t* base_ptr) {
+        return fmt::format("  uint{0}_t* {2} = (uint{0}_t*)({1:p});\n", arch::traits<ARCH>::reg_bit_widths[reg_num],
+                           base_ptr + arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
+    }
     std::ostream& write_prologue(std::ostream&);
     std::string finish() {
         std::ostringstream os;
