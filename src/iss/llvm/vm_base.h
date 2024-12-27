@@ -42,7 +42,6 @@
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
-#include <llvm-14/llvm/IR/GlobalVariable.h>
 #include <util/ities.h>
 #include <util/logging.h>
 #include <util/range_lut.h>
@@ -210,6 +209,7 @@ public:
         // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+        uint64_t& cur_icount = get_reg<uint64_t>(reg_e::ICOUNT);
         CPPLOG(INFO) << "Executed " << cur_icount << " instructions in " << func_map.size() << " code blocks during " << millis
                      << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
         return error;
