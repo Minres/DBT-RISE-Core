@@ -32,6 +32,8 @@
  *       alex@minres.com - initial implementation
  ******************************************************************************/
 
+#ifndef _INSTR_DECODER_H
+#define _INSTR_DECODER_H
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -61,3 +63,4 @@ private:
     void populate_decoding_tree(decoding_tree_node& root);
     uint32_t _decode_instr(decoding_tree_node const& node, uint32_t word);
 };
+#endif
