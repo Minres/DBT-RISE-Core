@@ -230,10 +230,9 @@ public:
 protected:
     continuation_e translate(virt_addr_t pc, jit_holder& jh, uint64_t icount_limit) {
         unsigned cur_blk_size = 0;
-        unsigned int num_inst = 0;
         continuation_e cont = CONT;
         while(cont == CONT && cur_blk_size < blk_size && cur_blk_size < icount_limit) {
-            cont = gen_single_inst_behavior(pc, num_inst, jh);
+            cont = gen_single_inst_behavior(pc, jh);
             cur_blk_size++;
         }
         if(cont == ILLEGAL_FETCH && cur_blk_size == 1) {
@@ -241,7 +240,7 @@ protected:
         }
         return cont;
     }
-    virtual continuation_e gen_single_inst_behavior(virt_addr_t&, unsigned int&, jit_holder&) = 0;
+    virtual continuation_e gen_single_inst_behavior(virt_addr_t&, jit_holder&) = 0;
     virtual void gen_block_prologue(jit_holder&) = 0;
     virtual void gen_block_epilogue(jit_holder&) = 0;
 

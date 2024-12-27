@@ -227,7 +227,6 @@ public:
 protected:
     std::tuple<continuation_e, Function*> translate(virt_addr_t pc, uint64_t icount_limit) {
         unsigned cur_blk_size = 0;
-        unsigned int num_inst = 0;
         // loaded_regs.clear();
         func = this->open_block_func(pc);
         leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
@@ -242,7 +241,7 @@ protected:
         continuation_e cont = CONT;
         while(cont == CONT && cur_blk_size < blk_size && cur_blk_size < icount_limit) {
             builder.SetInsertPoint(bb);
-            std::tie(cont, bb) = gen_single_inst_behavior(pc, num_inst, bb);
+            std::tie(cont, bb) = gen_single_inst_behavior(pc, bb);
             cur_blk_size++;
         }
         if(bb != nullptr) {
@@ -263,8 +262,7 @@ protected:
 
     virtual void setup_module(Module* m) { add_functions_2_module(m); }
 
-    virtual std::tuple<continuation_e, BasicBlock*> gen_single_inst_behavior(virt_addr_t& pc_v, unsigned int& inst_cnt,
-                                                                             BasicBlock* this_block) = 0;
+    virtual std::tuple<continuation_e, BasicBlock*> gen_single_inst_behavior(virt_addr_t& pc_v, BasicBlock* this_block) = 0;
 
     virtual void gen_trap_behavior(BasicBlock*) = 0;
 
