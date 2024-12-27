@@ -61,7 +61,7 @@ namespace iss {
 namespace tcc {
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP, ILLEGAL_INSTR, JUMP_TO_SELF, ILLEGAL_FETCH };
-enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
+enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2, BRANCH_TO_SELF = 3 };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
     struct plugin_entry {
@@ -76,12 +76,13 @@ public:
     using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t;
     using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t;
     using addr_t = typename arch::traits<ARCH>::addr_t;
+    using reg_t = typename arch::traits<ARCH>::reg_t;
     using code_word_t = typename arch::traits<ARCH>::code_word_t;
     using mem_type_e = typename arch::traits<ARCH>::mem_type_e;
     using tu_builder = typename iss::tcc::code_builder<ARCH>;
     using dbg_if = iss::debugger_if;
 
-    constexpr static unsigned blk_size = std::numeric_limits<unsigned>::max();
+    constexpr static unsigned blk_size = 1024;
 
     arch_if* get_arch() override { return &core; };
 
@@ -89,17 +90,20 @@ public:
         return idx < 0 ? arch::traits<ARCH>::NUM_REGS : arch::traits<ARCH>::reg_bit_widths[(reg_e)idx];
     }
 
-    template <typename T> inline T get_reg(unsigned r) {
+    template <typename T> inline T get_reg_val(unsigned r) {
         std::vector<uint8_t> res(sizeof(T), 0);
-        uint8_t* reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
+        uint8_t* reg_base = regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r];
         auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
         std::copy(reg_base, reg_base + size, res.data());
         return *reinterpret_cast<T*>(&res[0]);
     }
+    template <typename T = reg_t> inline T& get_reg(unsigned r) {
+        return *reinterpret_cast<T*>(regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r]);
+    }
 
     using func_ptr = uint64_t (*)(uint8_t*, void*, void*);
 
-    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
+    int start(uint64_t icount_limit = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
         uint32_t was_illegal = 0;
@@ -119,10 +123,10 @@ public:
             // translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, gen_func &generator, bool
             // dumpEnabled);
 
-            iss::tcc::gen_func generator{[&param]() -> std::tuple<std::string, std::string> {
+            iss::tcc::gen_func generator{[&param, icount_limit]() -> std::tuple<std::string, std::string> {
                 std::string fname;
                 std::string code;
-                std::tie(param.cont, fname, code) = param.vm->translate(param.pc);
+                std::tie(param.cont, fname, code) = param.vm->translate(param.pc, icount_limit);
                 param.vm->mod = nullptr;
                 param.vm->func = nullptr;
                 return std::make_tuple(fname, code);
@@ -130,10 +134,11 @@ public:
             // explicit std::function to allow use as reference in call below
             // std::function<Function*(Module*)> gen_ref(std::ref(generator));
             translation_block *last_tb = nullptr, *cur_tb = nullptr;
-            uint32_t last_branch = std::numeric_limits<uint32_t>::max();
+            auto& last_branch = get_reg(arch::traits<ARCH>::reg_e::LAST_BRANCH);
             arch_if* const arch_if_ptr = static_cast<arch_if*>(&core);
             vm_if* const vm_if_ptr = static_cast<vm_if*>(this);
-            while(!core.should_stop() && core.get_icount() < icount) {
+            uint64_t& cur_icount = get_reg<uint64_t>(arch::traits<ARCH>::reg_e::ICOUNT);
+            while(!core.should_stop() && cur_icount < icount_limit) {
                 try {
                     // translate into physical address
                     phys_addr_t pc_p(pc.access, pc.space, pc.val);
@@ -145,7 +150,7 @@ public:
                         auto res = func_map.insert(std::make_pair(pc_p.val, getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
-                    if(cont == JUMP_TO_SELF)
+                    if(cont == JUMP_TO_SELF || last_branch == BRANCH_TO_SELF)
                         throw simulation_stopped(0);
                     cur_tb = &(it->second);
                     // if we have a previous block link the just compiled one as successor of the last tb
@@ -158,10 +163,8 @@ public:
                             break;
                         // update last state
                         last_tb = cur_tb;
-                        last_branch = core.get_last_branch();
-                        auto cur_icount = core.get_icount();
                         // if the current tb has a successor assign to current tb
-                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount) {
+                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount_limit) {
                             cur_tb = cur_tb->cont[last_branch];
                             // update cont, as it only gets set when a new fptr gets created
                             cont = static_cast<continuation_e>(last_branch);
@@ -201,8 +204,9 @@ public:
                                                               // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        CPPLOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size() << " code blocks during " << millis
-                     << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
+        auto cur_icount = get_reg<uint64_t>(arch::traits<ARCH>::reg_e::ICOUNT);
+        CPPLOG(INFO) << "Executed " << cur_icount << " instructions in " << func_map.size() << " code blocks during " << millis
+                     << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
         return error;
     }
 
@@ -216,15 +220,14 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, std::string, std::string> translate(virt_addr_t pc) {
+    std::tuple<continuation_e, std::string, std::string> translate(virt_addr_t pc, uint64_t icount_limit) {
         unsigned cur_blk_size = 0;
-        unsigned int num_inst = 0;
         tu_builder tu;
         add_prologue(tu);
         open_block_func(tu, pc);
         continuation_e cont = CONT;
-        while(cont == CONT && cur_blk_size < blk_size) {
-            std::tie(cont) = gen_single_inst_behavior(pc, num_inst, tu);
+        while(cont == CONT && cur_blk_size < blk_size && cur_blk_size < icount_limit) {
+            cont = gen_single_inst_behavior(pc, tu);
             cur_blk_size++;
         }
         close_block_func(tu);
@@ -236,9 +239,12 @@ protected:
 
     virtual void setup_module(std::string m) {}
 
-    virtual std::tuple<continuation_e> gen_single_inst_behavior(virt_addr_t& pc_v, unsigned int& inst_cnt, tu_builder& tu) = 0;
+    virtual continuation_e gen_single_inst_behavior(virt_addr_t& pc_v, tu_builder& tu) = 0;
 
-    virtual void gen_trap_behavior(tu_builder& tu) = 0;
+    virtual void gen_trap_behavior(tu_builder& tu) {
+        tu("trap_entry:");
+        tu("return *next_pc;");
+    };
 
     explicit vm_base(ARCH& core, unsigned core_id = 0, unsigned cluster_id = 0)
     : core(core)
@@ -250,9 +256,20 @@ protected:
     , func(nullptr)
     , tgt_adapter(nullptr) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
-        if(arch::traits<ARCH>::XLEN > 32) {
-            throw std::runtime_error("No XLEN > 32 supported with tcc backend");
-        }
+        static_assert(sizeof(reg_t) <= 4, "No registers larger than 32 bits are supported with tcc backend");
+    }
+    explicit vm_base(std::unique_ptr<ARCH> core_ptr, unsigned core_id = 0, unsigned cluster_id = 0)
+    : core(*core_ptr)
+    , core_ptr(std::move(core_ptr))
+    , core_id(core_id)
+    , cluster_id(cluster_id)
+    , regs_base_ptr(core.get_regs_base_ptr())
+    , sync_exec(NO_SYNC)
+    , mod(nullptr)
+    , func(nullptr)
+    , tgt_adapter(nullptr) {
+        sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+        static_assert(sizeof(reg_t) <= 4, "No registers larger than 32 bits are supported with tcc backend");
     }
 
     ~vm_base() override { delete tgt_adapter; }
@@ -296,6 +313,7 @@ protected:
     virtual void add_prologue(tu_builder&){};
 
     ARCH& core;
+    std::unique_ptr<ARCH> core_ptr;
     unsigned core_id = 0;
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
