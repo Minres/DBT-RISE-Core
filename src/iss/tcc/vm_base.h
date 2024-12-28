@@ -288,8 +288,6 @@ protected:
 
     inline void gen_sync(tu_builder& tu, sync_type s, unsigned inst_id) {
         if(s == PRE_SYNC) {
-            // update icount
-            tu("(*icount)++;");
             tu("*pc=*next_pc;");
             tu("*trap_state=*pending_trap;");
             if(debugging_enabled())
