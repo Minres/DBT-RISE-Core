@@ -161,16 +161,19 @@ public:
                             std::make_pair(pc_p.val, iss::asmjit::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
-                    if(cont == JUMP_TO_SELF || last_branch == BRANCH_TO_SELF)
-                        throw simulation_stopped(0);
                     cur_tb = &(it->second);
+                    if(cont == JUMP_TO_SELF) {
+                        // Execute the block we just compiled, but we know it will be the last one
+                        reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
+                        throw simulation_stopped(0);
+                    }
                     // if we have a previous block link the just compiled one as successor of the last tb
                     if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
                         last_tb->cont[last_branch] = cur_tb;
                     do {
                         // execute the compiled function
                         pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
-                        if(core.should_stop())
+                        if(core.should_stop() || last_branch == BRANCH_TO_SELF)
                             break;
                         // update last state
                         last_tb = cur_tb;
