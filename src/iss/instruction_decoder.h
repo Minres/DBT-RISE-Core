@@ -38,6 +38,9 @@
 #include <cstdint>
 #include <limits>
 #include <vector>
+namespace iss {
+
+enum { DECODING_FAIL = std::numeric_limits<uint32_t>::max() };
 
 struct generic_instruction_descriptor {
     uint32_t value;
@@ -63,4 +66,5 @@ private:
     void populate_decoding_tree(decoding_tree_node& root);
     uint32_t _decode_instr(decoding_tree_node const& node, uint32_t word);
 };
+} // namespace iss
 #endif
