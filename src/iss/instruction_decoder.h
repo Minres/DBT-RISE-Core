@@ -58,7 +58,7 @@ struct decoding_tree_node {
 };
 class decoder {
 public:
-    decoder(std::vector<generic_instruction_descriptor> instr_list);
+    decoder(std::vector<generic_instruction_descriptor> const& instr_list);
     uint32_t decode_instr(uint32_t word);
 
 private:
