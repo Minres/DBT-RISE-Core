@@ -36,6 +36,7 @@
 #define _ARCH_IF_H_
 
 #include "instrumentation_if.h"
+#include "util/delegate.h"
 #include "vm_types.h"
 #include <dbt_rise_common.h>
 
@@ -141,7 +142,9 @@ public:
      * @return success or failure of access
      */
     virtual iss::status read(const address_type type, const access_type access, const uint32_t space, const uint64_t addr,
-                             const unsigned length, uint8_t* const data) = 0;
+                             const unsigned length, uint8_t* const data) {
+        return rd_func(type, access, space, addr, length, data);
+    }
     /**
      * write to addresses
      *
@@ -163,8 +166,10 @@ public:
      * @param data pointer to the memory to write from
      * @return success or failure of access
      */
-    virtual iss::status write(const address_type type, const access_type access, const uint32_t space, const uint64_t addr,
-                              const unsigned length, const uint8_t* const data) = 0;
+    inline iss::status write(const address_type type, const access_type access, const uint32_t space, const uint64_t addr,
+                             const unsigned length, const uint8_t* const data) {
+        return wr_func(type, access, space, addr, length, data);
+    };
     /**
      * vm encountered a trap (exception, interrupt), process accordingly in core
      *
@@ -210,8 +215,12 @@ public:
      */
     virtual instrumentation_if* get_instrumentation_if() { return nullptr; };
 
-private:
+protected:
     bool mmu{false};
+    using rd_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t*);
+    util::delegate<rd_func_sig> rd_func;
+    using wr_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t const*);
+    util::delegate<wr_func_sig> wr_func;
 };
 } // namespace iss
 
