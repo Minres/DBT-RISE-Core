@@ -55,7 +55,7 @@ if(NOT TARGET scc-util)
 	FetchContent_Declare(
 	    scc_git
 	  	GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
-    	GIT_TAG 7f9df31
+    	GIT_TAG e7bb8ca
 	)
 	FetchContent_GetProperties(scc_git)
 	
@@ -63,7 +63,7 @@ if(NOT TARGET scc-util)
 	    FetchContent_Populate(scc_git)
 	endif()
 	
-	add_subdirectory(${scc_git_SOURCE_DIR} ${scc_git_BINARY_DIR})
+	add_subdirectory(${scc_git_SOURCE_DIR}/src/common ${scc_git_BINARY_DIR})
 	list(APPEND CMAKE_MODULE_PATH ${scc_git_SOURCE_DIR}/cmake)
 	
 endif()
