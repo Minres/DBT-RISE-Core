@@ -59,6 +59,10 @@ template <typename ARCH> struct code_builder {
         return fmt::format("  uint{0}_t* {2} = (uint{0}_t*)(regs_ptr+{1:#x});\n", arch::traits<ARCH>::reg_bit_widths[reg_num],
                            arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
     }
+    inline std::string add_reg_ptr(std::string const& name, unsigned reg_num, uint8_t* base_ptr) {
+        return fmt::format("  uint{0}_t* {2} = (uint{0}_t*)({1:p});\n", arch::traits<ARCH>::reg_bit_widths[reg_num],
+                           base_ptr + arch::traits<ARCH>::reg_byte_offsets[reg_num], name);
+    }
     std::ostream& write_prologue(std::ostream&);
     std::string finish() {
         std::ostringstream os;
@@ -67,8 +71,6 @@ template <typename ARCH> struct code_builder {
         os << fmt::format("uint64_t {}(uint8_t* regs_ptr, void* core_ptr, void* vm_ptr) __attribute__ ((regnum(3)))  {{\n", fname);
         os << add_reg_ptr("pc", arch::traits<ARCH>::PC);
         os << add_reg_ptr("next_pc", arch::traits<ARCH>::NEXT_PC);
-        os << add_reg_ptr("trap_state", arch::traits<ARCH>::TRAP_STATE);
-        os << add_reg_ptr("pending_trap", arch::traits<ARCH>::PENDING_TRAP);
         os << add_reg_ptr("icount", arch::traits<ARCH>::ICOUNT);
         os << add_reg_ptr("last_branch", arch::traits<ARCH>::LAST_BRANCH);
         os << "*last_branch = 0;\n";

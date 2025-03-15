@@ -42,6 +42,7 @@
 #include <sstream>
 
 #include "boost/variant.hpp"
+#include <array>
 #include <memory>
 #include <string>
 #include <tuple>

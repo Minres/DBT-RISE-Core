@@ -103,7 +103,7 @@ public:
 
     template <typename T> inline T get_reg_val(unsigned r) {
         std::array<uint8_t, sizeof(T)> res;
-        uint8_t* reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
+        uint8_t* reg_base = regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r];
         auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
         std::copy(reg_base, reg_base + size, res.data());
         return *reinterpret_cast<T*>(&res[0]);
@@ -133,8 +133,11 @@ public:
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         auto instr_if = core.get_instrumentation_if();
-        CPPLOG(INFO) << "Executed " << instr_if->get_instr_count() << " instructions in " << instr_if->get_total_cycles()
-                     << " cycles during " << millis << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
+        if(instr_if) {
+            CPPLOG(INFO) << "Executed " << instr_if->get_instr_count() << " instructions in " << instr_if->get_total_cycles()
+                         << " cycles during " << millis << "ms resulting in " << (instr_if->get_instr_count() * 0.001 / millis) << "MIPS";
+        } else
+            CPPLOG(INFO) << "Execution took " << millis << "ms";
         return error;
     }
 
@@ -154,12 +157,17 @@ protected:
     : core(core)
     , core_id(core_id)
     , cluster_id(cluster_id)
-    , regs_base_ptr(core.get_regs_base_ptr())
-    , sync_exec(NO_SYNC)
-    , core_sync(NO_SYNC)
-    , tgt_adapter(nullptr) {
-        sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
-        core_sync = static_cast<sync_type>(core_sync | core.needed_sync());
+    , regs_base_ptr(core.get_regs_base_ptr()) {
+        init();
+    }
+
+    explicit vm_base(std::unique_ptr<ARCH> core_ptr, unsigned core_id = 0, unsigned cluster_id = 0)
+    : core(*core_ptr)
+    , core_ptr(std::move(core_ptr))
+    , core_id(core_id)
+    , cluster_id(cluster_id)
+    , regs_base_ptr(core.get_regs_base_ptr()) {
+        init();
     }
 
     ~vm_base() override { delete tgt_adapter; }
@@ -218,16 +226,23 @@ protected:
     }
 
     ARCH& core;
+    std::unique_ptr<ARCH> core_ptr;
     unsigned core_id = 0;
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
-    sync_type sync_exec;
-    sync_type core_sync;
+    sync_type sync_exec{NO_SYNC};
+    sync_type core_sync{NO_SYNC};
     // non-owning pointers
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
-    iss::debugger::target_adapter_base* tgt_adapter;
+    iss::debugger::target_adapter_base* tgt_adapter{nullptr};
     std::vector<plugin_entry> pre_plugins;
     std::vector<plugin_entry> post_plugins;
+
+private:
+    void init() {
+        sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+        core_sync = static_cast<sync_type>(core_sync | core.needed_sync());
+    }
 };
 } // namespace interp
 } // namespace iss

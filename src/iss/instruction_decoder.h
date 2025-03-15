@@ -32,10 +32,15 @@
  *       alex@minres.com - initial implementation
  ******************************************************************************/
 
+#ifndef _INSTR_DECODER_H
+#define _INSTR_DECODER_H
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <vector>
+namespace iss {
+
+enum { DECODING_FAIL = std::numeric_limits<uint32_t>::max() };
 
 struct generic_instruction_descriptor {
     uint32_t value;
@@ -53,7 +58,7 @@ struct decoding_tree_node {
 };
 class decoder {
 public:
-    decoder(std::vector<generic_instruction_descriptor> instr_list);
+    decoder(std::vector<generic_instruction_descriptor> const& instr_list);
     uint32_t decode_instr(uint32_t word);
 
 private:
@@ -61,3 +66,5 @@ private:
     void populate_decoding_tree(decoding_tree_node& root);
     uint32_t _decode_instr(decoding_tree_node const& node, uint32_t word);
 };
+} // namespace iss
+#endif

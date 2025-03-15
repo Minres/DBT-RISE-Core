@@ -77,7 +77,7 @@ namespace asmjit {
 using namespace ::asmjit;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP, ILLEGAL_INSTR, JUMP_TO_SELF, ILLEGAL_FETCH };
-enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
+enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2, BRANCH_TO_SELF = 3 };
 
 template <typename ARCH> class vm_base : public debugger_if, public vm_if {
     struct plugin_entry {
@@ -88,6 +88,7 @@ template <typename ARCH> class vm_base : public debugger_if, public vm_if {
 
 public:
     using reg_e = typename arch::traits<ARCH>::reg_e;
+    using reg_t = typename arch::traits<ARCH>::reg_t;
     using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e;
     using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t;
     using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t;
@@ -107,15 +108,19 @@ public:
 
     template <typename T> inline T obtain_reg(unsigned r) {
         std::vector<uint8_t> res(sizeof(T), 0);
-        uint8_t* reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
+        uint8_t* reg_base = regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r];
         auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
         std::copy(reg_base, reg_base + size, res.data());
         return *reinterpret_cast<T*>(&res[0]);
     }
 
+    template <typename T = reg_t> inline T& get_reg_ref(unsigned r) {
+        return *reinterpret_cast<T*>(regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r]);
+    }
+
     using func_ptr = uint64_t (*)(uint8_t*, void*, void*);
 
-    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
+    int start(uint64_t icount_limit = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
         uint32_t was_illegal = 0;
@@ -127,9 +132,9 @@ public:
         try {
             continuation_e cont = CONT;
 
-            std::function<void(jit_holder&)> generator{[this, &pc, &cont](jit_holder& jh) -> void {
+            std::function<void(jit_holder&)> generator{[this, &pc, &cont, icount_limit](jit_holder& jh) -> void {
                 gen_block_prologue(jh);
-                cont = translate(pc, jh);
+                cont = translate(pc, jh, icount_limit);
                 gen_block_epilogue(jh);
                 // move local disass collection to global collection by appending
                 this->global_disass_collection.insert(this->global_disass_collection.end(), jh.disass_collection.begin(),
@@ -139,10 +144,11 @@ public:
             // explicit std::function to allow use as reference in call below
             // std::function<Function*(Module*)> gen_ref(std::ref(generator));
             translation_block *last_tb = nullptr, *cur_tb = nullptr;
-            uint32_t last_branch = std::numeric_limits<uint32_t>::max();
+            auto& last_branch = get_reg_ref(reg_e::LAST_BRANCH);
+            uint64_t& cur_icount = get_reg_ref<uint64_t>(reg_e::ICOUNT);
             arch_if* const arch_if_ptr = static_cast<arch_if*>(&core);
             vm_if* const vm_if_ptr = static_cast<vm_if*>(this);
-            while(!core.should_stop() && core.get_icount() < icount) {
+            while(!core.should_stop() && cur_icount < icount_limit) {
                 try {
                     // translate into physical address
                     phys_addr_t pc_p(pc.access, pc.space, pc.val);
@@ -155,23 +161,24 @@ public:
                             std::make_pair(pc_p.val, iss::asmjit::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
-                    if(cont == JUMP_TO_SELF)
-                        throw simulation_stopped(0);
                     cur_tb = &(it->second);
+                    if(cont == JUMP_TO_SELF) {
+                        // Execute the block we just compiled, but we know it will be the last one
+                        reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
+                        throw simulation_stopped(0);
+                    }
                     // if we have a previous block link the just compiled one as successor of the last tb
                     if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
                         last_tb->cont[last_branch] = cur_tb;
                     do {
                         // execute the compiled function
                         pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
-                        if(core.should_stop())
+                        if(core.should_stop() || last_branch == BRANCH_TO_SELF)
                             break;
                         // update last state
                         last_tb = cur_tb;
-                        last_branch = core.get_last_branch();
-                        auto cur_icount = core.get_icount();
                         // if the current tb has a successor assign to current tb
-                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount) {
+                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount_limit) {
                             cur_tb = cur_tb->cont[last_branch];
                             // update cont, as it only gets set when a new fptr gets created
                             cont = static_cast<continuation_e>(last_branch);
@@ -206,11 +213,11 @@ public:
             error = -1;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
-        // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        CPPLOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size() << " code blocks during " << millis
-                     << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
+        auto cur_icount = get_reg_ref<uint64_t>(arch::traits<ARCH>::reg_e::ICOUNT);
+        CPPLOG(INFO) << "Executed " << cur_icount << " instructions in " << func_map.size() << " code blocks during " << millis
+                     << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
         return error;
     }
 
@@ -224,12 +231,11 @@ public:
     }
 
 protected:
-    continuation_e translate(virt_addr_t pc, jit_holder& jh) {
+    continuation_e translate(virt_addr_t pc, jit_holder& jh, uint64_t icount_limit) {
         unsigned cur_blk_size = 0;
-        unsigned int num_inst = 0;
         continuation_e cont = CONT;
-        while(cont == CONT && cur_blk_size < blk_size) {
-            cont = gen_single_inst_behavior(pc, num_inst, jh);
+        while(cont == CONT && cur_blk_size < blk_size && cur_blk_size < icount_limit) {
+            cont = gen_single_inst_behavior(pc, jh);
             cur_blk_size++;
         }
         if(cont == ILLEGAL_FETCH && cur_blk_size == 1) {
@@ -237,7 +243,7 @@ protected:
         }
         return cont;
     }
-    virtual continuation_e gen_single_inst_behavior(virt_addr_t&, unsigned int&, jit_holder&) = 0;
+    virtual continuation_e gen_single_inst_behavior(virt_addr_t&, jit_holder&) = 0;
     virtual void gen_block_prologue(jit_holder&) = 0;
     virtual void gen_block_epilogue(jit_holder&) = 0;
 
@@ -245,9 +251,16 @@ protected:
     : core(core)
     , core_id(core_id)
     , cluster_id(cluster_id)
-    , regs_base_ptr(core.get_regs_base_ptr())
-    , sync_exec(NO_SYNC)
-    , tgt_adapter(nullptr) {
+    , regs_base_ptr(core.get_regs_base_ptr()) {
+        sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+    }
+
+    explicit vm_base(std::unique_ptr<ARCH> core_ptr, unsigned core_id = 0, unsigned cluster_id = 0)
+    : core(*core_ptr)
+    , core_ptr(std::move(core_ptr))
+    , core_id(core_id)
+    , cluster_id(cluster_id)
+    , regs_base_ptr(core.get_regs_base_ptr()) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
     }
 
@@ -281,12 +294,13 @@ protected:
     }
 
     ARCH& core;
+    std::unique_ptr<ARCH> core_ptr;
     unsigned core_id = 0;
     unsigned cluster_id = 0;
-    uint8_t* regs_base_ptr;
-    sync_type sync_exec;
+    uint8_t* regs_base_ptr{nullptr};
+    sync_type sync_exec{sync_type::NO_SYNC};
     std::unordered_map<uint64_t, translation_block> func_map;
-    iss::debugger::target_adapter_base* tgt_adapter;
+    iss::debugger::target_adapter_base* tgt_adapter{nullptr};
     std::vector<plugin_entry> plugins;
     std::vector<char*> global_disass_collection;
 

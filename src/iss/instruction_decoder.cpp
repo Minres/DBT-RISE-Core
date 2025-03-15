@@ -41,7 +41,9 @@
 #include <numeric>
 #include <vector>
 
-decoder::decoder(std::vector<generic_instruction_descriptor> instr_list) {
+using namespace iss;
+
+decoder::decoder(std::vector<generic_instruction_descriptor> const& instr_list) {
     for(auto instr : instr_list) {
         root.instrs.push_back(instr);
     }

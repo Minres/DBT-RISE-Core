@@ -42,7 +42,6 @@
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
-#include <llvm-14/llvm/IR/GlobalVariable.h>
 #include <util/ities.h>
 #include <util/logging.h>
 #include <util/range_lut.h>
@@ -67,7 +66,7 @@ namespace llvm {
 using namespace ::llvm;
 
 enum continuation_e { CONT, BRANCH, FLUSH, TRAP, ILLEGAL_INSTR, JUMP_TO_SELF, ILLEGAL_FETCH };
-enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2 };
+enum last_branch_e { NO_JUMP = 0, KNOWN_JUMP = 1, UNKNOWN_JUMP = 2, BRANCH_TO_SELF = 3 };
 
 void add_functions_2_module(Module* mod);
 
@@ -80,6 +79,7 @@ template <typename ARCH> class vm_base : public debugger_if, public vm_if {
 
 public:
     using reg_e = typename arch::traits<ARCH>::reg_e;
+    using reg_t = typename arch::traits<ARCH>::reg_t;
     using sr_flag_e = typename arch::traits<ARCH>::sreg_flag_e;
     using virt_addr_t = typename arch::traits<ARCH>::virt_addr_t;
     using phys_addr_t = typename arch::traits<ARCH>::phys_addr_t;
@@ -98,17 +98,20 @@ public:
         return idx < 0 ? arch::traits<ARCH>::NUM_REGS : arch::traits<ARCH>::reg_bit_widths[(reg_e)idx];
     }
 
-    template <typename T> inline T get_reg(unsigned r) {
+    template <typename T> inline T get_reg_val(unsigned r) {
         std::vector<uint8_t> res(sizeof(T), 0);
-        uint8_t* reg_base = core.get_regs_base_ptr() + arch::traits<ARCH>::reg_byte_offsets[r];
+        uint8_t* reg_base = regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r];
         auto size = arch::traits<ARCH>::reg_bit_widths[r] / 8;
         std::copy(reg_base, reg_base + size, res.data());
         return *reinterpret_cast<T*>(&res[0]);
     }
+    template <typename T = reg_t> inline T& get_reg(unsigned r) {
+        return *reinterpret_cast<T*>(regs_base_ptr + arch::traits<ARCH>::reg_byte_offsets[r]);
+    }
 
     using func_ptr = uint64_t (*)(uint8_t*, void*, void*);
 
-    int start(uint64_t icount = std::numeric_limits<uint64_t>::max(), bool dump = false,
+    int start(uint64_t icount_limit = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
         int error = 0;
         uint32_t was_illegal = 0;
@@ -125,11 +128,11 @@ public:
                 virt_addr_t& pc;
                 continuation_e& cont;
             } param = {this, pc, cont};
-            std::function<Function*(Module*)> generator{[&param](Module* m) -> Function* {
+            std::function<Function*(Module*)> generator{[&param, icount_limit](Module* m) -> Function* {
                 Function* func;
                 param.vm->mod = m;
                 param.vm->setup_module(m);
-                std::tie(param.cont, func) = param.vm->translate(param.pc);
+                std::tie(param.cont, func) = param.vm->translate(param.pc, icount_limit);
                 param.vm->mod = nullptr;
                 param.vm->func = nullptr;
                 return func;
@@ -137,10 +140,11 @@ public:
             // explicit std::function to allow use as reference in call below
             // std::function<Function*(Module*)> gen_ref(std::ref(generator));
             translation_block *last_tb = nullptr, *cur_tb = nullptr;
-            uint32_t last_branch = std::numeric_limits<uint32_t>::max();
+            auto& last_branch = get_reg(reg_e::LAST_BRANCH);
+            uint64_t& cur_icount = get_reg<uint64_t>(reg_e::ICOUNT);
             arch_if* const arch_if_ptr = static_cast<arch_if*>(&core);
             vm_if* const vm_if_ptr = static_cast<vm_if*>(this);
-            while(!core.should_stop() && core.get_icount() < icount) {
+            while(!core.should_stop() && cur_icount < icount_limit) {
                 try {
                     // translate into physical address
                     phys_addr_t pc_p(pc.access, pc.space, pc.val);
@@ -153,23 +157,24 @@ public:
                             std::make_pair(pc_p.val, iss::llvm::getPointerToFunction(cluster_id, pc_p.val, generator, dump)));
                         it = res.first;
                     }
-                    if(cont == JUMP_TO_SELF)
-                        throw simulation_stopped(0);
                     cur_tb = &(it->second);
+                    if(cont == JUMP_TO_SELF) {
+                        // Execute the block we just compiled, but we know it will be the last one
+                        reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
+                        throw simulation_stopped(0);
+                    }
                     // if we have a previous block link the just compiled one as successor of the last tb
                     if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
                         last_tb->cont[last_branch] = cur_tb;
                     do {
                         // execute the compiled function
                         pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
-                        if(core.should_stop())
+                        if(core.should_stop() || last_branch == BRANCH_TO_SELF)
                             break;
                         // update last state
                         last_tb = cur_tb;
-                        last_branch = core.get_last_branch();
-                        auto cur_icount = core.get_icount();
                         // if the current tb has a successor assign to current tb
-                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount) {
+                        if(last_branch < 2 && cur_tb->cont[last_branch] != nullptr && cur_icount < icount_limit) {
                             cur_tb = cur_tb->cont[last_branch];
                             // update cont, as it only gets set when a new fptr gets created
                             cont = static_cast<continuation_e>(last_branch);
@@ -207,8 +212,9 @@ public:
         // here
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-        CPPLOG(INFO) << "Executed " << core.get_icount() << " instructions in " << func_map.size() << " code blocks during " << millis
-                     << "ms resulting in " << (core.get_icount() * 0.001 / millis) << "MIPS";
+        uint64_t& cur_icount = get_reg<uint64_t>(reg_e::ICOUNT);
+        CPPLOG(INFO) << "Executed " << cur_icount << " instructions in " << func_map.size() << " code blocks during " << millis
+                     << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
         return error;
     }
 
@@ -222,9 +228,8 @@ public:
     }
 
 protected:
-    std::tuple<continuation_e, Function*> translate(virt_addr_t pc) {
+    std::tuple<continuation_e, Function*> translate(virt_addr_t pc, uint64_t icount_limit) {
         unsigned cur_blk_size = 0;
-        unsigned int num_inst = 0;
         // loaded_regs.clear();
         func = this->open_block_func(pc);
         leave_blk = BasicBlock::Create(mod->getContext(), "leave", func);
@@ -237,9 +242,9 @@ protected:
         trap_blk = BasicBlock::Create(mod->getContext(), "trap", func);
         gen_trap_behavior(trap_blk);
         continuation_e cont = CONT;
-        while(cont == CONT && cur_blk_size < blk_size) {
+        while(cont == CONT && cur_blk_size < blk_size && cur_blk_size < icount_limit) {
             builder.SetInsertPoint(bb);
-            std::tie(cont, bb) = gen_single_inst_behavior(pc, num_inst, bb);
+            std::tie(cont, bb) = gen_single_inst_behavior(pc, bb);
             cur_blk_size++;
         }
         if(bb != nullptr) {
@@ -260,8 +265,7 @@ protected:
 
     virtual void setup_module(Module* m) { add_functions_2_module(m); }
 
-    virtual std::tuple<continuation_e, BasicBlock*> gen_single_inst_behavior(virt_addr_t& pc_v, unsigned int& inst_cnt,
-                                                                             BasicBlock* this_block) = 0;
+    virtual std::tuple<continuation_e, BasicBlock*> gen_single_inst_behavior(virt_addr_t& pc_v, BasicBlock* this_block) = 0;
 
     virtual void gen_trap_behavior(BasicBlock*) = 0;
 
@@ -276,13 +280,16 @@ protected:
     , core_id(core_id)
     , cluster_id(cluster_id)
     , regs_base_ptr(core.get_regs_base_ptr())
-    , sync_exec(NO_SYNC)
-    , builder(::iss::llvm::getContext())
-    , mod(nullptr)
-    , func(nullptr)
-    , leave_blk(nullptr)
-    , trap_blk(nullptr)
-    , tgt_adapter(nullptr) {
+    , builder(::iss::llvm::getContext()) {
+        sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
+    }
+    explicit vm_base(std::unique_ptr<ARCH> unique_core_ptr, unsigned core_id = 0, unsigned cluster_id = 0)
+    : core(*unique_core_ptr)
+    , owning_core_ptr(std::move(unique_core_ptr))
+    , core_id(core_id)
+    , cluster_id(cluster_id)
+    , regs_base_ptr(core.get_regs_base_ptr())
+    , builder(::iss::llvm::getContext()) {
         sync_exec = static_cast<sync_type>(sync_exec | core.needed_sync());
     }
 
@@ -538,19 +545,21 @@ protected:
     }
 
     ARCH& core;
+    std::unique_ptr<ARCH> owning_core_ptr;
     unsigned core_id = 0;
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
-    sync_type sync_exec;
+    sync_type sync_exec{sync_type::NO_SYNC};
     std::unordered_map<uint64_t, translation_block> func_map;
     IRBuilder<> builder{iss::llvm::getContext()};
     // non-owning pointers
-    Module* mod;
-    Function* func;
+    Module* mod{nullptr};
+    Function* func{nullptr};
     Value *core_ptr = nullptr, *vm_ptr = nullptr, *regs_ptr = nullptr;
-    BasicBlock *leave_blk, *trap_blk;
+    BasicBlock* leave_blk{nullptr};
+    BasicBlock* trap_blk{nullptr};
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
-    iss::debugger::target_adapter_base* tgt_adapter;
+    iss::debugger::target_adapter_base* tgt_adapter{nullptr};
     std::vector<plugin_entry> plugins;
     GlobalVariable* tval;
 };
