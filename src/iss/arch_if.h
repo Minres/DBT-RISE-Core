@@ -115,12 +115,6 @@ public:
      */
     virtual uint8_t* get_regs_base_ptr() = 0;
     /**
-     * whether address translation is needed
-     *
-     * @return true if a call to the address translation function is needed
-     */
-    inline bool has_mmu() { return mmu; }
-    /**
      * read from addresses
      *
      * @param addr address to read from, contains access type, address space and
@@ -216,7 +210,6 @@ public:
     virtual instrumentation_if* get_instrumentation_if() { return nullptr; };
 
 protected:
-    bool mmu{false};
     using rd_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t*);
     util::delegate<rd_func_sig> rd_func;
     using wr_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t const*);

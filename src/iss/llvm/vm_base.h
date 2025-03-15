@@ -148,8 +148,6 @@ public:
                 try {
                     // translate into physical address
                     phys_addr_t pc_p(pc.access, pc.space, pc.val);
-                    if(this->core.has_mmu())
-                        pc_p = this->core.virt2phys(pc);
                     // check if we have the block already compiled
                     auto it = this->func_map.find(pc_p.val);
                     if(it == this->func_map.end()) { // if not generate and compile it
