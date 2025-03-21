@@ -275,9 +275,26 @@ protected:
             plugins.push_back(plugin_entry{plugin.get_sync(), plugin, &plugin});
         }
     }
+    // NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3
+    const std::array<const iss::arch_if::exec_phase, 4> notifier_mapping = {
+        {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
+
     void gen_sync(jit_holder& jh, sync_type s, unsigned inst_id) {
         if(plugins.size() /*or debugger*/)
             write_back(jh);
+        if(s == PRE_SYNC) {
+            if(debugging_enabled()) {
+                InvokeNode* call_plugin_node;
+                jh.cc.invoke(&call_plugin_node, &::pre_instr_sync, FuncSignature::build<void, void*>());
+                call_plugin_node->setArg(0, this);
+            }
+        }
+        if((s & sync_exec)){
+            InvokeNode* call_cpu_node;
+            jh.cc.invoke(&call_cpu_node, &::notify_phase, FuncSignature::build<void, void*, uint32_t>());
+            call_cpu_node->setArg(0, &core);
+            call_cpu_node->setArg(1, notifier_mapping[s]);
+        }
         for(plugin_entry e : plugins) {
             if(e.sync & s) {
                 iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};
