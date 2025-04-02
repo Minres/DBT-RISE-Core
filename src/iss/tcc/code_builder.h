@@ -71,6 +71,7 @@ template <typename ARCH> struct code_builder {
         os << fmt::format("uint64_t {}(uint8_t* regs_ptr, void* core_ptr, void* vm_ptr) __attribute__ ((regnum(3)))  {{\n", fname);
         os << add_reg_ptr("pc", arch::traits<ARCH>::PC);
         os << add_reg_ptr("next_pc", arch::traits<ARCH>::NEXT_PC);
+        os << add_reg_ptr("instret", arch::traits<ARCH>::INSTRET);
         os << add_reg_ptr("icount", arch::traits<ARCH>::ICOUNT);
         os << add_reg_ptr("last_branch", arch::traits<ARCH>::LAST_BRANCH);
         os << "*last_branch = 0;\n";
