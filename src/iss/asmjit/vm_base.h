@@ -289,7 +289,7 @@ protected:
                 call_plugin_node->setArg(0, this);
             }
         }
-        if((s & sync_exec)){
+        if((s & sync_exec)) {
             InvokeNode* call_cpu_node;
             jh.cc.invoke(&call_cpu_node, &::notify_phase, FuncSignature::build<void, void*, uint32_t>());
             call_cpu_node->setArg(0, &core);
