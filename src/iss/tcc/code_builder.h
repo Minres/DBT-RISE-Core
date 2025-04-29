@@ -102,6 +102,10 @@ template <typename ARCH> struct code_builder {
         return value(fmt::format("{}", val), size /*of(T)*4*/, true);
     }
 
+    template <bool> inline value constant(bool val, unsigned size) const {
+        return value(fmt::format("{}", (unsigned)val), size /*of(T)*4*/, true);
+    }
+
     template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type* = nullptr>
     inline value constant(T val, unsigned size) const {
         return value(fmt::format("{}U", val), size /*of(T)*4*/, false);
