@@ -526,8 +526,8 @@ protected:
     virtual Function* open_block_func(phys_addr_t pc) {
         std::string name("block");
         GenerateUniqueName(name, pc.val);
-        std::vector<Type*> mainFuncTyArgs{Type::getInt8PtrTy(mod->getContext()), Type::getInt8PtrTy(mod->getContext()),
-                                          Type::getInt8PtrTy(mod->getContext())};
+        std::vector<Type*> mainFuncTyArgs{Type::getInt8Ty(mod->getContext()), Type::getInt8Ty(mod->getContext()),
+                                          Type::getInt8Ty(mod->getContext())};
         Type* ret_t = get_type(get_reg_width(arch::traits<ARCH>::PC));
         FunctionType* const mainFuncTy = FunctionType::get(ret_t, mainFuncTyArgs, false);
         Function* f = Function::Create(mainFuncTy, GlobalValue::ExternalLinkage, name.c_str(), mod);
