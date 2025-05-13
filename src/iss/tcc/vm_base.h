@@ -36,6 +36,7 @@
 #define TCC_VM_BASE_H_
 
 #include "jit_helper.h"
+#include <absl/container/flat_hash_map.h>
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
@@ -309,7 +310,7 @@ protected:
         tu("return *next_pc;");
         gen_trap_behavior(tu);
     }
-    virtual void add_prologue(tu_builder&){};
+    virtual void add_prologue(tu_builder&) {};
 
     ARCH& core;
     std::unique_ptr<ARCH> core_ptr;
@@ -317,7 +318,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
     sync_type sync_exec;
-    std::unordered_map<uint64_t, translation_block> func_map;
+    absl::flat_hash_map<uint64_t, translation_block> func_map;
     // non-owning pointers
     void* mod;
     void* func;

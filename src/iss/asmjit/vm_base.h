@@ -60,6 +60,7 @@
 extern "C" {
 #include <iss/vm_jit_funcs.h>
 }
+#include <absl/container/flat_hash_map.h>
 #include <array>
 #include <chrono>
 #include <iostream>
@@ -314,7 +315,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr{nullptr};
     sync_type sync_exec{sync_type::NO_SYNC};
-    std::unordered_map<uint64_t, translation_block> func_map;
+    absl::flat_hash_map<uint64_t, translation_block> func_map;
     iss::debugger::target_adapter_base* tgt_adapter{nullptr};
     std::vector<plugin_entry> plugins;
     std::vector<char*> global_disass_collection;

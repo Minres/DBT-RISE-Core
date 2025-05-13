@@ -36,6 +36,7 @@
 #define LLVM_VM_BASE_H_
 
 #include "jit_helper.h"
+#include <absl/container/flat_hash_map.h>
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
@@ -548,7 +549,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
     sync_type sync_exec{sync_type::NO_SYNC};
-    std::unordered_map<uint64_t, translation_block> func_map;
+    absl::flat_hash_map<uint64_t, translation_block> func_map;
     IRBuilder<> builder{iss::llvm::getContext()};
     // non-owning pointers
     Module* mod{nullptr};
