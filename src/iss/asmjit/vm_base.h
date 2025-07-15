@@ -38,7 +38,6 @@
 #include <asmjit/x86/x86compiler.h>
 #include <asmjit/x86/x86operand.h>
 #include <cassert>
-#include <cstddef>
 #include <cstdlib>
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -48,9 +47,6 @@
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
-#include <iterator>
-#include <stdexcept>
-#include <type_traits>
 #include <util/ities.h>
 #include <util/logging.h>
 
@@ -64,13 +60,7 @@ extern "C" {
 #include <array>
 #include <chrono>
 #include <iostream>
-#include <map>
-#include <sstream>
-#include <stack>
-#include <unordered_map>
 #include <utility>
-#include <variant>
-#include <vector>
 
 namespace iss {
 
@@ -167,8 +157,10 @@ public:
                         throw simulation_stopped(0);
                     }
                     // if we have a previous block link the just compiled one as successor of the last tb
-                    if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
+                    if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr) {
                         last_tb->cont[last_branch] = cur_tb;
+                        assert(cur_tb->f_ptr != 0);
+                    }
                     do {
                         // execute the compiled function
                         pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
@@ -181,8 +173,10 @@ public:
                             cur_tb = cur_tb->cont[last_branch];
                             // update cont, as it only gets set when a new fptr gets created
                             cont = static_cast<continuation_e>(last_branch);
-                        } else // if not we need to compile one
+                            assert(cur_tb->f_ptr != 0);
+                        } else { // if not we need to compile one
                             cur_tb = nullptr;
+                        }
                     } while(cur_tb != nullptr);
                     if(cont == FLUSH)
                         func_map.clear();
@@ -315,7 +309,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr{nullptr};
     sync_type sync_exec{sync_type::NO_SYNC};
-    absl::flat_hash_map<uint64_t, translation_block> func_map;
+    std::unordered_map<uint64_t, translation_block> func_map;
     iss::debugger::target_adapter_base* tgt_adapter{nullptr};
     std::vector<plugin_entry> plugins;
     std::vector<char*> global_disass_collection;
