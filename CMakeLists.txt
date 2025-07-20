@@ -14,17 +14,7 @@ include(add_whole_library)
 
 find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(fmt)
-<<<<<<< HEAD
-
-if(WITH_ASMJIT)
-    find_package(asmjit)
-endif()
-if(WITH_LLVM)
-    find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
-endif()
-=======
 find_package(absl REQUIRED)
->>>>>>> origin/develop
 
 include(FetchContent)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
