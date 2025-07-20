@@ -127,6 +127,7 @@ public:
             CPPLOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if(e.state != 1)
                 error = e.state;
+            this->core.interrupt_sim=true;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
                                                               // here

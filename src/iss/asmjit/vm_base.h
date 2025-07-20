@@ -38,7 +38,6 @@
 #include <asmjit/x86/x86compiler.h>
 #include <asmjit/x86/x86operand.h>
 #include <cassert>
-#include <cstddef>
 #include <cstdlib>
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -48,9 +47,6 @@
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
-#include <iterator>
-#include <stdexcept>
-#include <type_traits>
 #include <util/ities.h>
 #include <util/logging.h>
 
@@ -60,16 +56,11 @@
 extern "C" {
 #include <iss/vm_jit_funcs.h>
 }
+#include <absl/container/flat_hash_map.h>
 #include <array>
 #include <chrono>
 #include <iostream>
-#include <map>
-#include <sstream>
-#include <stack>
-#include <unordered_map>
 #include <utility>
-#include <variant>
-#include <vector>
 
 namespace iss {
 
@@ -152,8 +143,6 @@ public:
                 try {
                     // translate into physical address
                     phys_addr_t pc_p(pc.access, pc.space, pc.val);
-                    if(this->core.has_mmu())
-                        pc_p = this->core.virt2phys(pc);
                     // check if we have the block already compiled
                     auto it = this->func_map.find(pc_p.val);
                     if(it == this->func_map.end()) { // if not generate and compile it
@@ -168,13 +157,15 @@ public:
                         throw simulation_stopped(0);
                     }
                     // if we have a previous block link the just compiled one as successor of the last tb
-                    if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr)
+                    if(last_tb && last_branch < 2 && last_tb->cont[last_branch] == nullptr) {
                         last_tb->cont[last_branch] = cur_tb;
+                        assert(cur_tb->f_ptr != 0);
+                    }
                     do {
                         // execute the compiled function
                         pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
                         if(core.should_stop() || last_branch == BRANCH_TO_SELF)
-                            break;
+                            throw simulation_stopped(0);
                         // update last state
                         last_tb = cur_tb;
                         // if the current tb has a successor assign to current tb
@@ -182,8 +173,10 @@ public:
                             cur_tb = cur_tb->cont[last_branch];
                             // update cont, as it only gets set when a new fptr gets created
                             cont = static_cast<continuation_e>(last_branch);
-                        } else // if not we need to compile one
+                            assert(cur_tb->f_ptr != 0);
+                        } else { // if not we need to compile one
                             cur_tb = nullptr;
+                        }
                     } while(cur_tb != nullptr);
                     if(cont == FLUSH)
                         func_map.clear();
@@ -277,9 +270,26 @@ protected:
             plugins.push_back(plugin_entry{plugin.get_sync(), plugin, &plugin});
         }
     }
+    // NO_SYNC = 0, PRE_SYNC = 1, POST_SYNC = 2, ALL_SYNC = 3
+    const std::array<const iss::arch_if::exec_phase, 4> notifier_mapping = {
+        {iss::arch_if::ISTART, iss::arch_if::ISTART, iss::arch_if::IEND, iss::arch_if::ISTART}};
+
     void gen_sync(jit_holder& jh, sync_type s, unsigned inst_id) {
         if(plugins.size() /*or debugger*/)
             write_back(jh);
+        if(s == PRE_SYNC) {
+            if(debugging_enabled()) {
+                InvokeNode* call_plugin_node;
+                jh.cc.invoke(&call_plugin_node, &::pre_instr_sync, FuncSignature::build<void, void*>());
+                call_plugin_node->setArg(0, this);
+            }
+        }
+        if((s & sync_exec)) {
+            InvokeNode* call_cpu_node;
+            jh.cc.invoke(&call_cpu_node, &::notify_phase, FuncSignature::build<void, void*, uint32_t>());
+            call_cpu_node->setArg(0, &core);
+            call_cpu_node->setArg(1, notifier_mapping[s]);
+        }
         for(plugin_entry e : plugins) {
             if(e.sync & s) {
                 iss::instr_info_t iinfo{cluster_id, core_id, inst_id, s};

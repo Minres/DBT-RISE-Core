@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.24)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 cmake_policy(SET CMP0077 NEW)
 
@@ -14,6 +14,7 @@ include(add_whole_library)
 
 find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(fmt)
+<<<<<<< HEAD
 
 if(WITH_ASMJIT)
     find_package(asmjit)
@@ -21,6 +22,9 @@ endif()
 if(WITH_LLVM)
     find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
 endif()
+=======
+find_package(absl REQUIRED)
+>>>>>>> origin/develop
 
 include(FetchContent)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
@@ -99,16 +103,16 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE LIB_EXEC_DIR=${CMAKE_INSTALL_LIBEXECDIR})
 
 if(WITH_LLVM)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_LLVM ${LLVM_DEFINITIONS})
-    target_include_directories(${PROJECT_NAME} PUBLIC ${LLVM_INCLUDE_DIRS})
-    target_link_libraries( ${PROJECT_NAME} PUBLIC ${LLVM_LIBRARIES})
+    find_package(LLVM REQUIRED)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_LLVM)
+    target_link_libraries( ${PROJECT_NAME} PUBLIC llvm-core::llvm-core)
 endif()
-
 if(WITH_TCC)
     target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_TCC)
     target_link_libraries(${PROJECT_NAME} PUBLIC tcc::tcc)
 endif()
 if(WITH_ASMJIT)
+    find_package(asmjit REQUIRED)
     target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_ASMJIT)
     target_link_libraries(${PROJECT_NAME} PUBLIC asmjit::asmjit)
 endif()
@@ -118,6 +122,7 @@ if(TARGET fmt::fmt-header-only)
 else()
     target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt)
 endif()
+target_link_libraries(${PROJECT_NAME} PUBLIC abseil::abseil)
 target_link_libraries(${PROJECT_NAME} PUBLIC Boost::serialization Boost::thread)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 

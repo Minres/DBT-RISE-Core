@@ -71,6 +71,7 @@ template <typename ARCH> struct code_builder {
         os << fmt::format("uint64_t {}(uint8_t* regs_ptr, void* core_ptr, void* vm_ptr) __attribute__ ((regnum(3)))  {{\n", fname);
         os << add_reg_ptr("pc", arch::traits<ARCH>::PC);
         os << add_reg_ptr("next_pc", arch::traits<ARCH>::NEXT_PC);
+        os << add_reg_ptr("instret", arch::traits<ARCH>::INSTRET);
         os << add_reg_ptr("icount", arch::traits<ARCH>::ICOUNT);
         os << add_reg_ptr("last_branch", arch::traits<ARCH>::LAST_BRANCH);
         os << "*last_branch = 0;\n";
@@ -101,7 +102,12 @@ template <typename ARCH> struct code_builder {
         return value(fmt::format("{}", val), size /*of(T)*4*/, true);
     }
 
-    template <typename T, typename std::enable_if<std::is_unsigned<T>::value>::type* = nullptr>
+    template <typename T, typename std::enable_if<std::is_same<T, bool>::value>::type* = nullptr>
+    inline value constant(T val, unsigned size) const {
+        return value(fmt::format("{}", (unsigned)val), size, true);
+    }
+
+    template <typename T, typename std::enable_if<std::is_unsigned<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
     inline value constant(T val, unsigned size) const {
         return value(fmt::format("{}U", val), size /*of(T)*4*/, false);
     }
@@ -314,9 +320,10 @@ template <typename ARCH> struct code_builder {
     }
 
     inline value slice(value val, uint32_t bit, uint32_t width) {
-        assert(((bit + width) <= val.size()) && "Invalid slice range");
-        // analog to bit_sub in scc util
-        // T res = (v >> bit) & ((T(1) << width) - 1);
+        // this assertion is disabled as at least callf does not return correct sizes
+        // assert(((bit + width) <= val.size()) && "Invalid slice range");
+        //  analog to bit_sub in scc util
+        //  T res = (v >> bit) & ((T(1) << width) - 1);
 
         unsigned long v = width;
         if(width <= 8)

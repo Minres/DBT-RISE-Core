@@ -36,6 +36,7 @@
 #define LLVM_VM_BASE_H_
 
 #include "jit_helper.h"
+#include <absl/container/flat_hash_map.h>
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
@@ -148,8 +149,6 @@ public:
                 try {
                     // translate into physical address
                     phys_addr_t pc_p(pc.access, pc.space, pc.val);
-                    if(this->core.has_mmu())
-                        pc_p = this->core.virt2phys(pc);
                     // check if we have the block already compiled
                     auto it = this->func_map.find(pc_p.val);
                     if(it == this->func_map.end()) { // if not generate and compile it
@@ -170,7 +169,7 @@ public:
                         // execute the compiled function
                         pc.val = reinterpret_cast<func_ptr>(cur_tb->f_ptr)(regs_base_ptr, arch_if_ptr, vm_if_ptr);
                         if(core.should_stop() || last_branch == BRANCH_TO_SELF)
-                            break;
+                            throw simulation_stopped(0);
                         // update last state
                         last_tb = cur_tb;
                         // if the current tb has a successor assign to current tb
@@ -528,8 +527,8 @@ protected:
     virtual Function* open_block_func(phys_addr_t pc) {
         std::string name("block");
         GenerateUniqueName(name, pc.val);
-        std::vector<Type*> mainFuncTyArgs{Type::getInt8PtrTy(mod->getContext()), Type::getInt8PtrTy(mod->getContext()),
-                                          Type::getInt8PtrTy(mod->getContext())};
+        std::vector<Type*> mainFuncTyArgs{Type::getInt8Ty(mod->getContext()), Type::getInt8Ty(mod->getContext()),
+                                          Type::getInt8Ty(mod->getContext())};
         Type* ret_t = get_type(get_reg_width(arch::traits<ARCH>::PC));
         FunctionType* const mainFuncTy = FunctionType::get(ret_t, mainFuncTyArgs, false);
         Function* f = Function::Create(mainFuncTy, GlobalValue::ExternalLinkage, name.c_str(), mod);
@@ -550,7 +549,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
     sync_type sync_exec{sync_type::NO_SYNC};
-    std::unordered_map<uint64_t, translation_block> func_map;
+    absl::flat_hash_map<uint64_t, translation_block> func_map;
     IRBuilder<> builder{iss::llvm::getContext()};
     // non-owning pointers
     Module* mod{nullptr};
