@@ -16,68 +16,68 @@ find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(fmt)
 
 if(WITH_ASMJIT)
-	find_package(asmjit)
+    find_package(asmjit)
 endif()
 if(WITH_LLVM)
-	find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
+    find_package(LLVM REQUIRED LLVMSupport LLVMCore LLVMMCJIT LLVMX86CodeGen LLVMX86AsmParser)
 endif()
 
 include(FetchContent)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
-	FetchContent_Declare(
-	    tcc_git
-	  	GIT_REPOSITORY https://github.com/mirror/tinycc.git
-	  	GIT_TAG        16456168430c9e185dd94b8215aa77d02bbb8a2c
-	)
-	FetchContent_GetProperties(tcc_git)
-	
-	if(NOT tcc_git_POPULATED)
-	    FetchContent_Populate(tcc_git)
-		execute_process(
-		  	WORKING_DIRECTORY ${tcc_git_SOURCE_DIR}
-		  	COMMAND bash -c "./configure --prefix=${tcc_git_BINARY_DIR} --extra-cflags='-Wall -g -O2 -fPIC' && make -C ${tcc_git_SOURCE_DIR} -j && make -C ${tcc_git_SOURCE_DIR} install"
-		  	RESULT_VARIABLE TCC_RESULT
-		  	ECHO_OUTPUT_VARIABLE
-		  	ECHO_ERROR_VARIABLE
-		)
-		
-		if(NOT TCC_RESULT EQUAL 0)
-		  	message(FATAL_ERROR "Failed to build TCC: ${TCC_OUTPUT}")
-		endif()
-	endif()
+    FetchContent_Declare(
+        tcc_git
+        GIT_REPOSITORY https://github.com/mirror/tinycc.git
+        GIT_TAG        16456168430c9e185dd94b8215aa77d02bbb8a2c
+    )
+    FetchContent_GetProperties(tcc_git)
+    
+    if(NOT tcc_git_POPULATED)
+        FetchContent_Populate(tcc_git)
+        execute_process(
+            WORKING_DIRECTORY ${tcc_git_SOURCE_DIR}
+            COMMAND bash -c "./configure --prefix=${tcc_git_BINARY_DIR} --extra-cflags='-Wall -g -O2 -fPIC' && make -C ${tcc_git_SOURCE_DIR} -j && make -C ${tcc_git_SOURCE_DIR} install"
+            RESULT_VARIABLE TCC_RESULT
+            ECHO_OUTPUT_VARIABLE
+            ECHO_ERROR_VARIABLE
+        )
+        
+        if(NOT TCC_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to build TCC: ${TCC_OUTPUT}")
+        endif()
+    endif()
 
-	
-	add_library(tcc::tcc STATIC IMPORTED GLOBAL)
-	target_include_directories(tcc::tcc INTERFACE ${tcc_git_BINARY_DIR}/include)
-	set_property(TARGET tcc::tcc PROPERTY IMPORTED_LOCATION ${tcc_git_BINARY_DIR}/lib/libtcc.a)
+    
+    add_library(tcc::tcc STATIC IMPORTED GLOBAL)
+    target_include_directories(tcc::tcc INTERFACE ${tcc_git_BINARY_DIR}/include)
+    set_property(TARGET tcc::tcc PROPERTY IMPORTED_LOCATION ${tcc_git_BINARY_DIR}/lib/libtcc.a)
 endif()
 if(NOT TARGET scc-util)
-	FetchContent_Declare(
-	    scc_git
-	  	GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
-    	GIT_TAG e7bb8ca
-	)
-	FetchContent_GetProperties(scc_git)
-	
-	if(NOT scc_git_POPULATED)
-	    FetchContent_Populate(scc_git)
-	endif()
-	
-	add_subdirectory(${scc_git_SOURCE_DIR}/src/common ${scc_git_BINARY_DIR})
-	list(APPEND CMAKE_MODULE_PATH ${scc_git_SOURCE_DIR}/cmake)
-	
+    FetchContent_Declare(
+        scc_git
+        GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
+        GIT_TAG 66e8415
+    )
+    FetchContent_GetProperties(scc_git)
+    
+    if(NOT scc_git_POPULATED)
+        FetchContent_Populate(scc_git)
+    endif()
+    
+    add_subdirectory(${scc_git_SOURCE_DIR}/src/common ${scc_git_BINARY_DIR})
+    list(APPEND CMAKE_MODULE_PATH ${scc_git_SOURCE_DIR}/cmake)
+    
 endif()
 
 set(LIB_SOURCES
-	src/iss/debugger/gdb_session.cpp
-	src/iss/debugger/encoderdecoder.cpp
-	src/iss/debugger/target_adapter_base.cpp
-	src/iss/debugger/cmdhandler.cpp
-	src/iss/debugger/server_base.cpp
-	src/iss/vm_jit_funcs.cpp
-	src/iss/plugin/loader.cpp
-	src/iss/plugin/caculator.cpp
-	src/iss/instruction_decoder.cpp
+    src/iss/debugger/gdb_session.cpp
+    src/iss/debugger/encoderdecoder.cpp
+    src/iss/debugger/target_adapter_base.cpp
+    src/iss/debugger/cmdhandler.cpp
+    src/iss/debugger/server_base.cpp
+    src/iss/vm_jit_funcs.cpp
+    src/iss/plugin/loader.cpp
+    src/iss/plugin/caculator.cpp
+    src/iss/instruction_decoder.cpp
 )
 if (UNIX)
     list(APPEND LIB_SOURCES  src/iss/plugin/loader.cpp)
@@ -99,9 +99,9 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE LIB_EXEC_DIR=${CMAKE_INSTALL_LIBEXECDIR})
 
 if(WITH_LLVM)
-	target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_LLVM ${LLVM_DEFINITIONS})
-	target_include_directories(${PROJECT_NAME} PUBLIC ${LLVM_INCLUDE_DIRS})
-	target_link_libraries( ${PROJECT_NAME} PUBLIC ${LLVM_LIBRARIES})
+    target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_LLVM ${LLVM_DEFINITIONS})
+    target_include_directories(${PROJECT_NAME} PUBLIC ${LLVM_INCLUDE_DIRS})
+    target_link_libraries( ${PROJECT_NAME} PUBLIC ${LLVM_LIBRARIES})
 endif()
 
 if(WITH_TCC)
@@ -114,32 +114,32 @@ if(WITH_ASMJIT)
 endif()
 target_link_libraries(${PROJECT_NAME} PUBLIC scc-util)
 if(TARGET fmt::fmt-header-only)
-	target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt-header-only)
+    target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt-header-only)
 else()
-	target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt)
+    target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt)
 endif()
 target_link_libraries(${PROJECT_NAME} PUBLIC Boost::serialization Boost::thread)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 
 set(LIB_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/src/dbt_rise_common.h)
 set_target_properties(${PROJECT_NAME} PROPERTIES
-  VERSION ${PROJECT_VERSION}
-  FRAMEWORK FALSE
-  PUBLIC_HEADER "${LIB_HEADERS}"
+    VERSION ${PROJECT_VERSION}
+    FRAMEWORK FALSE
+    PUBLIC_HEADER "${LIB_HEADERS}"
 )
 
 install(TARGETS ${PROJECT_NAME} COMPONENT ${PROJECT_NAME}
-  EXPORT ${PROJECT_NAME}Targets                         # for downstream dependencies
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
-  FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}         # for mac
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # headers for mac (note the different component -> different package)
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}      # headers
+    EXPORT ${PROJECT_NAME}Targets                         # for downstream dependencies
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
+    FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}         # for mac
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # headers for mac (note the different component -> different package)
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}      # headers
 )
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/iss COMPONENT ${PROJECT_NAME}
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # target directory
-        FILES_MATCHING # install only matched files
-        PATTERN "*.h" # select header files
-        )
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # target directory
+    FILES_MATCHING # install only matched files
+    PATTERN "*.h" # select header files
+)
