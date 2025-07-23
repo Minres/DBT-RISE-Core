@@ -168,6 +168,11 @@ public:
     constexpr typed_addr_t(const addr_t& o)
     : typed_addr_t(o.access, o.space, o.val) {}
 };
+
+using virt_addr_t = iss::typed_addr_t<iss::address_type::VIRTUAL>;
+
+using phys_addr_t = iss::typed_addr_t<iss::address_type::PHYSICAL>;
+
 } // namespace iss
 
 namespace iss {
