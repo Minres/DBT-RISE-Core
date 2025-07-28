@@ -35,15 +35,10 @@
 #ifndef _SERVER_BASE_H_
 #define _SERVER_BASE_H_
 
-#include <util/logging.h>
+#include <iss/log_categories.h>
 
 #include "server_if.h"
-#include <atomic>
-#include <condition_variable>
-#include <deque>
 #include <iss/debugger_if.h>
-#include <list>
-#include <vector>
 
 namespace iss {
 namespace debugger {

@@ -33,6 +33,7 @@
 
 // clang-format off
 #include "gdb_session.h"
+#include "iss/log_categories.h"
 #include <algorithm>
 #include <exception>
 #include <iomanip>
@@ -151,7 +152,7 @@ void gdb_session::send_completed(const boost::system::error_code& e) {
     if(!e) {
         conn_shptr->async_read();
     } else {
-        CPPLOG(ERR) << e.message() << "(" << e << ")";
+        CLOG(ERR, dbt_rise_iss) << e.message() << "(" << e << ")";
     }
 }
 

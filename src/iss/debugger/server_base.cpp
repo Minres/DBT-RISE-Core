@@ -35,7 +35,6 @@
 // be unsafe
 #include "server_base.h"
 #include <functional>
-#include <future>
 #include <iss/debugger_if.h>
 #include <iss/vm_if.h>
 #include <thread>
@@ -62,7 +61,7 @@ void server_base::step(unsigned coreId, unsigned steps) {
     syncronizer.enqueue_and_wait(&server_base::dummy_func, this);
     while(!syncronizer.is_ready())
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    CPPLOG(TRACE) << "step finished";
+    CLOG(TRACE, dbt_rise_iss) << "step finished";
 }
 // called from debugger
 void server_base::run(unsigned coreId) {

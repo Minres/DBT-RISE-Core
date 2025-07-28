@@ -43,6 +43,9 @@ struct connection {
 struct disass {
     constexpr static char const* name = "disass";
 };
+struct dbt_rise_iss {
+    constexpr static char const* name = "dbt-rise-iss";
+};
 } // namespace logging
 
 #endif /* DBT_CORE_INCL_ISS_LOG_CATEGORIES_H_ */

@@ -39,17 +39,14 @@
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
 #include <iss/debugger_if.h>
+#include <iss/log_categories.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
 #include <util/ities.h>
-#include <util/logging.h>
 #include <util/range_lut.h>
 
 #include <array>
 #include <chrono>
-#include <map>
-#include <sstream>
-#include <stack>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -58,15 +55,25 @@
 using int128_t = __int128;
 using uint128_t = unsigned __int128;
 namespace std {
-template <> struct make_unsigned<__int128> { typedef unsigned __int128 type; };
+template <> struct make_unsigned<__int128> {
+    typedef unsigned __int128 type;
+};
 template <> class __make_unsigned_selector<__int128 unsigned, false, false> {
 public:
     typedef unsigned __int128 __type;
 };
-template <> struct is_signed<int128_t> { static constexpr bool value = true; };
-template <> struct is_signed<uint128_t> { static constexpr bool value = false; };
-template <> struct is_unsigned<int128_t> { static constexpr bool value = false; };
-template <> struct is_unsigned<uint128_t> { static constexpr bool value = true; };
+template <> struct is_signed<int128_t> {
+    static constexpr bool value = true;
+};
+template <> struct is_signed<uint128_t> {
+    static constexpr bool value = false;
+};
+template <> struct is_unsigned<int128_t> {
+    static constexpr bool value = false;
+};
+template <> struct is_unsigned<uint128_t> {
+    static constexpr bool value = true;
+};
 } // namespace std
 #endif
 
@@ -118,16 +125,16 @@ public:
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::FETCH, arch::traits<ARCH>::MEM, get_reg<addr_t>(arch::traits<ARCH>::PC));
         if(this->debugging_enabled()) {
-            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec << ", waiting for debugger";
+            CLOG(INFO, dbt_rise_iss) << "Start at 0x" << std::hex << pc.val << std::dec << ", waiting for debugger";
         } else
-            CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
+            CLOG(INFO, dbt_rise_iss) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             execute_inst(cond, pc, count);
         } catch(simulation_stopped& e) {
-            CPPLOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
+            CLOG(INFO, dbt_rise_iss) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if(e.state != 1)
                 error = e.state;
-            this->core.interrupt_sim=true;
+            this->core.interrupt_sim = true;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
                                                               // here
@@ -135,10 +142,11 @@ public:
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         auto instr_if = core.get_instrumentation_if();
         if(instr_if) {
-            CPPLOG(INFO) << "Executed " << instr_if->get_instr_count() << " instructions in " << instr_if->get_total_cycles()
-                         << " cycles during " << millis << "ms resulting in " << (instr_if->get_instr_count() * 0.001 / millis) << "MIPS";
+            CLOG(INFO, dbt_rise_iss) << "Executed " << instr_if->get_instr_count() << " instructions in " << instr_if->get_total_cycles()
+                                     << " cycles during " << millis << "ms resulting in " << (instr_if->get_instr_count() * 0.001 / millis)
+                                     << "MIPS";
         } else
-            CPPLOG(INFO) << "Execution took " << millis << "ms";
+            CLOG(INFO, dbt_rise_iss) << "Execution took " << millis << "ms";
         return error;
     }
 

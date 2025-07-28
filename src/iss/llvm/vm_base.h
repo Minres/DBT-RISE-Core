@@ -120,7 +120,7 @@ public:
             sync_exec |= PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
-        CPPLOG(INFO) << "Start at 0x" << std::hex << pc.val << std::dec;
+        CLOG(INFO, dbt_rise_iss) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             continuation_e cont = CONT;
             // struct to minimize the type size of the closure below to allow SSO
@@ -184,7 +184,8 @@ public:
                         func_map.clear();
                     if(cont == ILLEGAL_INSTR) {
                         if(was_illegal > 2) {
-                            CPPLOG(ERR) << "ISS execution aborted after trying to execute illegal instructions 3 times in a row";
+                            CLOG(ERR, dbt_rise_iss)
+                                << "ISS execution aborted after trying to execute illegal instructions 3 times in a row";
                             error = -1;
                             break;
                         }
@@ -196,15 +197,15 @@ public:
                     pc.val = core.enter_trap(1 << 16, ta.addr, 0);
                 }
 #ifndef NDEBUG
-                CPPLOG(TRACE) << "continuing  @0x" << std::hex << pc << std::dec;
+                CLOG(TRACE, dbt_rise_iss) << "continuing  @0x" << std::hex << pc << std::dec;
 #endif
             }
         } catch(simulation_stopped& e) {
-            CPPLOG(INFO) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
+            CLOG(INFO, dbt_rise_iss) << "ISS execution stopped with status 0x" << std::hex << e.state << std::dec;
             if(e.state != 1)
                 error = e.state;
         } catch(decoding_error& e) {
-            CPPLOG(ERR) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
+            CLOG(ERR, dbt_rise_iss) << "ISS execution aborted at address 0x" << std::hex << e.addr << std::dec;
             error = -1;
         }
         auto end = std::chrono::high_resolution_clock::now(); // end measurement
@@ -212,8 +213,8 @@ public:
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         uint64_t& cur_icount = get_reg<uint64_t>(reg_e::ICOUNT);
-        CPPLOG(INFO) << "Executed " << cur_icount << " instructions in " << func_map.size() << " code blocks during " << millis
-                     << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
+        CLOG(INFO) << "Executed " << cur_icount << " instructions in " << func_map.size(, dbt_rise_iss) << " code blocks during " << millis
+                   << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
         return error;
     }
 

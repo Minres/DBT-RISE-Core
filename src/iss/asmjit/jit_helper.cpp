@@ -69,7 +69,7 @@ public:
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<void(jit_holder&)>& generator,
                                        bool dumpEnabled) {
 #ifndef NDEBUG
-    CPPLOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
+    CLOG(TRACE, dbt_rise_iss) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static int i = 0;
     JitRuntime rt;
