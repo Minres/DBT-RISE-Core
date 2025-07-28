@@ -33,10 +33,9 @@
 
 #include "vm_jit_funcs.h"
 #include "arch_if.h"
-#include "iss.h"
 #include "vm_if.h"
 #include "vm_plugin.h"
-#include <util/logging.h>
+#include <iss/log_categories.h>
 
 using namespace iss;
 using arch_if_ptr_t = arch_if*;
@@ -60,8 +59,8 @@ uint8_t read_mem(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64
 
 uint8_t write_mem(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
 #ifdef EXEC_LOGGING
-    CPPLOG(TRACE) << "EXEC: write mem " << (unsigned)type << " of core " << iface << " at addr 0x" << hex << addr << " with value 0x"
-                  << data << dec << " of len " << length;
+    CLOG(TRACE) << "EXEC: write mem " << (unsigned, dbt_rise_iss)type << " of core " << iface << " at addr 0x" << hex << addr
+                << " with value 0x" << data << dec << " of len " << length;
 #endif
     return iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, length, data);
 }
@@ -82,7 +81,7 @@ uint64_t leave_trap(void* iface, uint64_t flags) { return reinterpret_cast<arch_
 
 void wait(void* iface, uint64_t flags) { reinterpret_cast<arch_if_ptr_t>(iface)->wait_until(flags); }
 
-void print_string(void* iface, char* str) { CPPLOG(DEBUG) << "[EXEC] " << str; }
+void print_string(void* iface, char* str) { CLOG(DEBUG, dbt_rise_iss) << "[EXEC] " << str; }
 
 void print_disass(void* iface, uint64_t pc, char* str) { reinterpret_cast<arch_if_ptr_t>(iface)->disass_output(pc, str); }
 

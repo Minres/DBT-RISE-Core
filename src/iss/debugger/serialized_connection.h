@@ -298,7 +298,7 @@ public:
         // Serialize the data first so we know how large it is.
         outbound_data_ = str;
 #ifdef EXTENDED_TRACE
-        CPPLOG(TRACE) << "outbound async data with len " << outbound_data_.size() << ":'" << outbound_data_ << "'";
+        CLOG(TRACE) << "outbound async data with len " << outbound_data_.size(, dbt_rise_iss) << ":'" << outbound_data_ << "'";
 #endif
         // Write the outbound data to the socket. We use "gather-write" to send
         // both the header and the data in a single write operation.
@@ -339,7 +339,7 @@ protected:
                 if(listener->message_completed(inbound_data_)) {
                     std::string receive_data(&inbound_data_[0], inbound_data_.size());
 #ifdef EXTENDED_TRACE
-                    CPPLOG(TRACE) << "inbound async data with len " << inbound_data_.size() << ":'" << receive_data << "'";
+                    CLOG(TRACE) << "inbound async data with len " << inbound_data_.size(, dbt_rise_iss) << ":'" << receive_data << "'";
 #endif
                     if(listener)
                         listener->receive_completed(e, &receive_data);
@@ -368,7 +368,7 @@ public:
     void write_data(const std::string& t, boost::system::error_code& ec) {
         outbound_data_ = t;
 #ifdef EXTENDED_TRACE
-        CPPLOG(TRACE) << "outbound sync data with len " << outbound_data_.size() << ":'" << outbound_data_ << "'";
+        CLOG(TRACE) << "outbound sync data with len " << outbound_data_.size(, dbt_rise_iss) << ":'" << outbound_data_ << "'";
 #endif // Format the header.
        // Write the serialized data to the socket. We use "gather-write" to send
        // both the header and the data in a single write operation.

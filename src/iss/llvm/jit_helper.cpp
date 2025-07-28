@@ -35,7 +35,6 @@
 #include <iss/log_categories.h>
 #include <llvm/Support/Debug.h> //EnableDebugBuffering
 #include <llvm/Support/Error.h>
-#include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/PrettyStackTrace.h>
 #include <llvm/Support/Signals.h> // llvm::sys::PrintStackTraceOnErrorSignal()
 #include <llvm/Support/TargetSelect.h>
@@ -85,7 +84,7 @@ LLVMContext& getContext() {
 translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, std::function<Function*(Module*)>& generator,
                                        bool dumpEnabled) {
 #ifndef NDEBUG
-    CPPLOG(TRACE) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
+    CLOG(TRACE, dbt_rise_iss) << "Compiling and executing code for 0x" << std::hex << phys_addr << std::dec;
 #endif
     static unsigned i = 0;
     std::array<char, 32> s;
@@ -102,7 +101,7 @@ translation_block getPointerToFunction(unsigned cluster_id, uint64_t phys_addr, 
         mod->print(os, nullptr, false, true);
         os.flush();
     }
-    //mod->setTargetTriple(sys::getProcessTriple());
+    // mod->setTargetTriple(sys::getProcessTriple());
     std::string ErrStr;
     EngineBuilder eb(std::move(mod)); // eb and ee take ownership of module
     TargetOptions to;

@@ -49,9 +49,9 @@ template <class SESSION> class server : public server_base {
 public:
     static void run_server(iss::debugger_if* vm, unsigned int port) {
         if(get() != NULL) {
-            CPPLOG(FATAL) << "server already initialized";
+            CLOG(FATAL, dbt_rise_iss) << "server already initialized";
         }
-        CPPLOG(DEBUG) << "starting server listening on port " << port;
+        CLOG(DEBUG, dbt_rise_iss) << "starting server listening on port " << port;
         get(new server<SESSION>(vm, port));
     }
 
@@ -114,7 +114,7 @@ private:
             // An error occurred. Log it and return. Since we are not starting a new
             // accept operation the io_service will run out of work to do and the
             // thread will exit.
-            CPPLOG(ERR) << e.message();
+            CLOG(ERR, dbt_rise_iss) << e.message();
         }
     }
     // server related members
