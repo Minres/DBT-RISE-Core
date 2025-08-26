@@ -302,6 +302,8 @@ protected:
                 call_plugin_node->setArg(1, iinfo.backing.val);
             }
         }
+        if(plugins.size())
+            read_back(jh);
         // TODO: handle Debugger
     }
 
@@ -330,6 +332,10 @@ protected:
     void write_back(jit_holder& jh) {
         write_reg_to_mem(jh, jh.pc, traits::PC);
         write_reg_to_mem(jh, jh.next_pc, traits::NEXT_PC);
+    }
+    void read_back(jit_holder& jh) {
+        jh.pc = load_reg_from_mem_Gp(jh, traits::PC);
+        jh.next_pc = load_reg_from_mem_Gp(jh, traits::NEXT_PC);
     }
     x86::Mem get_ptr_for(jit_holder& jh, unsigned idx) {
         switch(traits::reg_bit_widths[idx]) {
