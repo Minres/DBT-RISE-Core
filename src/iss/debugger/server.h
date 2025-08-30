@@ -80,9 +80,9 @@ protected:
     : server_base(vm)
     , acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)) {
         // Create a pool of threads to run all of the io_services.
-        std::size_t thread_pool_size_ = 2;
+        std::size_t thread_pool_size_ = 1;
         work_ctrl = new boost::asio::io_context::work(io_service);
-        boost::thread::hardware_concurrency();
+        // boost::thread::hardware_concurrency();
         for(std::size_t i = 0; i < thread_pool_size_; ++i) {
             threads.create_thread([this]() -> void { io_service.run(); });
         }

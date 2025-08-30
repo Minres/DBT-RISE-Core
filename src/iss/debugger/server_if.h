@@ -114,7 +114,7 @@ public:
      * @param coreId core to reset
      * @return result of the operation
      */
-    virtual status reset(int coreId) = 0;
+    virtual status reset(unsigned coreId) = 0;
     /**
      * shut down the simulation and server
      */
@@ -125,7 +125,7 @@ public:
      * get the target adapter for the core being debugged
      * @return
      */
-    virtual target_adapter_if* get_target() = 0;
+    virtual target_adapter_if* get_target(unsigned) = 0;
     /**
      * check if the simulation can continue
      * @param bp_handle the handle of breakpoint condition being met, 0 means no

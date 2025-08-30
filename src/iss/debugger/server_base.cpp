@@ -49,11 +49,10 @@ template <typename T> static T to(unsigned char* data, size_t num_bytes) {
     return res;
 }
 
-server_base::server_base(iss::debugger_if* vm)
-: vm(vm)
-, tgt(nullptr) {}
+server_base::server_base(iss::debugger_if* vm) { this->vm.push_back(vm); }
 
 int server_base::dummy_func() { return 42; }
+
 // called from debugger
 void server_base::step(unsigned coreId, unsigned steps) {
     cycles.store(steps, std::memory_order_relaxed);
@@ -88,4 +87,4 @@ void server_base::wait_for_stop() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
-iss::status server_base::reset(int coreId) { return iss::Ok; }
+iss::status server_base::reset(unsigned coreId) { return iss::Ok; }
