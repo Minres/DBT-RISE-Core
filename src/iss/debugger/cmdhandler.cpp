@@ -713,8 +713,6 @@ std::string cmd_handler::breakpoint(std::string const& in_buf) {
     }
 }
 
-void cmd_handler::interrupt_target() { t->stop(); }
-
 /* Help function, generate help text from command table */
 int cmd_handler::rcmd_help(int argc, char* argv[], out_func of, data_func df) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
@@ -897,9 +895,6 @@ boost::optional<std::string> cmd_handler::handle_extended(std::string const& in_
         return boost::optional<std::string>{"S05"};
     } else if(in_buf.find("vAttach", 0) == 0) {
         return boost::optional<std::string>{"S05"};
-    } else if(in_buf.find("vCtrlC", 0) == 0) {
-        t->stop();
-        return boost::optional<std::string>{"OK"};
     } else
         return boost::optional<std::string>{""};
     // not suppported:

@@ -89,7 +89,7 @@ public:
 
     cmd_handler(iss::debugger::server_if& server, std::function<void(unsigned)>& stop_callback)
     : s(server)
-    , t(s.get_target())
+    , t(s.get_target(0)) // FIXME: add core id
     , extended_protocol(false)
     , can_restart(false)
     , stop_callback(stop_callback) {}
@@ -107,7 +107,6 @@ public:
     std::string running(std::string const& in_buf, bool blocking = true, bool vCont = false);
     int kill(std::string const& in_buf, std::string& out_buf);
     std::string thread_alive(std::string const& in_buf);
-    void interrupt_target();
     int restart_target(std::string const& in_buf, std::string& out_buf);
     std::string detach(std::string const& in_buf);
     std::string query(std::string const& in_buf);

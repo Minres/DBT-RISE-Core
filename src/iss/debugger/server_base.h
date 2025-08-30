@@ -47,6 +47,11 @@ class server_base : public server_if {
 public:
     server_base(debugger_if* adapter);
 
+    unsigned add_debugger_adapter(iss::debugger_if* vm) {
+        this->vm.push_back(vm);
+        return this->vm.size() - 1;
+    }
+
     unsigned int get_reg_width(int index) const;
 
     void run(unsigned coreId) override;
@@ -59,14 +64,14 @@ public:
 
     void step(unsigned coreId, unsigned steps = 1) override;
 
-    iss::status reset(int coreId) override;
+    iss::status reset(unsigned coreId) override;
 
-    target_adapter_if* get_target() override { return vm->accquire_target_adapter(this); }
+    target_adapter_if* get_target(unsigned coreId) override { return vm[coreId]->accquire_target_adapter(this); }
 
 protected:
-    debugger_if* vm;
+    std::vector<debugger_if*> vm;
+    // used to make sure that the other thread got invoked
     int dummy_func();
-    target_adapter_if* tgt;
 };
 
 } // namespace debugger
