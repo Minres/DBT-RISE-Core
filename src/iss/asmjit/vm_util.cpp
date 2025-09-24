@@ -198,7 +198,7 @@ x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, x86_reg_t
         x86::Gp b = nonstd::get<x86::Gp>(_b);
         auto as = a.size();
         auto bs = b.size();
-        assert(a.size() == b.size());
+        assert(a.size() == b.size() || op == operation::shl);
         return gen_operation_Gp(cc, op, a, b);
     }
     // Should not end here
@@ -436,8 +436,12 @@ x86_reg_t gen_operation(x86::Compiler& cc, unary_operation op, x86_reg_t _a) {
     if(nonstd::holds_alternative<x86::Gp>(_a)) {
         x86::Gp a = nonstd::get<x86::Gp>(_a);
         switch(op) {
-        case lnot:
-            throw std::runtime_error("Current operation not supported in gen_operation(lnot)");
+        case lnot: {
+            cc.test(a, a);
+            cc.setz(a);
+            cc.movzx(a, a.r8());
+            break;
+        }
         case inc: {
             cc.inc(a);
             break;
