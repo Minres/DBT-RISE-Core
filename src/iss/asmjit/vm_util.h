@@ -450,7 +450,7 @@ template <typename V, typename W, typename> x86_reg_t gen_slice(x86::Compiler& c
     assert(((bit + width) <= val.size() * 8) && "Invalid slice range");
     // analog to bit_sub in scc util
     // T res = (v >> bit) & ((T(1) << width) - 1);
-    auto mask = (1ULL << width) - 1;
+    uint8_t mask = (1ULL << width) - 1;
     // and takes at most 32 bits as an immediate
     x86_reg_t ret_val;
     if(width > 32) {

@@ -198,7 +198,7 @@ x86_reg_t gen_operation(x86::Compiler& cc, operation op, x86_reg_t _a, x86_reg_t
         x86::Gp b = nonstd::get<x86::Gp>(_b);
         auto as = a.size();
         auto bs = b.size();
-        assert(a.size() == b.size() || op == operation::shl);
+        assert(a.size() == b.size() || op >= shl);
         return gen_operation_Gp(cc, op, a, b);
     }
     // Should not end here
@@ -316,9 +316,12 @@ x86_reg_t gen_operation(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x
 }
 x86_reg_t _multiply(x86::Compiler& cc, complex_operation op, x86_reg_t _a, x86_reg_t _b) {
     if(nonstd::holds_alternative<x86::Gp>(_a) && nonstd::holds_alternative<x86::Gp>(_b)) {
-        x86::Gp a = nonstd::get<x86::Gp>(_a);
+        x86::Gp orig_a = nonstd::get<x86::Gp>(_a);
         x86::Gp b = nonstd::get<x86::Gp>(_b);
-        x86::Gp overflow = get_reg_Gp(cc, a.size() * 8, false);
+        x86::Gp overflow = get_reg_Gp(cc, orig_a.size() * 8, false);
+        // move the orig_a register out of the way, as it will be overwritten by multiplications
+        x86::Gp a = get_reg_Gp(cc, orig_a.size() * 8, false);
+        cc.mov(a, orig_a);
         // Multiplication of two XLEN wide registers returns a value that is 2*XLEN wide
         // do the multiplication and piece together the return register
         switch(op) {
