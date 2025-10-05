@@ -38,14 +38,14 @@
 #include <util/logging.h>
 namespace logging {
 struct connection {
-    constexpr static char const* name = "connection";
+    constexpr static char const* name = "gdbconn";
 };
 struct disass {
     constexpr static char const* name = "disass";
 };
 struct dbt_rise_iss {
-    constexpr static char const* name = "dbt-rise-iss";
+    constexpr static char const* name = "iss";
 };
 } // namespace logging
 
-#endif /* DBT_CORE_INCL_ISS_LOG_CATEGORIES_H_ */
+#endif /* _ISS_LOG_CATEGORIES_H_ */
