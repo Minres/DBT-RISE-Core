@@ -14,7 +14,6 @@ include(add_whole_library)
 
 find_package(Boost COMPONENTS serialization thread REQUIRED)
 find_package(fmt)
-find_package(absl REQUIRED)
 
 include(FetchContent)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
@@ -112,7 +111,6 @@ if(TARGET fmt::fmt-header-only)
 else()
     target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt)
 endif()
-target_link_libraries(${PROJECT_NAME} PUBLIC abseil::abseil)
 target_link_libraries(${PROJECT_NAME} PUBLIC Boost::serialization Boost::thread)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CMAKE_DL_LIBS})
 
