@@ -100,7 +100,7 @@ public:
      * @param name name of th efile to load
      * @param type of file, implementation dependent
      */
-    virtual std::pair<uint64_t, bool> load_file(std::string name, int type = -1) = 0;
+    virtual std::pair<uint64_t, bool> load_file(std::string const& name, int type = -1) = 0;
 
     /**
      * notify the core about the execution phase (if needed)
