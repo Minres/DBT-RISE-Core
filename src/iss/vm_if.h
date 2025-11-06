@@ -35,9 +35,8 @@
 #ifndef _VM_IF_H_
 #define _VM_IF_H_
 
-#include "vm_types.h"
-#include <memory>
-#include <string>
+#include <limits>
+#include <stdexcept>
 
 namespace iss {
 // forward declaration

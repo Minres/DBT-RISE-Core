@@ -35,14 +35,12 @@
 #ifndef _SERVER_IF_H_
 #define _SERVER_IF_H_
 
+#include "iss/vm_types.h"
 #include <iss/vm_if.h>
 #include <util/thread_syncronizer.h>
 
 #include <atomic>
-#include <deque>
-#include <string>
 #include <type_traits>
-#include <vector>
 
 namespace iss {
 

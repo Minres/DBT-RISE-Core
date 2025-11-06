@@ -40,10 +40,8 @@
 #include "vm_types.h"
 #include <dbt_rise_common.h>
 
-#include <algorithm>
 #include <iomanip>
 #include <iostream>
-#include <vector>
 
 namespace iss {
 /**
@@ -198,7 +196,7 @@ public:
      *
      * @return string containing the core status in text form
      */
-    virtual void disass_output(uint64_t pc, const std::string instr) {
+    virtual void disass_output(uint64_t pc, std::string const& instr) {
         std::cout << "0x" << std::setw(16) << std::setfill('0') << std::hex << pc << "\t\t" << instr << std::endl;
     };
     /**

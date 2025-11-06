@@ -35,9 +35,9 @@
 #ifndef _TARGET_ADAPTER_IF_H_
 #define _TARGET_ADAPTER_IF_H_
 
-#include <array>
 #include <functional>
 #include <iss/vm_types.h>
+#include <limits>
 #include <string>
 #include <vector>
 

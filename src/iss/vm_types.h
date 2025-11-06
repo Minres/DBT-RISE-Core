@@ -38,7 +38,6 @@
 #include <cassert>
 #include <cstdint>
 #include <iostream>
-#include <limits>
 
 namespace iss {
 
@@ -160,7 +159,7 @@ inline std::ostream& operator<<(std::ostream& os, const addr_t& op) {
 template <address_type TYPE> class typed_addr_t : public addr_t {
 public:
     constexpr typed_addr_t()
-    : addr_t(access_type::WRITE, TYPE, 0, 0){};
+    : addr_t(access_type::WRITE, TYPE, 0, 0) {};
     constexpr typed_addr_t(access_type acc_type, uint32_t space, uint64_t v)
     : addr_t(acc_type, TYPE, space, v) {}
     constexpr typed_addr_t(access_type t, uint64_t v)
