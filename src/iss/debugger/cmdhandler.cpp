@@ -778,19 +778,19 @@ int cmd_handler::rcmd_set(int argc, char* argv[], out_func of, data_func df) {
     }
 
     if(strcmp("0", argv[2]) == 0 || strcasecmp("NONE", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::NONE;
+        LOGGER(DEFAULT)::set_reporting_level(logging::NONE);
     else if(strcmp("1", argv[2]) == 0 || strcasecmp("FATAL", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::FATAL;
+        LOGGER(DEFAULT)::set_reporting_level(logging::FATAL);
     else if(strcmp("2", argv[2]) == 0 || strcasecmp("ERROR", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::ERR;
+        LOGGER(DEFAULT)::set_reporting_level(logging::ERR);
     else if(strcmp("3", argv[2]) == 0 || strcasecmp("WARNING", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::WARN;
+        LOGGER(DEFAULT)::set_reporting_level(logging::WARN);
     else if(strcmp("4", argv[2]) == 0 || strcasecmp("INFO", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::INFO;
+        LOGGER(DEFAULT)::set_reporting_level(logging::INFO);
     else if(strcmp("5", argv[2]) == 0 || strcasecmp("DEBUG", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::DEBUG;
+        LOGGER(DEFAULT)::set_reporting_level(logging::DEBUG);
     else if(strcmp("6", argv[2]) == 0 || strcasecmp("TRACE", argv[2]) == 0)
-        LOGGER(DEFAULT)::reporting_level() = logging::TRACE;
+        LOGGER(DEFAULT)::set_reporting_level(logging::TRACE);
     else {
         sprintf(buf2, "Invalid debug level: \"%s\"\n", argv[2]);
         encdec.enc_string(buf2, buf, 1000);
@@ -799,7 +799,7 @@ int cmd_handler::rcmd_set(int argc, char* argv[], out_func of, data_func df) {
         return iss::Err;
     }
     // print unconditional
-    LOGGER(DEFAULT)().get(logging::INFO) << "Log level set to " << LOGGER(DEFAULT)::reporting_level();
+    LOGGER(DEFAULT)().get(logging::INFO) << "Log level set to " << LOGGER(DEFAULT)::get_reporting_level();
     return iss::Ok;
 }
 
