@@ -36,6 +36,7 @@
 #define _ISS_LOG_CATEGORIES_H_
 
 #include <util/logging.h>
+
 namespace logging {
 struct connection {
     constexpr static char const* name = "gdbconn";

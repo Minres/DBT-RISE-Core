@@ -35,9 +35,9 @@
 #ifndef _ISS_VM_PLUGIN_H_
 #define _ISS_VM_PLUGIN_H_
 
-#include "util/bit_field.h"
+#include "iss/vm_types.h"
 #include "vm_if.h"
-#include <memory>
+#include <util/bit_field.h>
 
 namespace iss {
 

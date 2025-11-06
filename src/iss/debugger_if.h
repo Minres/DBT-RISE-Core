@@ -37,8 +37,6 @@
 
 #include "debugger/server_if.h"
 #include "debugger/target_adapter_if.h"
-#include "vm_types.h"
-#include <vector>
 
 namespace iss {
 

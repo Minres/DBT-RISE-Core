@@ -34,10 +34,11 @@
 
 #ifndef _INSTR_DECODER_H
 #define _INSTR_DECODER_H
-#include <cstddef>
+
 #include <cstdint>
 #include <limits>
 #include <vector>
+
 namespace iss {
 
 enum { DECODING_FAIL = std::numeric_limits<uint32_t>::max() };

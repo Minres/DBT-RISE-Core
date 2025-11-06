@@ -35,7 +35,6 @@
 #ifndef _ISS_H
 #define _ISS_H
 
-#include <cstdint>
 #include <iss/arch_if.h>
 #include <iss/vm_if.h>
 #include <memory>
