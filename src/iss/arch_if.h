@@ -61,39 +61,23 @@ public:
  */
 class arch_if {
 public:
-    /* deprecated */
-    enum operations {
-        NOP,
-        AND,
-        OR,
-        XOR,
-        ADD,
-        ADC,
-        SUB,
-        SUBC,
-        MUL,
-        DIV,
-        ADDL,
-        ADCL,
-        SUBL,
-        SUBCL,
-        MULL,
-        DIVL,
-    };
-
+    /**
+     * @brief Destroy the arch if object
+     *
+     */
     virtual ~arch_if() = default;
     /**
      * execution phases: instruction start and end
      */
     enum exec_phase { ISTART, IEND, BSTART, BEND };
     /**
-     * reset the core
+     * @brief reset the core
      *
      * @param address where to start from
      */
     virtual void reset(uint64_t address) = 0;
     /**
-     * preload memories from file
+     * @brief preload memories from file
      *
      * @param name name of th efile to load
      * @param type of file, implementation dependent
@@ -101,19 +85,19 @@ public:
     virtual std::pair<uint64_t, bool> load_file(std::string const& name, int type = -1) = 0;
 
     /**
-     * notify the core about the execution phase (if needed)
+     * @brief notify the core about the execution phase (if needed)
      *
      * @param the actual phase the vm is in
      */
     virtual void notify_phase(exec_phase){};
     /**
-     * get the pointer to the register array
+     * @brief get the pointer to the register array
      *
      * @return pointer to the registers
      */
     virtual uint8_t* get_regs_base_ptr() = 0;
     /**
-     * read from addresses
+     * @brief read from addresses
      *
      * @param addr address to read from, contains access type, address space and
      * address
@@ -125,7 +109,7 @@ public:
         return read(addr.type, addr.access, addr.space, addr.val, length, data);
     }
     /**
-     * read from addresses
+     * @brief read from addresses
      *
      * @param addr address to read from, contains access type, address space and
      * address
@@ -138,7 +122,7 @@ public:
         return rd_func(type, access, space, addr, length, data);
     }
     /**
-     * write to addresses
+     * @brief write to addresses
      *
      * @param addr address to read from, contains access type, address space and
      * address
@@ -150,7 +134,7 @@ public:
         return write(addr.type, addr.access, addr.space, addr.val, length, data);
     }
     /**
-     * write to addresses
+     * @brief write to addresses
      *
      * @param addr address to read from, contains access type, address space and
      * address
@@ -163,14 +147,14 @@ public:
         return wr_func(type, access, space, addr, length, data);
     };
     /**
-     * vm encountered a trap (exception, interrupt), process accordingly in core
+     * @brief vm encountered a trap (exception, interrupt), process accordingly in core
      *
      * @param flags trap flags
      * @return new (virtual) address to continue from
      */
     virtual uint64_t enter_trap(uint64_t flags) { return 0; }
     /**
-     * vm encountered a trap (exception, interrupt), process accordingly in core
+     * @brief vm encountered a trap (exception, interrupt), process accordingly in core
      *
      * @param flags trap flags
      * @param addr address where the trap enountered
@@ -178,6 +162,8 @@ public:
      */
     virtual uint64_t enter_trap(uint64_t flags, uint64_t addr, uint64_t instr) { return 0; }
     /**
+     * @brief leaves trap execution state
+     *
      * vm decoded the instruction to return from trap (exception, interrupt),
      * process accordingly in core
      *
@@ -186,13 +172,13 @@ public:
      */
     virtual uint64_t leave_trap(uint64_t flags) { return 0; }
     /**
-     * wait until condition indicated by flags becomes true
+     * @brief wait until condition indicated by flags becomes true
      *
      * @param flags indicating the condition
      */
     virtual void wait_until(uint64_t flags) {}
     /**
-     * retrieve information to augment the disassembly
+     * @brief retrieve information to augment the disassembly
      *
      * @return string containing the core status in text form
      */
@@ -200,18 +186,41 @@ public:
         std::cout << "0x" << std::setw(16) << std::setfill('0') << std::hex << pc << "\t\t" << instr << std::endl;
     };
     /**
-     * get the pointer to the instrumentation interface. In case there is no instrumentation
+     * @brief checks if a handler for unknow instructions is registered
+     *
+     * @return true a handler is registered
+     * @return false no handler is regsitered
+     */
+    bool can_handle_unknown_instruction() { return static_cast<bool>(unknown_instr_cb); }
+    /**
+     * @brief calls the handler for unknown instructions
+     *
+     * @param addr address of the instruction
+     * @param len length of the instruction in bytes
+     * @param instr pointer to the instrction word
+     * @return uint64_t address of the next instruction to fetch
+     */
+    std::tuple<bool, uint64_t> handle_unknown_instruction(uint64_t addr, size_t len, uint8_t const* instr) {
+        return unknown_instr_cb(this, addr, len, instr);
+    }
+    /**
+     * @brief get the pointer to the instrumentation interface.
+     *
+     * Gets the pointer to the instrumentation interface. In case there is no instrumentation
      * supported a null pointer is returned
      *
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
     virtual instrumentation_if* get_instrumentation_if() { return nullptr; };
 
+    using unknown_instr_cb_t = std::tuple<bool, uint64_t>(arch_if* core, uint64_t addr, size_t len, uint8_t const*);
+
 protected:
     using rd_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t*);
     util::delegate<rd_func_sig> rd_func;
     using wr_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t const*);
     util::delegate<wr_func_sig> wr_func;
+    util::delegate<unknown_instr_cb_t> unknown_instr_cb;
 };
 } // namespace iss
 
