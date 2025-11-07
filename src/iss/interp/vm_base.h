@@ -189,8 +189,6 @@ protected:
                 pre_plugins.push_back(plugin_entry{plugin});
             if(sync & POST_SYNC)
                 post_plugins.push_back(plugin_entry{plugin});
-            if(sync && ILLEGAL)
-                illegal_cb_plugins.push_back(plugin_entry{plugin});
             sync_exec |= sync;
         }
     }
