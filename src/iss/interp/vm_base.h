@@ -35,6 +35,7 @@
 #ifndef _VM_BASE_H_
 #define _VM_BASE_H_
 
+#include "iss/vm_types.h"
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
@@ -188,6 +189,8 @@ protected:
                 pre_plugins.push_back(plugin_entry{plugin});
             if(sync & POST_SYNC)
                 post_plugins.push_back(plugin_entry{plugin});
+            if(sync && ILLEGAL)
+                illegal_cb_plugins.push_back(plugin_entry{plugin});
             sync_exec |= sync;
         }
     }
@@ -222,18 +225,6 @@ protected:
                          reinterpret_cast<uint8_t*>(&val));
     }
 
-    template <typename TT, typename ST> inline TT sext(ST val) {
-        return static_cast<TT>(static_cast<typename std::make_signed<ST>::type>(val));
-    }
-
-    template <typename TT, typename ST> inline TT zext(ST val) {
-        return static_cast<TT>(static_cast<typename std::make_unsigned<ST>::type>(val));
-    }
-
-    template <typename TT, typename ST> inline TT trunc(ST val) {
-        return static_cast<TT>(static_cast<typename std::make_unsigned<ST>::type>(val));
-    }
-
     ARCH& core;
     std::unique_ptr<ARCH> core_ptr;
     unsigned core_id = 0;
@@ -246,6 +237,7 @@ protected:
     iss::debugger::target_adapter_base* tgt_adapter{nullptr};
     std::vector<plugin_entry> pre_plugins;
     std::vector<plugin_entry> post_plugins;
+    std::vector<plugin_entry> illegal_cb_plugins;
 
 private:
     void init() {
