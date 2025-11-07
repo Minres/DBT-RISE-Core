@@ -44,7 +44,7 @@ namespace iss {
 namespace v1 {
 struct instrumentation_if {
 
-    virtual ~instrumentation_if(){};
+    virtual ~instrumentation_if() = default;
 
     /**
      * get the name of this architecture
@@ -99,7 +99,7 @@ struct instrumentation_if {
 inline namespace v2 {
 struct instrumentation_if {
 
-    virtual ~instrumentation_if(){};
+    virtual ~instrumentation_if() = default;
 
     /**
      * get the name of this architecture
