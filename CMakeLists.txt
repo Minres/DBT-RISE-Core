@@ -20,10 +20,10 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
     FetchContent_Declare(
         tcc_git
         GIT_REPOSITORY https://github.com/mirror/tinycc.git
-        GIT_TAG        16456168430c9e185dd94b8215aa77d02bbb8a2c
+        GIT_TAG 16456168430c9e185dd94b8215aa77d02bbb8a2c
     )
     FetchContent_GetProperties(tcc_git)
-    
+
     if(NOT tcc_git_POPULATED)
         FetchContent_Populate(tcc_git)
         execute_process(
@@ -33,13 +33,13 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
             ECHO_OUTPUT_VARIABLE
             ECHO_ERROR_VARIABLE
         )
-        
+
         if(NOT TCC_RESULT EQUAL 0)
             message(FATAL_ERROR "Failed to build TCC: ${TCC_OUTPUT}")
         endif()
     endif()
 
-    
+
     add_library(tcc::tcc STATIC IMPORTED GLOBAL)
     target_include_directories(tcc::tcc INTERFACE ${tcc_git_BINARY_DIR}/include)
     set_property(TARGET tcc::tcc PROPERTY IMPORTED_LOCATION ${tcc_git_BINARY_DIR}/lib/libtcc.a)
@@ -48,17 +48,17 @@ if(NOT TARGET scc-util)
     FetchContent_Declare(
         scc_git
         GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
-        GIT_TAG 66e8415
+        GIT_TAG aa7d5df
     )
     FetchContent_GetProperties(scc_git)
-    
+
     if(NOT scc_git_POPULATED)
         FetchContent_Populate(scc_git)
     endif()
-    
+
     add_subdirectory(${scc_git_SOURCE_DIR}/src/common ${scc_git_BINARY_DIR})
     list(APPEND CMAKE_MODULE_PATH ${scc_git_SOURCE_DIR}/cmake)
-    
+
 endif()
 
 set(LIB_SOURCES
@@ -72,9 +72,9 @@ set(LIB_SOURCES
     src/iss/plugin/caculator.cpp
     src/iss/instruction_decoder.cpp
 )
-if (UNIX)
-    list(APPEND LIB_SOURCES  src/iss/plugin/loader.cpp)
-endif ()
+if(UNIX)
+    list(APPEND LIB_SOURCES src/iss/plugin/loader.cpp)
+endif()
 if(WITH_LLVM)
     list(APPEND LIB_SOURCES src/iss/llvm/jit_helper.cpp src/iss/llvm/vm_base.cpp)
 endif()
@@ -85,8 +85,8 @@ if(WITH_ASMJIT)
     list(APPEND LIB_SOURCES src/iss/asmjit/jit_helper.cpp src/iss/asmjit/vm_util.cpp)
 endif()
 add_library(${PROJECT_NAME} STATIC ${LIB_SOURCES})
-target_include_directories(${PROJECT_NAME} PUBLIC src) 
-if (MSVC)
+target_include_directories(${PROJECT_NAME} PUBLIC src)
+if(MSVC)
     target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
 endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE LIB_EXEC_DIR=${CMAKE_INSTALL_LIBEXECDIR})
@@ -94,7 +94,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE LIB_EXEC_DIR=${CMAKE_INSTALL_
 if(WITH_LLVM)
     find_package(LLVM REQUIRED)
     target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_LLVM)
-    target_link_libraries( ${PROJECT_NAME} PUBLIC llvm-core::llvm-core)
+    target_link_libraries(${PROJECT_NAME} PUBLIC llvm-core::llvm-core)
 endif()
 if(WITH_TCC)
     target_compile_definitions(${PROJECT_NAME} PUBLIC WITH_TCC)
@@ -122,13 +122,13 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 install(TARGETS ${PROJECT_NAME} COMPONENT ${PROJECT_NAME}
-    EXPORT ${PROJECT_NAME}Targets                         # for downstream dependencies
+    EXPORT ${PROJECT_NAME}Targets # for downstream dependencies
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/static
-    FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}         # for mac
+    FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR} # for mac
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # headers for mac (note the different component -> different package)
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}      # headers
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # headers
 )
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/iss COMPONENT ${PROJECT_NAME}
