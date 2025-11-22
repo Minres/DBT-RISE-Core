@@ -33,6 +33,7 @@
 
 #include "vm_jit_funcs.h"
 #include "arch_if.h"
+#include "iss/vm_types.h"
 #include "vm_if.h"
 #include "vm_plugin.h"
 #include <iss/log_categories.h>
@@ -46,31 +47,27 @@ extern "C" {
 uint8_t read_mem_buf[8];
 
 uint8_t fetch(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
-    return iface->read((address_type)addr_type, access_type::FETCH, (uint16_t)space, addr, length, data);
+    return iface->read({static_cast<address_type>(addr_type), access_type::FETCH, space, addr}, length, data);
 }
 
 uint8_t fetch_dbg(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
-    return iface->read((address_type)addr_type, access_type::DEBUG_FETCH, (uint16_t)space, addr, length, data);
+    return iface->read({static_cast<address_type>(addr_type), access_type::DEBUG_FETCH, space, addr}, length, data);
 }
 
 uint8_t read_mem(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
-    return iface->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, length, data);
+    return iface->read({static_cast<address_type>(addr_type), access_type::READ, space, addr}, length, data);
 }
 
 uint8_t write_mem(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
-#ifdef EXEC_LOGGING
-    CLOG(TRACE) << "EXEC: write mem " << (unsigned, dbt_rise_iss)type << " of core " << iface << " at addr 0x" << hex << addr
-                << " with value 0x" << data << dec << " of len " << length;
-#endif
-    return iface->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, length, data);
+    return iface->write({static_cast<address_type>(addr_type), access_type::WRITE, space, addr}, length, data);
 }
 
 uint8_t read_mem_dbg(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
-    return iface->read((address_type)addr_type, access_type::DEBUG_READ, (uint16_t)space, addr, length, data);
+    return iface->read({static_cast<address_type>(addr_type), access_type::DEBUG_READ, space, addr}, length, data);
 }
 
 uint8_t write_mem_dbg(arch_if_ptr_t iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t length, uint8_t* data) {
-    return iface->write((address_type)addr_type, access_type::DEBUG_WRITE, (uint16_t)space, addr, length, data);
+    return iface->write({static_cast<address_type>(addr_type), access_type::DEBUG_WRITE, space, addr}, length, data);
 }
 
 uint64_t enter_trap(void* iface, uint64_t flags, uint64_t addr, uint64_t tval) {
@@ -92,41 +89,41 @@ void notify_phase(void* iface, uint32_t phase) { reinterpret_cast<arch_if_ptr_t>
 void call_plugin(void* iface, uint64_t instr_info) { reinterpret_cast<vm_plugin_ptr_t>(iface)->callback(instr_info_t(instr_info)); }
 
 int read_mem1(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t* data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 1, data);
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read({static_cast<address_type>(addr_type), access_type::READ, space, addr}, 1, data);
 }
 
 int read_mem2(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint16_t* data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 2,
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read({static_cast<address_type>(addr_type), access_type::READ, space, addr}, 2,
                                                         reinterpret_cast<uint8_t*>(data));
 }
 
 int read_mem4(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t* data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 4,
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read({static_cast<address_type>(addr_type), access_type::READ, space, addr}, 4,
                                                         reinterpret_cast<uint8_t*>(data));
 }
 
 int read_mem8(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint64_t* data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->read((address_type)addr_type, access_type::READ, (uint16_t)space, addr, 8,
+    return reinterpret_cast<arch_if_ptr_t>(iface)->read({static_cast<address_type>(addr_type), access_type::READ, space, addr}, 8,
                                                         reinterpret_cast<uint8_t*>(data));
 }
 
 int write_mem1(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint8_t data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 1,
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write({static_cast<address_type>(addr_type), access_type::WRITE, space, addr}, 1,
                                                          reinterpret_cast<uint8_t*>(&data));
 }
 
 int write_mem2(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint16_t data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 2,
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write({static_cast<address_type>(addr_type), access_type::WRITE, space, addr}, 2,
                                                          reinterpret_cast<uint8_t*>(&data));
 }
 
 int write_mem4(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint32_t data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 4,
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write({static_cast<address_type>(addr_type), access_type::WRITE, space, addr}, 4,
                                                          reinterpret_cast<uint8_t*>(&data));
 }
 
 int write_mem8(void* iface, uint32_t addr_type, uint32_t space, uint64_t addr, uint64_t data) {
-    return reinterpret_cast<arch_if_ptr_t>(iface)->write((address_type)addr_type, access_type::WRITE, (uint16_t)space, addr, 8,
+    return reinterpret_cast<arch_if_ptr_t>(iface)->write({static_cast<address_type>(addr_type), access_type::WRITE, space, addr}, 8,
                                                          reinterpret_cast<uint8_t*>(&data));
 }
 }

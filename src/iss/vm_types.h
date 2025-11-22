@@ -94,12 +94,12 @@ enum struct address_type : uint16_t { LOGICAL, VIRTUAL, PHYSICAL };
 
 class addr_t {
 public:
-    uint64_t val = 0;
-    uint32_t space = 0;
-    const address_type type = address_type::LOGICAL;
-    const access_type access = access_type::WRITE;
+    uint64_t val;
+    uint32_t space;
+    const address_type type;
+    const access_type access;
 
-    constexpr addr_t(access_type acc_type, address_type addr_type, uint32_t space, uint64_t addr)
+    constexpr addr_t(address_type addr_type, access_type acc_type, uint32_t space, uint64_t addr)
     : val(addr)
     , space(space)
     , type(addr_type)
@@ -139,17 +139,17 @@ public:
 
 inline addr_t operator+(const addr_t& a, const addr_t& o) {
     assert(a.type == o.type && a.space == o.space);
-    return addr_t{a.access, a.type, a.space, a.val + o.val};
+    return addr_t{a.type, a.access, a.space, a.val + o.val};
 }
 
 inline addr_t operator-(const addr_t& a, const addr_t& o) {
     assert(a.type == o.type && a.space == o.space);
-    return addr_t{a.access, a.type, a.space, a.val - o.val};
+    return addr_t{a.type, a.access, a.space, a.val - o.val};
 }
 
-inline addr_t operator+(addr_t& a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val + m}; }
+inline addr_t operator+(addr_t& a, uint64_t m) { return addr_t{a.type, a.access, a.space, a.val + m}; }
 
-inline addr_t operator-(addr_t& a, uint64_t m) { return addr_t{a.access, a.type, a.space, a.val - m}; }
+inline addr_t operator-(addr_t& a, uint64_t m) { return addr_t{a.type, a.access, a.space, a.val - m}; }
 
 inline std::ostream& operator<<(std::ostream& os, const addr_t& op) {
     os << "[" << op.space << "]0x" << std::hex << op.val << std::dec;
@@ -159,11 +159,11 @@ inline std::ostream& operator<<(std::ostream& os, const addr_t& op) {
 template <address_type TYPE> class typed_addr_t : public addr_t {
 public:
     constexpr typed_addr_t()
-    : addr_t(access_type::WRITE, TYPE, 0, 0) {};
+    : addr_t(TYPE, access_type::WRITE, 0, 0){};
     constexpr typed_addr_t(access_type acc_type, uint32_t space, uint64_t v)
-    : addr_t(acc_type, TYPE, space, v) {}
+    : addr_t(TYPE, acc_type, space, v) {}
     constexpr typed_addr_t(access_type t, uint64_t v)
-    : addr_t(t, TYPE, 0, v) {}
+    : addr_t(TYPE, t, 0, v) {}
     constexpr typed_addr_t(const addr_t& o)
     : typed_addr_t(o.access, o.space, o.val) {}
 };
