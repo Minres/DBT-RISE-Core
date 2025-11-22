@@ -119,7 +119,8 @@ public:
         if(this->debugging_enabled())
             sync_exec |= PRE_SYNC;
         auto start = std::chrono::high_resolution_clock::now();
-        virt_addr_t pc(iss::access_type::DEBUG_FETCH, 0, get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
+        virt_addr_t pc(iss::access_type::DEBUG_FETCH, arch::traits<ARCH>::IMEM,
+                       get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC));
         CLOG(INFO, dbt_rise_iss) << "Start at 0x" << std::hex << pc.val << std::dec;
         try {
             continuation_e cont = CONT;
