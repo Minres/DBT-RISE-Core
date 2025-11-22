@@ -209,18 +209,18 @@ protected:
                 e.plugin.callback(iinfo);
     }
 
-    template <typename DT, typename AT> inline DT read_mem(mem_type_e type, AT addr) {
+    template <typename DT, typename AT> inline DT read_mem(mem_type_e space, AT addr) {
         DT val;
-        this->core.read(iss::address_type::VIRTUAL, access_type::READ, type,
-                        static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)), sizeof(DT),
-                        reinterpret_cast<uint8_t*>(&val));
+        this->core.read({iss::address_type::LOGICAL, access_type::READ, space,
+                         static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr))},
+                        sizeof(DT), reinterpret_cast<uint8_t*>(&val));
         return val;
     }
 
-    template <typename DT, typename AT> inline void write_mem(mem_type_e type, AT addr, DT val) {
-        this->core.write(iss::address_type::VIRTUAL, access_type::WRITE, type,
-                         static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr)), sizeof(DT),
-                         reinterpret_cast<uint8_t*>(&val));
+    template <typename DT, typename AT> inline void write_mem(mem_type_e space, AT addr, DT val) {
+        this->core.write({iss::address_type::LOGICAL, access_type::WRITE, space,
+                          static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr))},
+                         sizeof(DT), reinterpret_cast<uint8_t*>(&val));
     }
 
     ARCH& core;

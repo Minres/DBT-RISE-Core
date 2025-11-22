@@ -105,9 +105,7 @@ public:
      * @param data pointer to the memory to read into
      * @return success or failure of access
      */
-    inline iss::status read(const addr_t& addr, const unsigned length, uint8_t* const data) {
-        return read(addr.type, addr.access, addr.space, addr.val, length, data);
-    }
+    inline iss::status read(const addr_t& addr, const unsigned length, uint8_t* const data) { return rd_func(addr, length, data); }
     /**
      * @brief read from addresses
      *
@@ -119,7 +117,7 @@ public:
      */
     virtual iss::status read(const address_type type, const access_type access, const uint32_t space, const uint64_t addr,
                              const unsigned length, uint8_t* const data) {
-        return rd_func(type, access, space, addr, length, data);
+        return read({type, access, space, addr}, length, data);
     }
     /**
      * @brief write to addresses
@@ -130,9 +128,7 @@ public:
      * @param data pointer to the memory to write from
      * @return success or failure of access
      */
-    inline iss::status write(const addr_t& addr, const unsigned length, const uint8_t* const data) {
-        return write(addr.type, addr.access, addr.space, addr.val, length, data);
-    }
+    inline iss::status write(const addr_t& addr, const unsigned length, const uint8_t* const data) { return wr_func(addr, length, data); }
     /**
      * @brief write to addresses
      *
@@ -144,7 +140,7 @@ public:
      */
     inline iss::status write(const address_type type, const access_type access, const uint32_t space, const uint64_t addr,
                              const unsigned length, const uint8_t* const data) {
-        return wr_func(type, access, space, addr, length, data);
+        return write({type, access, space, addr}, length, data);
     };
     /**
      * @brief vm encountered a trap (exception, interrupt), process accordingly in core
@@ -216,9 +212,9 @@ public:
     using unknown_instr_cb_t = std::tuple<bool, uint64_t>(arch_if* core, uint64_t addr, size_t len, uint8_t const*);
 
 protected:
-    using rd_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t*);
+    using rd_func_sig = iss::status(const addr_t&, unsigned, uint8_t*);
     util::delegate<rd_func_sig> rd_func;
-    using wr_func_sig = iss::status(address_type, access_type, uint32_t, uint64_t, unsigned, uint8_t const*);
+    using wr_func_sig = iss::status(const addr_t&, unsigned, uint8_t const*);
     util::delegate<wr_func_sig> wr_func;
     util::delegate<unknown_instr_cb_t> unknown_instr_cb;
 };
