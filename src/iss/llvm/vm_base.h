@@ -36,11 +36,11 @@
 #define LLVM_VM_BASE_H_
 
 #include "jit_helper.h"
-#include <absl/container/flat_hash_map.h>
 #include <iss/arch/traits.h>
 #include <iss/arch_if.h>
 #include <iss/debugger/target_adapter_base.h>
 #include <iss/debugger_if.h>
+#include <iss/log_categories.h>
 #include <iss/vm_if.h>
 #include <iss/vm_plugin.h>
 #include <util/ities.h>
@@ -55,9 +55,8 @@
 #include <array>
 #include <chrono>
 #include <iostream>
-#include <map>
-#include <sstream>
-#include <stack>
+#include <unordered_map>
+
 #include <utility>
 #include <vector>
 
@@ -214,8 +213,8 @@ public:
         auto elapsed = end - start;
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         uint64_t& cur_icount = get_reg<uint64_t>(reg_e::ICOUNT);
-        CLOG(INFO) << "Executed " << cur_icount << " instructions in " << func_map.size(, dbt_rise_iss) << " code blocks during " << millis
-                   << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
+        CLOG(INFO, dbt_rise_iss) << "Executed " << cur_icount << " instructions in " << func_map.size() << " code blocks during " << millis
+                                 << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
         return error;
     }
 
@@ -360,14 +359,6 @@ protected:
         std::vector<Value*> args{core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, flag)),
                                  builder.CreateTrunc(val, get_type(1))};
         builder.CreateCall(mod->getFunction("set_flag"), args);
-    }
-
-    inline void gen_update_flags(iss::arch_if::operations op, Value* oper1, Value* oper2) {
-        std::vector<Value*> args{
-            core_ptr, ConstantInt::get(::iss::llvm::getContext(), APInt(16, op)),
-            oper1->getType()->getScalarSizeInBits() == 64 ? oper1 : builder.CreateZExt(oper1, IntegerType::get(mod->getContext(), 64)),
-            oper2->getType()->getScalarSizeInBits() == 64 ? oper2 : builder.CreateZExt(oper2, IntegerType::get(mod->getContext(), 64))};
-        builder.CreateCall(mod->getFunction("update_flags"), args);
     }
 
     inline Value* gen_read_mem(mem_type_e type, uint64_t addr, uint32_t length, const char* nm = "") {
@@ -551,7 +542,7 @@ protected:
     unsigned cluster_id = 0;
     uint8_t* regs_base_ptr;
     sync_type sync_exec{sync_type::NO_SYNC};
-    absl::flat_hash_map<uint64_t, translation_block> func_map;
+    std::unordered_map<uint64_t, translation_block> func_map;
     IRBuilder<> builder{iss::llvm::getContext()};
     // non-owning pointers
     Module* mod{nullptr};
