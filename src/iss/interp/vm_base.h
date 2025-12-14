@@ -204,7 +204,7 @@ protected:
         if(s & PRE_SYNC)
             for(plugin_entry e : pre_plugins)
                 e.plugin.callback(iinfo);
-        else
+        if(s & POST_SYNC)
             for(plugin_entry e : post_plugins)
                 e.plugin.callback(iinfo);
     }
