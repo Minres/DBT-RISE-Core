@@ -104,6 +104,11 @@ enum complex_operation { smul, umul, sumul, sdiv, udiv, srem, urem };
 enum comparison_operation { land, lor, eq, ne, lt, ltu, gt, gtu, lte, lteu, gte, gteu };
 enum unary_operation { lnot, inc, dec, bnot, neg };
 
+inline auto format_as(operation f) -> typename std::underlying_type<operation>::type { return fmt::underlying(f); }
+inline auto format_as(complex_operation f) -> typename std::underlying_type<complex_operation>::type { return fmt::underlying(f); }
+inline auto format_as(comparison_operation f) -> typename std::underlying_type<comparison_operation>::type { return fmt::underlying(f); }
+inline auto format_as(unary_operation f) -> typename std::underlying_type<unary_operation>::type { return fmt::underlying(f); }
+
 // Helper for signed division
 void expand_division_operand(x86::Compiler& cc, x86::Gp upper_half, x86::Gp dividend);
 // Helper for mulitplication
