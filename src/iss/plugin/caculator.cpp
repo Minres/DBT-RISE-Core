@@ -177,9 +177,7 @@ using boost::phoenix::function;
 //  The error handler
 ///////////////////////////////////////////////////////////////////////////////
 struct error_handler_ {
-    template <typename, typename, typename> struct result {
-        typedef void type;
-    };
+    template <typename, typename, typename> struct result { typedef void type; };
 
     template <typename Iterator> void operator()(qi::info const& what, Iterator err_pos, Iterator last) const {
         CPPLOG(ERR) << "Expecting " << what                      // what failed?

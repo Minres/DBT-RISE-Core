@@ -209,7 +209,7 @@ public:
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         auto cur_icount = get_reg<uint64_t>(arch::traits<ARCH>::reg_e::ICOUNT);
         CLOG(INFO, dbt_rise_iss) << "Executed " << cur_icount << " instructions in " << func_map.size() << " code blocks during " << millis
-                   << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
+                                 << "ms resulting in " << (cur_icount * 0.001 / millis) << "MIPS";
         return error;
     }
 
@@ -311,7 +311,7 @@ protected:
         tu("return *next_pc;");
         gen_trap_behavior(tu);
     }
-    virtual void add_prologue(tu_builder&) {};
+    virtual void add_prologue(tu_builder&){};
 
     ARCH& core;
     std::unique_ptr<ARCH> core_ptr;
