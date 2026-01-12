@@ -81,7 +81,7 @@ struct instrumentation_if {
      *
      * @return the pending traps
      */
-    virtual uint64_t get_pendig_traps() = 0;
+    virtual uint64_t get_pending_traps() = 0;
     /**
      * Retrieve the current value of the program counter of the next instruction
      *
@@ -136,7 +136,7 @@ struct instrumentation_if {
      *
      * @return the pending traps
      */
-    virtual uint64_t get_pendig_traps() = 0;
+    virtual uint64_t get_pending_traps() = 0;
     /**
      * Retrieve the total number of cycles executed by the core
      *
