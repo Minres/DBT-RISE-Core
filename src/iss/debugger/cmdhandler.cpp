@@ -322,8 +322,6 @@ int cmd_handler::kill(std::string const& in_buf, std::string& out_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
 
-    s.shutdown();
-
     if(!extended_protocol) {
         //        dbg_sock_close();
         //
@@ -419,9 +417,6 @@ int cmd_handler::restart_target(std::string const& in_buf, std::string& out_buf)
 std::string cmd_handler::detach(std::string const& in_buf) {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret;
-
-    s.shutdown();
-
     //    /* Note: The current GDB does not expect a reply */
     //    rp_putpkt(out_buf);
     //    dbg_sock_close();

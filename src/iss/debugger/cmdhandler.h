@@ -71,8 +71,7 @@ enum signals {
 };
 
 /* Remote command */
-#define GEN_ENTRY(name, hlp)                                                                                                               \
-    { #name, &cmd_handler::rcmd_##name, hlp }
+#define GEN_ENTRY(name, hlp) {#name, &cmd_handler::rcmd_##name, hlp}
 
 class cmd_handler {
 public:
@@ -91,7 +90,7 @@ public:
     : s(server)
     , t(s.get_target(0)) // FIXME: add core id
     , extended_protocol(false)
-    , can_restart(false)
+    , can_restart(true)
     , stop_callback(stop_callback) {}
 
     void attach();
