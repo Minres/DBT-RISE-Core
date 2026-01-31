@@ -35,10 +35,12 @@
 #ifndef _SERVER_BASE_H_
 #define _SERVER_BASE_H_
 
+#include <algorithm>
 #include <iss/log_categories.h>
 
 #include "server_if.h"
 #include <iss/debugger_if.h>
+#include <iterator>
 
 namespace iss {
 namespace debugger {
@@ -67,6 +69,13 @@ public:
     iss::status reset(unsigned coreId) override;
 
     target_adapter_if* get_target(unsigned coreId) override { return vm[coreId]->accquire_target_adapter(this); }
+
+    std::vector<debugger::target_adapter_if*> get_targets(debugger::server_if* server) override {
+        std::vector<debugger::target_adapter_if*> result;
+        std::transform(std::begin(vm), std::end(vm), std::back_inserter(result),
+                       [this](debugger_if* v) { return v->accquire_target_adapter(this); });
+        return result;
+    }
 
 protected:
     std::vector<debugger_if*> vm;

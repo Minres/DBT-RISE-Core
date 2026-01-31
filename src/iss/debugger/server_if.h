@@ -125,6 +125,11 @@ public:
      */
     virtual target_adapter_if* get_target(unsigned) = 0;
     /**
+     * get the target adapter for all cores being debugged
+     * @return
+     */
+    virtual std::vector<debugger::target_adapter_if*> get_targets(debugger::server_if* server) = 0;
+    /**
      * check if the simulation can continue
      * @param bp_handle the handle of breakpoint condition being met, 0 means no
      * hit
