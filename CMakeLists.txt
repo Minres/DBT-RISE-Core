@@ -48,7 +48,7 @@ if(NOT TARGET scc-util)
     FetchContent_Declare(
         scc_git
         GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
-        GIT_TAG 114b2e43
+        GIT_TAG 387b3a6
     )
     FetchContent_GetProperties(scc_git)
 

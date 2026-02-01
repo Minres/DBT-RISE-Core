@@ -86,5 +86,5 @@ void server_base::wait_for_stop() {
     while(mode != MODE_STOP)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
-
+// FIXME: to be implemented
 iss::status server_base::reset(unsigned coreId) { return iss::Ok; }
