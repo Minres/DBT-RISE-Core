@@ -20,7 +20,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
     FetchContent_Declare(
         tcc_git
         GIT_REPOSITORY https://github.com/mirror/tinycc.git
-        GIT_TAG 9ade6799b875f0bc7342e1d795d739bacdc2482a
+        GIT_TAG 16456168430c9e185dd94b8215aa77d02bbb8a2c
     )
     FetchContent_GetProperties(tcc_git)
 
@@ -48,7 +48,7 @@ if(NOT TARGET scc-util)
     FetchContent_Declare(
         scc_git
         GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
-        GIT_TAG 0077bb5c023f91e958a7576d8be1c6cf8ca9d504
+        GIT_TAG 9ade6799b875f0bc7342e1d795d739bacdc2482a
     )
     FetchContent_GetProperties(scc_git)
 
