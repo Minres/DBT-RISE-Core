@@ -178,8 +178,16 @@ public:
      *
      * @return string containing the core status in text form
      */
-    virtual void disass_output(uint64_t pc, std::string const& instr) {
-        std::cout << "0x" << std::setw(16) << std::setfill('0') << std::hex << pc << "\t\t" << instr << std::endl;
+    inline void disass_output(uint64_t pc, std::string const& instr) {
+        if(disass_func) disass_func(pc, instr, true);
+    };
+    /**
+     * @brief retrieve information to augment the disassembly without printing the pc
+     *
+     * @return string containing the core status in text form
+     */
+    inline void disass_output(std::string const& instr) {
+        if(disass_func) disass_func(0, instr, false);
     };
     /**
      * @brief checks if a handler for unknow instructions is registered
@@ -217,6 +225,7 @@ protected:
     using wr_func_sig = iss::status(const addr_t&, unsigned, uint8_t const*);
     util::delegate<wr_func_sig> wr_func;
     util::delegate<unknown_instr_cb_t> unknown_instr_cb;
+    util::delegate<void(uint64_t pc, std::string const&, bool)> disass_func;
 };
 } // namespace iss
 
