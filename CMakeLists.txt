@@ -20,7 +20,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
     FetchContent_Declare(
         tcc_git
         GIT_REPOSITORY https://github.com/mirror/tinycc.git
-        GIT_TAG 16456168430c9e185dd94b8215aa77d02bbb8a2c
+        GIT_TAG 9ade6799b875f0bc7342e1d795d739bacdc2482a
     )
     FetchContent_GetProperties(tcc_git)
 
