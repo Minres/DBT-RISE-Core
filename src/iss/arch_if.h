@@ -221,11 +221,11 @@ public:
 
 protected:
     using rd_func_sig = iss::status(const addr_t&, unsigned, uint8_t*);
-    util::delegate<rd_func_sig> rd_func;
+    util::delegate<rd_func_sig> rd_func{nullptr};
     using wr_func_sig = iss::status(const addr_t&, unsigned, uint8_t const*);
-    util::delegate<wr_func_sig> wr_func;
-    util::delegate<unknown_instr_cb_t> unknown_instr_cb;
-    util::delegate<void(uint64_t pc, std::string const&, bool)> disass_func;
+    util::delegate<wr_func_sig> wr_func{nullptr};
+    util::delegate<unknown_instr_cb_t> unknown_instr_cb{nullptr};
+    util::delegate<void(uint64_t pc, std::string const&, bool)> disass_func{nullptr};
 };
 } // namespace iss
 
