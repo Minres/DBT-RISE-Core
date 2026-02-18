@@ -179,7 +179,8 @@ public:
      * @return string containing the core status in text form
      */
     inline void disass_output(uint64_t pc, std::string const& instr) {
-        if(disass_func) disass_func(pc, instr, true);
+        if(disass_func)
+            disass_func(pc, instr, true);
     };
     /**
      * @brief retrieve information to augment the disassembly without printing the pc
@@ -187,7 +188,8 @@ public:
      * @return string containing the core status in text form
      */
     inline void disass_output(std::string const& instr) {
-        if(disass_func) disass_func(0, instr, false);
+        if(disass_func)
+            disass_func(0, instr, false);
     };
     /**
      * @brief checks if a handler for unknow instructions is registered

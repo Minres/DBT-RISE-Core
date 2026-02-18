@@ -71,7 +71,8 @@ enum signals {
 };
 
 /* Remote command */
-#define GEN_ENTRY(name, hlp) {#name, &cmd_handler::rcmd_##name, hlp}
+#define GEN_ENTRY(name, hlp)                                                                                                               \
+    { #name, &cmd_handler::rcmd_##name, hlp }
 
 class cmd_handler {
 public:
