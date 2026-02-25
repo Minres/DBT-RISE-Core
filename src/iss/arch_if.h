@@ -211,6 +211,11 @@ public:
 
     using unknown_instr_cb_t = std::tuple<bool, uint64_t>(arch_if* core, uint64_t addr, size_t len, uint8_t const*);
 
+    /**
+     * @brief trigger gdb stop event to resume fetch instruction thread
+     */
+    virtual void cancel_wait() {}
+
 protected:
     using rd_func_sig = iss::status(const addr_t&, unsigned, uint8_t*);
     util::delegate<rd_func_sig> rd_func;

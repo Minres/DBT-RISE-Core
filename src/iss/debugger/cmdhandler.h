@@ -111,6 +111,7 @@ public:
     std::string detach(std::string const& in_buf);
     std::string query(std::string const& in_buf);
     std::string set(std::string const& in_buf);
+    int send_stop_event();
     boost::optional<std::string> handle_extended(std::string const& in_buf);
     std::string breakpoint(std::string const& in_buf);
     int rcmd(const char* const in_buf, out_func of, data_func df);
