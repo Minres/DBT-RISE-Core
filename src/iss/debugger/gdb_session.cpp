@@ -197,6 +197,7 @@ void gdb_session::receive_completed(const boost::system::error_code& e, std::str
     } else if(msg->at(0) == 3 || (msg->at(0) == -1 && msg->at(1) == -13)) {
         CLOG(TRACE, connection) << "Received BREAK, interrupting target";
         handler.t->stop();
+        handler.send_stop_event();
         respond("+");
     } else {
         CLOG(TRACE, connection) << "Received packet '" << *msg << "', processing it";

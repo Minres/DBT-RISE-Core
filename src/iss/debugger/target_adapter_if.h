@@ -158,6 +158,9 @@ public:
      avail buf is 1 */
     virtual iss::status read_registers(std::vector<uint8_t>& data_buf, std::vector<uint8_t>& avail_buf) = 0;
 
+    /* Send gdb stop event to core*/
+    virtual iss::status trigger_debugger_stop_event() = 0;
+
     /* Write all registers. buf is 4-byte aligned and it is in target
      byte order */
     virtual iss::status write_registers(const std::vector<uint8_t>& buf) = 0;
