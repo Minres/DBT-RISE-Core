@@ -39,6 +39,7 @@
 #include "util/delegate.h"
 #include "vm_types.h"
 #include <dbt_rise_common.h>
+#include <iss/checkpoint_if.h>
 
 #include <iomanip>
 #include <iostream>
@@ -213,11 +214,20 @@ public:
      * @brief get the pointer to the instrumentation interface.
      *
      * Gets the pointer to the instrumentation interface. In case there is no instrumentation
-     * supported a null pointer is returned
+     * supported, a null pointer is returned
      *
      * @return non-owning pointer to the instrumentation interface of the architecture or nullptr
      */
     virtual instrumentation_if* get_instrumentation_if() { return nullptr; };
+    /**
+     * @brief get the pointer to the control interface.
+     *
+     * Gets the pointer to the control interface. In case there is no control interface
+     * supported, a null pointer is returned
+     *
+     * @return non-owning pointer to the control interface of the architecture or nullptr if control is not supported
+     */
+    virtual checkpoint_if* get_checkpoint_if() { return nullptr; };
 
     using unknown_instr_cb_t = std::tuple<bool, uint64_t>(arch_if* core, uint64_t addr, size_t len, uint8_t const*);
 
