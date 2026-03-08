@@ -265,7 +265,7 @@ public:
 
      It is planned to have more more specific queries in
      the nearest future.  */
-    virtual iss::status raw_query(std::string in_buf, std::string& out_buf) = 0;
+    virtual iss::status raw_query(const std::string& in_buf, std::string& out_buf) = 0;
 
     /*============ Breakpoints ===========================*/
     enum break_type {

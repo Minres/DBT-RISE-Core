@@ -39,6 +39,7 @@
 #include <iss/debugger/server_if.h>
 #include <iss/vm_types.h>
 #include <util/range_lut.h>
+#include <cassert>
 
 namespace iss {
 namespace debugger {
@@ -47,11 +48,20 @@ class target_adapter_base : public target_adapter_if {
 public:
     target_adapter_base(iss::debugger::server_if* srv)
     : srv(srv)
-    , bp_lut(0) {}
+    , bp_lut(0) {
+        assert(srv && "target_adapter_base requires a valid server");
+    }
 
-    void set_server(iss::debugger::server_if* server) { srv = server; }
+    void set_server(iss::debugger::server_if* server) {
+        assert(server && "target_adapter_base requires a valid server");
+        srv = server;
+    }
 
     inline void check_continue(uint64_t pc) {
+        if(!srv) {
+            assert(false && "target_adapter_base::check_continue called without server");
+            return;
+        }
         unsigned handle = bp_lut.getEntry(pc);
         if(!handle && break_cond) {
             handle = break_cond();
