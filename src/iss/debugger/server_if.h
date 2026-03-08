@@ -41,6 +41,7 @@
 
 #include <atomic>
 #include <type_traits>
+#include <utility>
 
 namespace iss {
 
@@ -145,7 +146,7 @@ public:
                 stop_callback = std::function<void(unsigned)>();
             }
             while(mode.load(std::memory_order_acquire) == MODE_STOP) {
-                syncronizer.executeNext();
+                synchronizer.executeNext();
             }
             last_bp = 0;
         }
@@ -158,12 +159,12 @@ public:
      * @param args arguments of the function
      * @return result value of function (if any)
      */
-    template <class F, class... Args> typename std::result_of<F(Args...)>::type execute_syncronized(F&& f, Args&&... args) {
-        return syncronizer.enqueue_and_wait(f, args...);
+    template <class F, class... Args> std::invoke_result_t<F, Args...> execute_synchronized(F&& f, Args&&... args) {
+        return synchronizer.enqueue_and_wait(std::forward<F>(f), std::forward<Args>(args)...);
     }
 
 protected:
-    util::thread_syncronizer syncronizer;
+    util::thread_syncronizer synchronizer;
     std::atomic<mode_e> mode{MODE_STOP};
     std::atomic<uint64_t> cycles;
     unsigned last_bp;

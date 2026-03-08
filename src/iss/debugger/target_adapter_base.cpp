@@ -33,6 +33,7 @@
 
 #include "target_adapter_base.h"
 #include <thread>
+#include <util/logging.h>
 
 using namespace iss::debugger;
 
@@ -52,6 +53,7 @@ iss::status target_adapter_base::restart() { return iss::Ok; }
 
 void target_adapter_base::stop() {
     if(!srv) {
+        CPPLOG(ERR) << "target_adapter_base::stop called without server";
         assert(false && "target_adapter_base::stop called without server");
         return;
     }
@@ -62,6 +64,7 @@ void target_adapter_base::stop() {
 iss::status target_adapter_base::resume_from_current(bool step, int sig, rp_thread_ref thread,
                                                      std::function<void(unsigned)> stop_callback) {
     if(!srv) {
+        CPPLOG(ERR) << "target_adapter_base::resume_from_current called without server";
         assert(false && "target_adapter_base::resume_from_current called without server");
         return iss::Err;
     }
@@ -76,6 +79,7 @@ iss::status target_adapter_base::resume_from_current(bool step, int sig, rp_thre
 
 iss::status target_adapter_base::wait_non_blocking(bool& running) {
     if(!srv) {
+        CPPLOG(ERR) << "target_adapter_base::wait_non_blocking called without server";
         assert(false && "target_adapter_base::wait_non_blocking called without server");
         running = false;
         return iss::Err;
@@ -90,6 +94,7 @@ iss::status target_adapter_base::wait_non_blocking(bool& running) {
 
 iss::status target_adapter_base::wait_blocking() {
     if(!srv) {
+        CPPLOG(ERR) << "target_adapter_base::wait_blocking called without server";
         assert(false && "target_adapter_base::wait_blocking called without server");
         return iss::Err;
     }

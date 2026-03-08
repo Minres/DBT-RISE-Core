@@ -57,8 +57,8 @@ int server_base::dummy_func() { return 42; }
 void server_base::step(unsigned coreId, unsigned steps) {
     cycles.store(steps, std::memory_order_relaxed);
     mode.store(MODE_RUN, std::memory_order_release);
-    syncronizer.enqueue_and_wait(&server_base::dummy_func, this);
-    while(!syncronizer.is_ready())
+    synchronizer.enqueue_and_wait(&server_base::dummy_func, this);
+    while(!synchronizer.is_ready())
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     CLOG(TRACE, dbt_rise_iss) << "step finished";
 }
@@ -68,7 +68,7 @@ void server_base::run(unsigned coreId) {
         return;
     cycles.store(std::numeric_limits<uint64_t>::max(), std::memory_order_relaxed);
     mode.store(MODE_RUN, std::memory_order_release);
-    syncronizer.enqueue_and_wait(&server_base::dummy_func, this);
+    synchronizer.enqueue_and_wait(&server_base::dummy_func, this);
 }
 void server_base::run(unsigned coreId, std::function<void(unsigned)> callback) {
     if(mode == MODE_RUN)
@@ -76,7 +76,7 @@ void server_base::run(unsigned coreId, std::function<void(unsigned)> callback) {
     cycles.store(std::numeric_limits<uint64_t>::max(), std::memory_order_relaxed);
     mode.store(MODE_RUN, std::memory_order_release);
     this->stop_callback = callback;
-    syncronizer.enqueue(&server_base::dummy_func, this);
+    synchronizer.enqueue(&server_base::dummy_func, this);
 }
 // called from debugger
 void server_base::request_stop(unsigned coreId) { mode.store(MODE_STOP, std::memory_order_relaxed); }
