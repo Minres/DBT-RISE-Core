@@ -3,6 +3,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 cmake_policy(SET CMP0077 NEW)
 
 project(dbt-rise-core VERSION 1.1.0)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(WITH_TCC "Build TCC backend" ON)
 option(WITH_LLVM "Build LLVM backend" OFF)
@@ -48,7 +49,7 @@ if(NOT TARGET scc-util)
     FetchContent_Declare(
         scc_git
         GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
-        GIT_TAG 9ade6799b875f0bc7342e1d795d739bacdc2482a
+        GIT_TAG 9db691d8ad1896b152ec0bbb4422e9ae989e4892
     )
     FetchContent_GetProperties(scc_git)
 
@@ -72,9 +73,6 @@ set(LIB_SOURCES
     src/iss/plugin/caculator.cpp
     src/iss/instruction_decoder.cpp
 )
-if(UNIX)
-    list(APPEND LIB_SOURCES src/iss/plugin/loader.cpp)
-endif()
 if(WITH_LLVM)
     list(APPEND LIB_SOURCES src/iss/llvm/jit_helper.cpp src/iss/llvm/vm_base.cpp)
 endif()
