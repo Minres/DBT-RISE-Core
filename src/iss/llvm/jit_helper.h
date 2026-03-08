@@ -70,15 +70,15 @@ namespace llvm {
 struct alignas(4 * sizeof(void*)) translation_block {
     uintptr_t f_ptr{0};
     std::array<translation_block*, 2> cont;
-    ::llvm::ExecutionEngine* mod_eng{nullptr};
+    std::unique_ptr<::llvm::ExecutionEngine> mod_eng{nullptr};
     explicit translation_block(uintptr_t f_ptr_, std::array<translation_block*, 2> cont_, ::llvm::ExecutionEngine* mod_eng_)
     : f_ptr(f_ptr_)
     , cont(cont_)
-    , mod_eng(mod_eng_){};
+    , mod_eng(mod_eng_) {};
     translation_block() = default;
-    translation_block(translation_block const&) = default;
+    translation_block(translation_block const&) = delete;
     translation_block(translation_block&&) = default;
-    translation_block& operator=(translation_block const& other) = default;
+    translation_block& operator=(translation_block const& other) = delete;
     translation_block& operator=(translation_block&& other) = default;
     ~translation_block() = default; // FIXME this possibly leaks the mod_eng, check ownership
 };
