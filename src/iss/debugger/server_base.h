@@ -50,8 +50,8 @@ public:
     server_base(debugger_if* adapter);
 
     unsigned add_debugger_adapter(iss::debugger_if* vm) {
-        this->vm.push_back(vm);
-        return this->vm.size() - 1;
+        this->debugger_ifs.push_back(vm);
+        return this->debugger_ifs.size() - 1;
     }
 
     unsigned int get_reg_width(int index) const;
@@ -68,17 +68,17 @@ public:
 
     iss::status reset(unsigned coreId) override;
 
-    target_adapter_if* get_target(unsigned coreId) override { return vm[coreId]->accquire_target_adapter(this); }
+    target_adapter_if* get_target(unsigned coreId) override { return debugger_ifs[coreId]->accquire_target_adapter(this); }
 
     std::vector<debugger::target_adapter_if*> get_targets(debugger::server_if* server) override {
         std::vector<debugger::target_adapter_if*> result;
-        std::transform(std::begin(vm), std::end(vm), std::back_inserter(result),
+        std::transform(std::begin(debugger_ifs), std::end(debugger_ifs), std::back_inserter(result),
                        [this](debugger_if* v) { return v->accquire_target_adapter(this); });
         return result;
     }
 
 protected:
-    std::vector<debugger_if*> vm;
+    std::vector<debugger_if*> debugger_ifs;
     // used to make sure that the other thread got invoked
     int dummy_func();
 };

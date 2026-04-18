@@ -168,12 +168,15 @@ public:
         return synchronizer.enqueue_and_wait(std::forward<F>(f), std::forward<Args>(args)...);
     }
 
+    bool report_all_regs() { return report_all_registers; }
+
 protected:
     util::thread_syncronizer synchronizer;
     std::atomic<mode_e> mode{MODE_STOP};
     std::atomic<uint64_t> cycles;
     unsigned last_bp;
     std::function<void(unsigned)> stop_callback;
+    bool report_all_registers;
 };
 
 } // namespace debugger
