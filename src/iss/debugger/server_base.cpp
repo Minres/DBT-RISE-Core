@@ -51,7 +51,7 @@ template <typename T> static T to(unsigned char* data, size_t num_bytes) {
 
 server_base::server_base(iss::debugger_if* vm) {
     this->debugger_ifs.push_back(vm);
-    this->report_all_registers = getenv("RISCV_ENABLE_CSR4DEBUG");
+    this->report_all_registers = !getenv("DBT_RISE_DISABLE_FULL_REGISTER_LIST");
 }
 
 int server_base::dummy_func() { return 42; }
