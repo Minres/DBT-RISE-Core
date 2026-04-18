@@ -26,7 +26,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND WITH_TCC)
     FetchContent_GetProperties(tcc_git)
 
     if(NOT tcc_git_POPULATED)
-        FetchContent_Populate(tcc_git)
+        FetchContent_MakeAvailable(tcc_git)
         execute_process(
             WORKING_DIRECTORY ${tcc_git_SOURCE_DIR}
             COMMAND bash -c "./configure --prefix=${tcc_git_BINARY_DIR} --extra-cflags='-Wall -g -O2 -fPIC' && make -C ${tcc_git_SOURCE_DIR} -j && make -C ${tcc_git_SOURCE_DIR} install"
@@ -49,15 +49,15 @@ if(NOT TARGET scc-util)
     FetchContent_Declare(
         scc_git
         GIT_REPOSITORY https://github.com/Minres/SystemC-Components.git
-        GIT_TAG 2e58c0e32ef9d72ec72b0b9479b767d291d06c66
+        GIT_TAG ce8140277a822dc099a2184d45aa17ef98f5d7d1
     )
     FetchContent_GetProperties(scc_git)
 
     if(NOT scc_git_POPULATED)
-        FetchContent_Populate(scc_git)
+        FetchContent_MakeAvailable(scc_git)
     endif()
 
-    add_subdirectory(${scc_git_SOURCE_DIR}/src/common ${scc_git_BINARY_DIR})
+    add_subdirectory(${scc_git_SOURCE_DIR} ${scc_git_BINARY_DIR})
     list(APPEND CMAKE_MODULE_PATH ${scc_git_SOURCE_DIR}/cmake)
 
 endif()
