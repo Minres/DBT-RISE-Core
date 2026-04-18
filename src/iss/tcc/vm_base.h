@@ -219,7 +219,7 @@ public:
 
     void pre_instr_sync() override {
         uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
-        tgt_adapter->check_continue(pc);
+        tgt_adapter->check_break_on_pc(pc);
     }
 
 protected:
@@ -311,7 +311,7 @@ protected:
         tu("return *next_pc;");
         gen_trap_behavior(tu);
     }
-    virtual void add_prologue(tu_builder&){};
+    virtual void add_prologue(tu_builder&) {};
 
     ARCH& core;
     std::unique_ptr<ARCH> core_ptr;

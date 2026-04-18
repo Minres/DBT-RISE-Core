@@ -131,16 +131,21 @@ public:
      */
     virtual std::vector<debugger::target_adapter_if*> get_targets(debugger::server_if* server) = 0;
     /**
+     * request a debug break
+     * @param bp_handle the handle of breakpoint condition being met, 0 means no
+     * hit
+     */
+    inline void request_break(unsigned bp_handle) {
+        mode.store(MODE_STOP, std::memory_order_release);
+        last_bp = bp_handle;
+    }
+    /**
      * check if the simulation can continue
      * @param bp_handle the handle of breakpoint condition being met, 0 means no
      * hit
      */
-    inline void check_continue(unsigned bp_handle) {
-        if(bp_handle) {
-            mode.store(MODE_STOP, std::memory_order_release);
-            last_bp = bp_handle;
-        }
-        if(mode.load(std::memory_order_acquire) == MODE_STOP) {
+    inline void check_continue() {
+        if(unlikely(mode.load(std::memory_order_acquire) == MODE_STOP)) {
             if(stop_callback) {
                 stop_callback(last_bp);
                 stop_callback = std::function<void(unsigned)>();

@@ -36,10 +36,10 @@
 #define _TARGET_ADAPTER_BASE_H_
 
 #include "target_adapter_if.h"
+#include <cassert>
 #include <iss/debugger/server_if.h>
 #include <iss/vm_types.h>
 #include <util/range_lut.h>
-#include <cassert>
 
 namespace iss {
 namespace debugger {
@@ -48,7 +48,9 @@ class target_adapter_base : public target_adapter_if {
 public:
     target_adapter_base(iss::debugger::server_if* srv)
     : srv(srv)
-    , bp_lut(0) {
+    , bp_lut(0)
+    , rd_lut(0)
+    , wr_lut(0) {
         assert(srv && "target_adapter_base requires a valid server");
     }
 
@@ -57,18 +59,31 @@ public:
         srv = server;
     }
 
-    inline void check_continue(uint64_t pc) {
-        if(!srv) {
+    inline void check_break_on_pc(uint64_t pc) {
+        if(unlikely(!srv)) {
             assert(false && "target_adapter_base::check_continue called without server");
             return;
         }
         unsigned handle = bp_lut.getEntry(pc);
-        if(!handle && break_cond) {
+        if(unlikely(!handle && break_cond)) {
             handle = break_cond();
             if(handle)
                 break_cond = std::function<unsigned()>();
         }
-        srv->check_continue(handle);
+        if(unlikely(handle))
+            srv->request_break(handle);
+        srv->check_continue();
+    }
+
+    inline void check_break_on_ldst(unsigned space, uint64_t addr, bool wr) {
+        if(unlikely(!srv)) {
+            assert(false && "target_adapter_base::check_continue called without server");
+            return;
+        }
+        auto& lut = wr ? wr_lut : rd_lut;
+        unsigned handle = lut.getEntry(addr);
+        if(unlikely(handle))
+            srv->request_break(handle);
     }
 
     /* return table of remote commands */
@@ -102,7 +117,9 @@ public:
 
 protected:
     iss::debugger::server_if* srv;
-    util::range_lut<unsigned> bp_lut;
+    util::range_lut<uint64_t> bp_lut;
+    util::range_lut<uint64_t> rd_lut;
+    util::range_lut<uint64_t> wr_lut;
     long bp_count = 0;
     std::function<unsigned()> break_cond;
     std::vector<target_adapter_if::custom_command> ccmds;

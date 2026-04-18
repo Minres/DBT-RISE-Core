@@ -39,6 +39,14 @@
 #include <cstdint>
 #include <iostream>
 
+#if defined(__GNUC__)
+#define likely(x) ::__builtin_expect(!!(x), 1)
+#define unlikely(x) ::__builtin_expect(!!(x), 0)
+#else
+#define likely(x) x
+#define unlikely(x) x
+#endif
+
 namespace iss {
 
 enum status { Ok, Err, NotSupported };
@@ -159,7 +167,7 @@ inline std::ostream& operator<<(std::ostream& os, const addr_t& op) {
 template <address_type TYPE> class typed_addr_t : public addr_t {
 public:
     constexpr typed_addr_t()
-    : addr_t(TYPE, access_type::WRITE, 0, 0){};
+    : addr_t(TYPE, access_type::WRITE, 0, 0) {};
     constexpr typed_addr_t(access_type acc_type, uint32_t space, uint64_t v)
     : addr_t(TYPE, acc_type, space, v) {}
     constexpr typed_addr_t(access_type t, uint64_t v)

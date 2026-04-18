@@ -224,7 +224,7 @@ public:
 
     void pre_instr_sync() override {
         uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
-        tgt_adapter->check_continue(pc);
+        tgt_adapter->check_break_on_pc(pc);
     }
 
 protected:

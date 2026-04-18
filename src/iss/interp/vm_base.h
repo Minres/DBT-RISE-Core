@@ -56,15 +56,25 @@
 using int128_t = __int128;
 using uint128_t = unsigned __int128;
 namespace std {
-template <> struct make_unsigned<__int128> { typedef unsigned __int128 type; };
+template <> struct make_unsigned<__int128> {
+    typedef unsigned __int128 type;
+};
 template <> class __make_unsigned_selector<__int128 unsigned, false, false> {
 public:
     typedef unsigned __int128 __type;
 };
-template <> struct is_signed<int128_t> { static constexpr bool value = true; };
-template <> struct is_signed<uint128_t> { static constexpr bool value = false; };
-template <> struct is_unsigned<int128_t> { static constexpr bool value = false; };
-template <> struct is_unsigned<uint128_t> { static constexpr bool value = true; };
+template <> struct is_signed<int128_t> {
+    static constexpr bool value = true;
+};
+template <> struct is_signed<uint128_t> {
+    static constexpr bool value = false;
+};
+template <> struct is_unsigned<int128_t> {
+    static constexpr bool value = false;
+};
+template <> struct is_unsigned<uint128_t> {
+    static constexpr bool value = true;
+};
 } // namespace std
 #endif
 
@@ -147,7 +157,7 @@ public:
 
     void pre_instr_sync() override {
         uint64_t pc = get_reg<typename arch::traits<ARCH>::addr_t>(arch::traits<ARCH>::PC);
-        tgt_adapter->check_continue(pc);
+        tgt_adapter->check_break_on_pc(pc);
     }
 
 protected:
@@ -200,6 +210,9 @@ protected:
     }
 
     template <typename DT, typename AT> inline DT read_mem(mem_type_e space, AT addr) {
+        if(unlikely(this->debugging_enabled()))
+            this->tgt_adapter->check_break_on_ldst(space, addr, false);
+
         DT val;
         this->core.read({iss::address_type::LOGICAL, access_type::READ, space,
                          static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr))},
@@ -208,6 +221,8 @@ protected:
     }
 
     template <typename DT, typename AT> inline void write_mem(mem_type_e space, AT addr, DT val) {
+        if(unlikely(this->debugging_enabled()))
+            this->tgt_adapter->check_break_on_ldst(space, addr, true);
         this->core.write({iss::address_type::LOGICAL, access_type::WRITE, space,
                           static_cast<uint64_t>(static_cast<typename std::make_unsigned<AT>::type>(addr))},
                          sizeof(DT), reinterpret_cast<uint8_t*>(&val));
