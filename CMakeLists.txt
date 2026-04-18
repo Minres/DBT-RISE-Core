@@ -52,12 +52,7 @@ if(NOT TARGET scc-util)
         GIT_TAG ce8140277a822dc099a2184d45aa17ef98f5d7d1
     )
     FetchContent_GetProperties(scc_git)
-
-    if(NOT scc_git_POPULATED)
-        FetchContent_MakeAvailable(scc_git)
-    endif()
-
-    add_subdirectory(${scc_git_SOURCE_DIR} ${scc_git_BINARY_DIR})
+    FetchContent_MakeAvailable(scc_git)
     list(APPEND CMAKE_MODULE_PATH ${scc_git_SOURCE_DIR}/cmake)
 
 endif()
