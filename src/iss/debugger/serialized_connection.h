@@ -366,6 +366,7 @@ public:
     }
 
     void write_data(const std::string& t, boost::system::error_code& ec) {
+        std::lock_guard<std::mutex> lk(write_mtx);
         outbound_data_ = t;
 #ifdef EXTENDED_TRACE
         CLOG(TRACE) << "outbound sync data with len " << outbound_data_.size(, dbt_rise_iss) << ":'" << outbound_data_ << "'";
@@ -400,6 +401,7 @@ private:
     char inbound_buffer_[buffer_length];
     /// Holds the inbound data.
     std::vector<char> inbound_data_;
+    std::mutex write_mtx;
 
     boost::shared_ptr<async_listener> listener;
 };
