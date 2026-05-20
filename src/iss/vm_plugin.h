@@ -64,6 +64,8 @@ public:
     virtual sync_type get_sync() = 0;
 
     virtual void callback(instr_info_t) = 0;
+
+    virtual void execution_start_callback(){};
 };
 } // namespace iss
 
