@@ -122,6 +122,8 @@ public:
     }
     int start(uint64_t count = std::numeric_limits<uint64_t>::max(), bool dump = false,
               finish_cond_e cond = finish_cond_e::ICOUNT_LIMIT | finish_cond_e::JUMP_TO_SELF) override {
+        for(const auto& plugin_entry : plugins)
+            plugin_entry.plugin.execution_start_callback();
         int error = 0;
         auto start = std::chrono::high_resolution_clock::now();
         virt_addr_t pc(iss::access_type::FETCH, arch::traits<ARCH>::MEM, get_reg<addr_t>(arch::traits<ARCH>::PC));
@@ -190,6 +192,7 @@ protected:
             if(sync & POST_SYNC)
                 post_plugins.push_back(plugin_entry{plugin});
             sync_exec |= sync;
+            plugins.push_back({plugin});
         }
     }
 
@@ -238,6 +241,7 @@ protected:
     // non-owning pointers
     // std::vector<Value *> loaded_regs{arch::traits<ARCH>::NUM_REGS, nullptr};
     iss::debugger::target_adapter_base* tgt_adapter{nullptr};
+    std::vector<plugin_entry> plugins;
     std::vector<plugin_entry> pre_plugins;
     std::vector<plugin_entry> post_plugins;
     std::vector<plugin_entry> illegal_cb_plugins;
