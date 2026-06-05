@@ -182,7 +182,7 @@ struct instrumentation_if {
      *
      * @return core id
      */
-    virtual unsigned get_core_id() = 0;
+    virtual unsigned get_core_id() { return 0; };
 };
 } // namespace v2
 } /* namespace iss */
