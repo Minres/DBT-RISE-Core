@@ -121,7 +121,7 @@ std::string cmd_handler::threads(std::string const& in_buf) {
     }
 }
 
-int cmd_handler::send_stop_event(){
+int cmd_handler::send_stop_event() {
     CLOG(TRACE, connection) << "executing " << __FUNCTION__;
     int ret = t->trigger_debugger_stop_event();
     return ret;

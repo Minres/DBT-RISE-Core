@@ -74,7 +74,7 @@ struct alignas(4 * sizeof(void*)) translation_block {
     explicit translation_block(uintptr_t f_ptr_, std::array<translation_block*, 2> cont_, ::llvm::ExecutionEngine* mod_eng_)
     : f_ptr(f_ptr_)
     , cont(cont_)
-    , mod_eng(mod_eng_) {};
+    , mod_eng(mod_eng_){};
     translation_block() = default;
     translation_block(translation_block const&) = delete;
     translation_block(translation_block&&) = default;

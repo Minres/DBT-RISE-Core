@@ -66,7 +66,7 @@ struct checkpoint_if {
      */
     virtual bool drop(check_point_handle) = 0;
 };
-} // namespace v1
+} // namespace v2
 } /* namespace iss */
 
 #endif /* _INCL_ISS_CONTROL_IF_H_ */

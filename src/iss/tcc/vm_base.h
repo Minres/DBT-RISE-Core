@@ -311,7 +311,7 @@ protected:
         tu("return *next_pc;");
         gen_trap_behavior(tu);
     }
-    virtual void add_prologue(tu_builder&) {};
+    virtual void add_prologue(tu_builder&){};
 
     ARCH& core;
     std::unique_ptr<ARCH> core_ptr;
