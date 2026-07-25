@@ -38,6 +38,7 @@
 #include <cstdint>
 #include <limits>
 #include <vector>
+#include <string>
 
 namespace iss {
 
@@ -61,11 +62,11 @@ class decoder {
 public:
     decoder(std::vector<generic_instruction_descriptor> const& instr_list);
     uint32_t decode_instr(uint32_t word);
+    std::string print_tree_as_json() const;
+    std::string print_tree_as_pretty_json() const;
 
 private:
     decoding_tree_node root{decoding_tree_node(std::numeric_limits<uint32_t>::max())};
-    void populate_decoding_tree(decoding_tree_node& root);
-    uint32_t _decode_instr(decoding_tree_node const& node, uint32_t word);
 };
 } // namespace iss
 #endif
