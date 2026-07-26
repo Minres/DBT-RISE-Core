@@ -40,8 +40,8 @@
 #include <limits>
 #include <numeric>
 #include <sstream>
-#include <vector>
 #include <util/ities.h>
+#include <vector>
 
 using namespace iss;
 
@@ -176,20 +176,20 @@ uint32_t decode_instr_rec(decoding_tree_node const& node, uint32_t word) {
 }
 
 void consolidate_decoding_tree(decoding_tree_node& node) {
-    if (!node.children.empty()) {
+    if(!node.children.empty()) {
         auto can_consolidate = true;
-        for (auto &child : node.children) {
-            if (node.children.empty() &&(child.instrs.empty() || child.instrs.size() > 1))
+        for(auto& child : node.children) {
+            if(node.children.empty() && (child.instrs.empty() || child.instrs.size() > 1))
                 can_consolidate = false;
         }
         node.instrs.reserve(node.children.size());
-        if (can_consolidate) {
-            for (auto& child : node.children) {
+        if(can_consolidate) {
+            for(auto& child : node.children) {
                 node.instrs.emplace_back(std::move(child.instrs.front()));
             }
             node.children.clear();
         } else {
-            for (auto &child : node.children)
+            for(auto& child : node.children)
                 consolidate_decoding_tree(child);
         }
     }
@@ -203,15 +203,15 @@ decoder::decoder(std::vector<generic_instruction_descriptor> const& instr_list) 
     }
     // sort instrs by number of 1s in the mask, so we have the least restrictive mask last
     // if masks are the same the number of 1s in the value is used
-//    std::sort(root.instrs.begin(), root.instrs.end(),
-//            [](const generic_instruction_descriptor &instr1, const generic_instruction_descriptor &instr2) {
-//                auto bcm1 = util::bit_count(instr1.mask);
-//                auto bcm2 = util::bit_count(instr2.mask);
-//                return bcm1 != bcm2 ? bcm1 > bcm2 : util::bit_count(instr1.value) > util::bit_count(instr2.value);
-//            });
+    //    std::sort(root.instrs.begin(), root.instrs.end(),
+    //            [](const generic_instruction_descriptor &instr1, const generic_instruction_descriptor &instr2) {
+    //                auto bcm1 = util::bit_count(instr1.mask);
+    //                auto bcm2 = util::bit_count(instr2.mask);
+    //                return bcm1 != bcm2 ? bcm1 > bcm2 : util::bit_count(instr1.value) > util::bit_count(instr2.value);
+    //            });
     populate_decoding_tree(root);
     // now remove unneeded decoding_tree_node
-//    consolidate_decoding_tree(root);
+    //    consolidate_decoding_tree(root);
 }
 
 uint32_t decoder::decode_instr(uint32_t word) { return decode_instr_rec(this->root, word); }
