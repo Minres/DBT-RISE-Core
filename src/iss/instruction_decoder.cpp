@@ -53,27 +53,7 @@ void append_indent(std::ostream& os, std::size_t depth) {
         os.put(' ');
 }
 
-void append_instruction_json(std::ostream& os, generic_instruction_descriptor const& instr) {
-    os << std::hex << "{\"value\": 0x" << instr.value << ",\"mask\": 0x" << instr.mask << std::dec << ",\"index\":" << instr.index << "}";
-}
-
-void append_node_json(std::ostream& os, decoding_tree_node const& node) {
-    os << "{\"value\":" << node.value << ",\"submask\":" << node.submask << ",\"instrs\":[";
-    for(std::size_t i = 0; i < node.instrs.size(); ++i) {
-        if(i != 0)
-            os << ',';
-        append_instruction_json(os, node.instrs[i]);
-    }
-    os << "],\"children\":[";
-    for(std::size_t i = 0; i < node.children.size(); ++i) {
-        if(i != 0)
-            os << ',';
-        append_node_json(os, node.children[i]);
-    }
-    os << "]}";
-}
-
-void append_instruction_pretty_json(std::ostream& os, generic_instruction_descriptor const& instr, std::size_t depth) {
+void append_instruction_json(std::ostream& os, generic_instruction_descriptor const& instr, std::size_t depth) {
     append_indent(os, depth);
     os << "{\n";
     append_indent(os, depth + 1);
@@ -86,7 +66,7 @@ void append_instruction_pretty_json(std::ostream& os, generic_instruction_descri
     os << '}';
 }
 
-void append_node_pretty_json(std::ostream& os, decoding_tree_node const& node, std::size_t depth) {
+void append_node_json(std::ostream& os, decoding_tree_node const& node, std::size_t depth) {
     append_indent(os, depth);
     os << "{\n";
     append_indent(os, depth + 1);
@@ -100,7 +80,7 @@ void append_node_pretty_json(std::ostream& os, decoding_tree_node const& node, s
         for(std::size_t i = 0; i < node.instrs.size(); ++i) {
             if(i != 0)
                 os << ",\n";
-            append_instruction_pretty_json(os, node.instrs[i], depth + 2);
+            append_instruction_json(os, node.instrs[i], depth + 2);
         }
         os << '\n';
         append_indent(os, depth + 1);
@@ -113,7 +93,7 @@ void append_node_pretty_json(std::ostream& os, decoding_tree_node const& node, s
         for(std::size_t i = 0; i < node.children.size(); ++i) {
             if(i != 0)
                 os << ",\n";
-            append_node_pretty_json(os, node.children[i], depth + 2);
+            append_node_json(os, node.children[i], depth + 2);
         }
         os << '\n';
         append_indent(os, depth + 1);
@@ -218,12 +198,6 @@ uint32_t decoder::decode_instr(uint32_t word) { return decode_instr_rec(this->ro
 
 std::string decoder::print_tree_as_json() const {
     std::ostringstream os;
-    append_node_json(os, root);
-    return os.str();
-}
-
-std::string decoder::print_tree_as_pretty_json() const {
-    std::ostringstream os;
-    append_node_pretty_json(os, root, 0);
+    append_node_json(os, root, 0);
     return os.str();
 }

@@ -58,12 +58,11 @@ struct decoding_tree_node {
     decoding_tree_node(uint32_t value)
     : value(value) {}
 };
-class decoder {
-public:
+
+struct decoder {
     decoder(std::vector<generic_instruction_descriptor> const& instr_list);
     uint32_t decode_instr(uint32_t word);
     std::string print_tree_as_json() const;
-    std::string print_tree_as_pretty_json() const;
 
 private:
     decoding_tree_node root{decoding_tree_node(std::numeric_limits<uint32_t>::max())};
