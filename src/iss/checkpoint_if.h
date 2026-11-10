@@ -44,7 +44,7 @@ namespace iss {
 inline namespace v2 {
 struct checkpoint_if {
 
-    using check_point_handle = size_t;
+    using checkpoint_hndl = size_t;
 
     virtual ~checkpoint_if() = default;
     /**
@@ -52,19 +52,19 @@ struct checkpoint_if {
      *
      * @return the name of this architecture
      */
-    virtual check_point_handle create() = 0;
+    virtual checkpoint_hndl create() = 0;
     /**
      * restore the checkpoint of the core
      *
      * @return the value of the PC
      */
-    virtual bool restore(check_point_handle) = 0;
+    virtual bool restore(checkpoint_hndl) = 0;
     /**
      * drop the checkpoint of the core
      *
      * @return the value of the PC
      */
-    virtual bool drop(check_point_handle) = 0;
+    virtual bool drop(checkpoint_hndl) = 0;
 };
 } // namespace v2
 } /* namespace iss */
