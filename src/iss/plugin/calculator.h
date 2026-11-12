@@ -34,10 +34,9 @@
 #ifndef _ISS_PLUGIN_CALCULATOR_H_
 #define _ISS_PLUGIN_CALCULATOR_H_
 
+#include <cstdint>
 #include <functional>
-#include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace iss {
