@@ -35,8 +35,15 @@
 #ifndef _INSTR_DECODER_H
 #define _INSTR_DECODER_H
 
+#include "nonstd/span.h"
+#include "util/ities.h"
+#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <limits>
+#include <numeric>
 #include <string>
 #include <vector>
 
@@ -59,13 +66,82 @@ struct decoding_tree_node {
     : value(value) {}
 };
 
-struct decoder {
-    decoder(std::vector<generic_instruction_descriptor> const& instr_list);
+namespace details {
+inline void populate_decoding_tree(decoding_tree_node& parent) {
+    // create submask
+    parent.submask =
+        std::accumulate(parent.instrs.begin(), parent.instrs.end(), std::numeric_limits<uint32_t>::max(),
+                        [](int current_submask, const generic_instruction_descriptor& instr) { return current_submask & instr.mask; });
+    //  put each instr according to submask&encoding into children
+    for(auto instr : parent.instrs) {
+        bool foundMatch = false;
+        for(auto& child : parent.children) {
+            // use value as identifying trait
+            if(child.value == (instr.value & parent.submask)) {
+                child.instrs.push_back(instr);
+                foundMatch = true;
+            }
+        }
+        if(!foundMatch) {
+            decoding_tree_node child = decoding_tree_node(instr.value & parent.submask);
+            child.instrs.push_back(instr);
+            parent.children.push_back(child);
+        }
+    }
+    parent.instrs.clear();
+    // call populate_decoding_tree for all children
+    if(parent.children.size() > 1)
+        for(auto& child : parent.children) {
+            populate_decoding_tree(child);
+        }
+    else {
+        // sort instrs by value of the mask, so we have the least restrictive mask last
+        std::sort(parent.children[0].instrs.begin(), parent.children[0].instrs.end(),
+                  [](const generic_instruction_descriptor& instr1, const generic_instruction_descriptor& instr2) {
+                      return util::bit_count(instr1.mask) > util::bit_count(instr2.mask);
+                  });
+    }
+}
+} // namespace details
+class decoderBase {
+protected:
+    decoderBase(nonstd::span<const generic_instruction_descriptor> instr_list);
     uint32_t decode_instr(uint32_t word);
+
+public:
     std::string print_tree_as_json() const;
 
 private:
     decoding_tree_node root{decoding_tree_node(std::numeric_limits<uint32_t>::max())};
 };
+
+// The PC is of type reg_t. Templating on the type makes the cache smaller (e.g. saves 4 bytes per entry on RV32 vs. RV64)
+// Templating on instr_alignment allows reducing the sparsity in the cache
+template <typename reg_t, size_t instr_alignment> class decoder : public decoderBase {
+
+public:
+    decoder(nonstd::span<const generic_instruction_descriptor> instr_list)
+    : decoderBase(instr_list) {};
+
+    uint32_t decode_instr_cached(reg_t pc, uint32_t word) {
+        size_t cache_idx = (pc >> (instr_alignment / 2)) & (cache_size - 1);
+        auto& cached = cache[cache_idx];
+        if(cached.pc != pc) {
+            cached.idx = decode_instr(word);
+            cached.pc = pc;
+        }
+        return cached.idx;
+    };
+
+private:
+    struct cache_entry {
+        reg_t pc = std::numeric_limits<reg_t>::max();
+        uint32_t idx = 0;
+    };
+    // Needs to be power of two
+    static constexpr size_t cache_size = 4096;
+    std::array<cache_entry, cache_size> cache;
+};
+
 } // namespace iss
 #endif

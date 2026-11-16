@@ -32,13 +32,11 @@
  *       alex@minres.com - initial implementation
  ******************************************************************************/
 
-#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <iss/instruction_decoder.h>
 #include <limits>
-#include <numeric>
 #include <sstream>
 #include <util/ities.h>
 #include <vector>
@@ -102,43 +100,6 @@ void append_node_json(std::ostream& os, decoding_tree_node const& node, std::siz
     append_indent(os, depth);
     os << '}';
 }
-
-void populate_decoding_tree(decoding_tree_node& parent) {
-    // create submask
-    parent.submask =
-        std::accumulate(parent.instrs.begin(), parent.instrs.end(), std::numeric_limits<uint32_t>::max(),
-                        [](int current_submask, const generic_instruction_descriptor& instr) { return current_submask & instr.mask; });
-    //  put each instr according to submask&encoding into children
-    for(auto instr : parent.instrs) {
-        bool foundMatch = false;
-        for(auto& child : parent.children) {
-            // use value as identifying trait
-            if(child.value == (instr.value & parent.submask)) {
-                child.instrs.push_back(instr);
-                foundMatch = true;
-            }
-        }
-        if(!foundMatch) {
-            decoding_tree_node child = decoding_tree_node(instr.value & parent.submask);
-            child.instrs.push_back(instr);
-            parent.children.push_back(child);
-        }
-    }
-    parent.instrs.clear();
-    // call populate_decoding_tree for all children
-    if(parent.children.size() > 1)
-        for(auto& child : parent.children) {
-            populate_decoding_tree(child);
-        }
-    else {
-        // sort instrs by value of the mask, so we have the least restrictive mask last
-        std::sort(parent.children[0].instrs.begin(), parent.children[0].instrs.end(),
-                  [](const generic_instruction_descriptor& instr1, const generic_instruction_descriptor& instr2) {
-                      return util::bit_count(instr1.mask) > util::bit_count(instr2.mask);
-                  });
-    }
-}
-
 uint32_t decode_instr_rec(decoding_tree_node const& node, uint32_t word) {
     if(!node.instrs.empty()) {
         for(auto& instr : node.instrs) {
@@ -176,27 +137,15 @@ void consolidate_decoding_tree(decoding_tree_node& node) {
 }
 
 } // namespace
-
-decoder::decoder(std::vector<generic_instruction_descriptor> const& instr_list) {
-    for(auto instr : instr_list) {
+decoderBase::decoderBase(nonstd::span<const generic_instruction_descriptor> instr_list) {
+    for(auto instr : instr_list)
         root.instrs.push_back(instr);
-    }
-    // sort instrs by number of 1s in the mask, so we have the least restrictive mask last
-    // if masks are the same the number of 1s in the value is used
-    //    std::sort(root.instrs.begin(), root.instrs.end(),
-    //            [](const generic_instruction_descriptor &instr1, const generic_instruction_descriptor &instr2) {
-    //                auto bcm1 = util::bit_count(instr1.mask);
-    //                auto bcm2 = util::bit_count(instr2.mask);
-    //                return bcm1 != bcm2 ? bcm1 > bcm2 : util::bit_count(instr1.value) > util::bit_count(instr2.value);
-    //            });
-    populate_decoding_tree(root);
-    // now remove unneeded decoding_tree_node
-    //    consolidate_decoding_tree(root);
+    details::populate_decoding_tree(root);
 }
 
-uint32_t decoder::decode_instr(uint32_t word) { return decode_instr_rec(this->root, word); }
+uint32_t decoderBase::decode_instr(uint32_t word) { return decode_instr_rec(this->root, word); }
 
-std::string decoder::print_tree_as_json() const {
+std::string decoderBase::print_tree_as_json() const {
     std::ostringstream os;
     append_node_json(os, root, 0);
     return os.str();
