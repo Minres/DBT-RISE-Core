@@ -36,14 +36,11 @@
 #define _INSTR_DECODER_H
 
 #include "nonstd/span.h"
-#include "util/ities.h"
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <limits>
-#include <numeric>
 #include <string>
 #include <vector>
 
@@ -66,43 +63,6 @@ struct decoding_tree_node {
     : value(value) {}
 };
 
-namespace details {
-inline void populate_decoding_tree(decoding_tree_node& parent) {
-    // create submask
-    parent.submask =
-        std::accumulate(parent.instrs.begin(), parent.instrs.end(), std::numeric_limits<uint32_t>::max(),
-                        [](int current_submask, const generic_instruction_descriptor& instr) { return current_submask & instr.mask; });
-    //  put each instr according to submask&encoding into children
-    for(auto instr : parent.instrs) {
-        bool foundMatch = false;
-        for(auto& child : parent.children) {
-            // use value as identifying trait
-            if(child.value == (instr.value & parent.submask)) {
-                child.instrs.push_back(instr);
-                foundMatch = true;
-            }
-        }
-        if(!foundMatch) {
-            decoding_tree_node child = decoding_tree_node(instr.value & parent.submask);
-            child.instrs.push_back(instr);
-            parent.children.push_back(child);
-        }
-    }
-    parent.instrs.clear();
-    // call populate_decoding_tree for all children
-    if(parent.children.size() > 1)
-        for(auto& child : parent.children) {
-            populate_decoding_tree(child);
-        }
-    else {
-        // sort instrs by value of the mask, so we have the least restrictive mask last
-        std::sort(parent.children[0].instrs.begin(), parent.children[0].instrs.end(),
-                  [](const generic_instruction_descriptor& instr1, const generic_instruction_descriptor& instr2) {
-                      return util::bit_count(instr1.mask) > util::bit_count(instr2.mask);
-                  });
-    }
-}
-} // namespace details
 class decoderBase {
 protected:
     decoderBase(nonstd::span<const generic_instruction_descriptor> instr_list);
