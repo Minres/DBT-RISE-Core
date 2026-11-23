@@ -43,7 +43,7 @@ namespace iss {
 class arch_if;
 class vm_plugin;
 
-enum class finish_cond_e { NONE = 0, JUMP_TO_SELF = 1, ICOUNT_LIMIT = 2, FCOUNT_LIMIT = 4 };
+enum class finish_cond_e { NONE = 0, JUMP_TO_SELF = 1, ICOUNT_LIMIT = 2, FCOUNT_LIMIT = 4, SINGLE_EXEC = 8, SINGLE_INSTR = 10, SINGLE_FETCH = 12 };
 
 inline finish_cond_e operator|(finish_cond_e a, finish_cond_e b) {
     return static_cast<finish_cond_e>(static_cast<int>(a) | static_cast<int>(b));
