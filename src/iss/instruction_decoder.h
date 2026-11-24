@@ -66,9 +66,8 @@ struct decoding_tree_node {
 class decoderBase {
 protected:
     decoderBase(nonstd::span<const generic_instruction_descriptor> instr_list);
-    uint32_t decode_instr(uint32_t word);
-
 public:
+    uint32_t decode_instr(uint32_t word);
     std::string print_tree_as_json() const;
 
 private:
