@@ -66,6 +66,7 @@ struct decoding_tree_node {
 class decoderBase {
 protected:
     decoderBase(nonstd::span<const generic_instruction_descriptor> instr_list);
+
 public:
     uint32_t decode_instr(uint32_t word);
     std::string print_tree_as_json() const;
@@ -80,7 +81,7 @@ template <typename reg_t, size_t instr_alignment> class decoder : public decoder
 
 public:
     decoder(nonstd::span<const generic_instruction_descriptor> instr_list)
-    : decoderBase(instr_list) {};
+    : decoderBase(instr_list){};
 
     uint32_t decode_instr_cached(reg_t pc, uint32_t word) {
         size_t cache_idx = (pc >> (instr_alignment / 2)) & (cache_size - 1);
